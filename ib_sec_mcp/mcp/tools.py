@@ -16,8 +16,31 @@ from ib_sec_mcp.analyzers.performance import PerformanceAnalyzer
 from ib_sec_mcp.analyzers.risk import RiskAnalyzer
 from ib_sec_mcp.analyzers.tax import TaxAnalyzer
 from ib_sec_mcp.api.client import FlexQueryClient
-from ib_sec_mcp.core.parsers import CSVParser
+from ib_sec_mcp.core.parsers import CSVParser, XMLParser, detect_format
 from ib_sec_mcp.utils.config import Config
+
+
+def _extract_dates_from_filename(csv_path: str) -> tuple[date, date]:
+    """
+    Extract from_date and to_date from CSV filename
+
+    Expected format: {account_id}_{from_date}_{to_date}.csv
+    Example: UXXXXXXXX_2025-01-01_2025-10-07.csv
+    """
+    filename = Path(csv_path).stem  # Remove .csv extension
+    parts = filename.split("_")
+
+    if len(parts) >= 3:
+        # Try to parse dates from filename
+        try:
+            from_date = datetime.strptime(parts[-2], "%Y-%m-%d").date()
+            to_date = datetime.strptime(parts[-1], "%Y-%m-%d").date()
+            return from_date, to_date
+        except ValueError:
+            pass
+
+    # Fallback: use current year
+    return date(date.today().year, 1, 1), date.today()
 
 
 def register_tools(mcp: FastMCP) -> None:
@@ -53,13 +76,13 @@ def register_tools(mcp: FastMCP) -> None:
         config = Config.load()
         credentials = config.get_credentials()
 
-        if account_index >= len(credentials):
-            raise ValueError(
-                f"Account index {account_index} out of range (have {len(credentials)} accounts)"
-            )
-
-        client = FlexQueryClient(credentials=credentials)
-        statement = client.fetch_statement(from_date, to_date, account_index)
+        # Note: account_index is ignored as we now use single credentials
+        # Multiple accounts are handled by IB Flex Query configuration
+        client = FlexQueryClient(
+            query_id=credentials.query_id,
+            token=credentials.token,
+        )
+        statement = client.fetch_statement(from_date, to_date)
 
         # Save to file
         data_dir = Path("data/raw")
@@ -83,10 +106,10 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def analyze_performance(csv_path: str, ctx: Optional[Context] = None) -> str:
         """
-        Analyze trading performance from CSV data
+        Analyze trading performance from CSV/XML data
 
         Args:
-            csv_path: Path to IB Flex Query CSV file
+            csv_path: Path to IB Flex Query CSV/XML file
             ctx: MCP context for logging
 
         Returns:
@@ -95,11 +118,18 @@ def register_tools(mcp: FastMCP) -> None:
         if ctx:
             await ctx.info(f"Analyzing performance from {csv_path}")
 
-        # Parse CSV
+        # Read and detect format
         with open(csv_path) as f:
-            csv_data = f.read()
+            data = f.read()
 
-        account = CSVParser.to_account(csv_data)
+        from_date, to_date = _extract_dates_from_filename(csv_path)
+
+        # Auto-detect format and parse
+        format_type = detect_format(data)
+        if format_type == "xml":
+            account = XMLParser.to_account(data, from_date, to_date)
+        else:
+            account = CSVParser.to_account(data, from_date, to_date)
 
         # Run analysis
         analyzer = PerformanceAnalyzer(account=account)
@@ -110,10 +140,10 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def analyze_costs(csv_path: str, ctx: Optional[Context] = None) -> str:
         """
-        Analyze trading costs and commissions from CSV data
+        Analyze trading costs and commissions from CSV/XML data
 
         Args:
-            csv_path: Path to IB Flex Query CSV file
+            csv_path: Path to IB Flex Query CSV/XML file
             ctx: MCP context for logging
 
         Returns:
@@ -123,9 +153,17 @@ def register_tools(mcp: FastMCP) -> None:
             await ctx.info(f"Analyzing costs from {csv_path}")
 
         with open(csv_path) as f:
-            csv_data = f.read()
+            data = f.read()
 
-        account = CSVParser.to_account(csv_data)
+        from_date, to_date = _extract_dates_from_filename(csv_path)
+
+        # Auto-detect format and parse
+        format_type = detect_format(data)
+        if format_type == "xml":
+            account = XMLParser.to_account(data, from_date, to_date)
+        else:
+            account = CSVParser.to_account(data, from_date, to_date)
+
         analyzer = CostAnalyzer(account=account)
         result = analyzer.analyze()
 
@@ -134,10 +172,10 @@ def register_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def analyze_bonds(csv_path: str, ctx: Optional[Context] = None) -> str:
         """
-        Analyze zero-coupon bonds (STRIPS) from CSV data
+        Analyze zero-coupon bonds (STRIPS) from CSV/XML data
 
         Args:
-            csv_path: Path to IB Flex Query CSV file
+            csv_path: Path to IB Flex Query CSV/XML file
             ctx: MCP context for logging
 
         Returns:
@@ -147,9 +185,17 @@ def register_tools(mcp: FastMCP) -> None:
             await ctx.info(f"Analyzing bonds from {csv_path}")
 
         with open(csv_path) as f:
-            csv_data = f.read()
+            data = f.read()
 
-        account = CSVParser.to_account(csv_data)
+        from_date, to_date = _extract_dates_from_filename(csv_path)
+
+        # Auto-detect format and parse
+        format_type = detect_format(data)
+        if format_type == "xml":
+            account = XMLParser.to_account(data, from_date, to_date)
+        else:
+            account = CSVParser.to_account(data, from_date, to_date)
+
         analyzer = BondAnalyzer(account=account)
         result = analyzer.analyze()
 
@@ -161,7 +207,7 @@ def register_tools(mcp: FastMCP) -> None:
         Analyze tax implications including Phantom Income (OID) for bonds
 
         Args:
-            csv_path: Path to IB Flex Query CSV file
+            csv_path: Path to IB Flex Query CSV/XML file
             ctx: MCP context for logging
 
         Returns:
@@ -171,9 +217,17 @@ def register_tools(mcp: FastMCP) -> None:
             await ctx.info(f"Analyzing tax from {csv_path}")
 
         with open(csv_path) as f:
-            csv_data = f.read()
+            data = f.read()
 
-        account = CSVParser.to_account(csv_data)
+        from_date, to_date = _extract_dates_from_filename(csv_path)
+
+        # Auto-detect format and parse
+        format_type = detect_format(data)
+        if format_type == "xml":
+            account = XMLParser.to_account(data, from_date, to_date)
+        else:
+            account = CSVParser.to_account(data, from_date, to_date)
+
         analyzer = TaxAnalyzer(account=account)
         result = analyzer.analyze()
 
@@ -189,7 +243,7 @@ def register_tools(mcp: FastMCP) -> None:
         Analyze portfolio risk including interest rate scenarios
 
         Args:
-            csv_path: Path to IB Flex Query CSV file
+            csv_path: Path to IB Flex Query CSV/XML file
             interest_rate_change: Interest rate change for scenario (default: 0.01 = 1%)
             ctx: MCP context for logging
 
@@ -202,9 +256,17 @@ def register_tools(mcp: FastMCP) -> None:
             )
 
         with open(csv_path) as f:
-            csv_data = f.read()
+            data = f.read()
 
-        account = CSVParser.to_account(csv_data)
+        from_date, to_date = _extract_dates_from_filename(csv_path)
+
+        # Auto-detect format and parse
+        format_type = detect_format(data)
+        if format_type == "xml":
+            account = XMLParser.to_account(data, from_date, to_date)
+        else:
+            account = CSVParser.to_account(data, from_date, to_date)
+
         analyzer = RiskAnalyzer(account=account)
         result = analyzer.analyze()
 
@@ -216,7 +278,7 @@ def register_tools(mcp: FastMCP) -> None:
         Get comprehensive portfolio summary
 
         Args:
-            csv_path: Path to IB Flex Query CSV file
+            csv_path: Path to IB Flex Query CSV/XML file
             ctx: MCP context for logging
 
         Returns:
@@ -226,9 +288,16 @@ def register_tools(mcp: FastMCP) -> None:
             await ctx.info(f"Getting portfolio summary from {csv_path}")
 
         with open(csv_path) as f:
-            csv_data = f.read()
+            data = f.read()
 
-        account = CSVParser.to_account(csv_data)
+        from_date, to_date = _extract_dates_from_filename(csv_path)
+
+        # Auto-detect format and parse
+        format_type = detect_format(data)
+        if format_type == "xml":
+            account = XMLParser.to_account(data, from_date, to_date)
+        else:
+            account = CSVParser.to_account(data, from_date, to_date)
 
         summary = {
             "account_id": account.account_id,
