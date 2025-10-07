@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ib-sec-mcp": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "ib_sec_mcp.mcp.server"],
+      "env": {
+        "QUERY_ID": "${QUERY_ID}",
+        "TOKEN": "${TOKEN}"
+      }
+    }
+  }
+}
