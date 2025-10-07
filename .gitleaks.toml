@@ -1,0 +1,132 @@
+# Gitleaks configuration for IB Analytics
+# See https://github.com/gitleaks/gitleaks for more information
+
+title = "IB Analytics Gitleaks Configuration"
+
+# Extend the default gitleaks config
+[extend]
+useDefault = true
+
+# Custom rules for Interactive Brokers credentials
+[[rules]]
+id = "ib-query-id"
+description = "Interactive Brokers Flex Query ID"
+regex = '''(?i)(query_?id|QUERY_?ID)\s*[=:]\s*['"]?(\d{7,10})['"]?'''
+secretGroup = 2
+keywords = [
+    "QUERY_ID",
+    "query_id",
+    "QueryID",
+]
+
+[[rules]]
+id = "ib-token"
+description = "Interactive Brokers Flex Query Token"
+regex = '''(?i)(token|TOKEN)\s*[=:]\s*['"]?(\d{18,25})['"]?'''
+secretGroup = 2
+keywords = [
+    "TOKEN",
+    "token",
+    "flex_token",
+    "FLEX_TOKEN",
+]
+
+[[rules]]
+id = "ib-account-id"
+description = "Interactive Brokers Account ID"
+regex = '''U\d{8}'''
+keywords = [
+    "account",
+    "Account",
+    "ACCOUNT",
+]
+
+[[rules]]
+id = "ib-account-credentials"
+description = "Interactive Brokers Account Credentials"
+regex = '''(?i)ACCOUNT_\d+_(QUERY_ID|TOKEN)\s*=\s*['"]?([A-Za-z0-9]{7,25})['"]?'''
+secretGroup = 2
+keywords = [
+    "ACCOUNT_1_QUERY_ID",
+    "ACCOUNT_1_TOKEN",
+    "ACCOUNT_2_QUERY_ID",
+    "ACCOUNT_2_TOKEN",
+]
+
+# Additional security patterns
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)api[_-]?key\s*[=:]\s*['"]?([a-zA-Z0-9]{20,})['"]?'''
+secretGroup = 1
+keywords = [
+    "api_key",
+    "apikey",
+    "API_KEY",
+]
+
+# Allowlist for false positives
+[allowlist]
+description = "Allowlisted files and patterns"
+paths = [
+    # Test files and examples
+    '''tests/fixtures/.*''',
+    '''\.env\.example$''',
+    '''\.env\.template$''',
+
+    # Documentation
+    '''README\.md$''',
+    '''INSTALL\.md$''',
+    '''PROJECT_SUMMARY\.md$''',
+    '''\.claude/.*\.md$''',
+    '''CHANGELOG\.md$''',
+
+    # Configuration examples
+    '''.pre-commit-config\.yaml$''',
+    '''.gitleaks\.toml$''',
+]
+
+regexes = [
+    # Example values in documentation
+    '''QUERY_ID=your_query_id_here''',
+    '''TOKEN=your_token_here''',
+    '''QUERY_ID=123''',
+    '''TOKEN=abc''',
+    '''query_id="123"''',
+    '''token="abc"''',
+    '''1234567890123456789012345''', # Generic placeholder numbers
+
+    # Generic account IDs (for documentation examples)
+    '''U12345678''',
+    '''U87654321''',
+
+    # Code placeholders
+    '''\.\.\.$''', # Ellipsis placeholders
+    '''your_.*_here''',
+    '''<.*>''', # XML/HTML tags
+    '''example''',
+    '''sample''',
+    '''test''',
+    '''dummy''',
+
+    # Note: DO NOT add real credentials here
+    # Real credentials in .env will still be detected (as expected)
+]
+
+# Stopwords to reduce false positives
+stopwords = [
+    "example",
+    "sample",
+    "test",
+    "dummy",
+    "placeholder",
+    "your",
+    "here",
+    "xxx",
+    "yyy",
+]
+
+# Commits to ignore (if needed)
+# commits = [
+#   "commit-sha-to-ignore",
+# ]

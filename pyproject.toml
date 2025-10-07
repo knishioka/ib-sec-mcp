@@ -1,0 +1,102 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ib-sec-mcp"
+version = "0.1.0"
+description = "Interactive Brokers portfolio analytics with MCP server support"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [
+    {name = "Kenichiro Nishioka"}
+]
+keywords = ["interactive-brokers", "trading", "analytics", "portfolio", "finance"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    "requests>=2.32.5",
+    "pandas>=2.2.3",
+    "pydantic>=2.10.0",
+    "python-dotenv>=1.0.0",
+    "httpx>=0.27.0",
+    "rich>=13.7.0",
+    "typer>=0.12.0",
+    "defusedxml>=0.7.1",
+]
+
+[project.optional-dependencies]
+mcp = [
+    "fastmcp>=2.0.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "black>=24.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "pre-commit>=4.0.0",
+    "bandit[toml]>=1.8.0",
+]
+visualization = [
+    "plotly>=5.18.0",
+    "kaleido>=0.2.1",
+]
+reporting = [
+    "jinja2>=3.1.0",
+    "weasyprint>=60.0",
+]
+
+[project.scripts]
+ib-sec-fetch = "ib_sec_mcp.cli.fetch:app"
+ib-sec-analyze = "ib_sec_mcp.cli.analyze:app"
+ib-sec-report = "ib_sec_mcp.cli.report:app"
+ib-sec-mcp = "ib_sec_mcp.mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ib_sec_mcp*"]
+
+[tool.black]
+line-length = 100
+target-version = ['py39', 'py310', 'py311', 'py312']
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "T20", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["T201"]  # Allow print in scripts
+"legacy/*.py" = ["T201"]   # Allow print in legacy scripts
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --cov=ib_sec_mcp --cov-report=term-missing"
+
+[tool.bandit]
+exclude_dirs = ["tests", "legacy", ".venv", "venv"]
+skips = ["B101", "B601"]
