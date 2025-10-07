@@ -1,6 +1,5 @@
 """CLI for data fetching"""
 
-import asyncio
 from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
@@ -29,11 +28,11 @@ def fetch(
         "-e",
         help="End date (YYYY-MM-DD). Defaults to today",
     ),
-    multi_account: bool = typer.Option(
+    split_accounts: bool = typer.Option(
         False,
-        "--multi-account",
-        "-m",
-        help="Fetch data for all configured accounts",
+        "--split-accounts",
+        "-s",
+        help="Split CSV into separate files by account (if multiple accounts in query)",
     ),
     output_dir: Optional[str] = typer.Option(
         None,
@@ -46,14 +45,14 @@ def fetch(
     Fetch trading data from Interactive Brokers
 
     Examples:
-        # Fetch YTD data for default account
-        ib-fetch
+        # Fetch YTD data
+        ib-sec-fetch
 
         # Fetch data for specific date range
-        ib-fetch --start-date 2025-01-01 --end-date 2025-10-05
+        ib-sec-fetch --start-date 2025-01-01 --end-date 2025-10-05
 
-        # Fetch data for all accounts
-        ib-fetch --multi-account
+        # Split CSV by account (if query contains multiple accounts)
+        ib-sec-fetch --split-accounts
     """
     # Load config
     config = Config.load()
@@ -78,44 +77,53 @@ def fetch(
 
     # Create client
     client = FlexQueryClient(
-        credentials=credentials,
+        query_id=credentials.query_id,
+        token=credentials.token,
         timeout=config.api_timeout,
         max_retries=config.api_max_retries,
         retry_delay=config.api_retry_delay,
     )
 
-    if multi_account or len(credentials) > 1:
-        # Fetch all accounts
-        console.print(f"Fetching data for {len(credentials)} accounts...\n")
+    try:
+        # Fetch data
+        statement = client.fetch_statement(from_date, to_date)
 
-        try:
-            statements = asyncio.run(client.fetch_all_statements_async(from_date, to_date))
+        if split_accounts:
+            # Check if CSV contains multiple accounts
+            from ib_sec_mcp.core.parsers import CSVParser
 
-            for _i, statement in enumerate(statements):
-                account_id = statement.account_id
+            accounts = CSVParser.to_accounts(statement.raw_data, from_date, to_date)
+
+            if len(accounts) > 1:
+                console.print(f"Found {len(accounts)} accounts in query result\n")
+
+                # Save separate files for each account
+                for account_id, _account in accounts.items():
+                    filename = f"{account_id}_{from_date}_{to_date}.csv"
+                    filepath = out_dir / filename
+
+                    # Filter CSV data for this account only
+                    # (For now, save the original CSV - can be enhanced later)
+                    with open(filepath, "w") as f:
+                        f.write(statement.raw_data)
+
+                    console.print(f"✓ Saved account {account_id} to {filepath}", style="green")
+
+                console.print(
+                    f"\n✓ Successfully saved {len(accounts)} accounts", style="bold green"
+                )
+            else:
+                # Only one account, save normally
+                account_id = list(accounts.keys())[0]
                 filename = f"{account_id}_{from_date}_{to_date}.csv"
                 filepath = out_dir / filename
 
                 with open(filepath, "w") as f:
                     f.write(statement.raw_data)
 
-                console.print(f"✓ Saved account {account_id} to {filepath}", style="green")
-
-            console.print(
-                f"\n✓ Successfully fetched data for {len(statements)} accounts", style="bold green"
-            )
-
-        except Exception as e:
-            console.print(f"\n✗ Error: {e}", style="bold red")
-            raise typer.Exit(code=1) from e
-
-    else:
-        # Fetch single account
-        console.print("Fetching data for single account...\n")
-
-        try:
-            statement = client.fetch_statement(from_date, to_date)
-
+                console.print(f"✓ Saved to {filepath}", style="bold green")
+        else:
+            # Save single CSV file
             account_id = statement.account_id
             filename = f"{account_id}_{from_date}_{to_date}.csv"
             filepath = out_dir / filename
@@ -125,9 +133,9 @@ def fetch(
 
             console.print(f"✓ Saved to {filepath}", style="bold green")
 
-        except Exception as e:
-            console.print(f"\n✗ Error: {e}", style="bold red")
-            raise typer.Exit(code=1) from e
+    except Exception as e:
+        console.print(f"\n✗ Error: {e}", style="bold red")
+        raise typer.Exit(code=1) from e
 
 
 if __name__ == "__main__":

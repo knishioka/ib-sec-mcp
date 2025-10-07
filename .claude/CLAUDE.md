@@ -212,11 +212,9 @@ pytest --cov=ib_sec_mcp --cov-report=html
   ```env
   QUERY_ID=your_query_id
   TOKEN=your_token_here
-
-  # Multi-account (optional)
-  ACCOUNT_1_QUERY_ID=...
-  ACCOUNT_1_TOKEN=...
   ```
+
+**Note**: A single Flex Query can return data for multiple accounts. Configure multiple accounts in your IB Flex Query settings.
 
 ### Directory Structure
 - `data/raw/`: Store fetched CSV/XML files (git-ignored)
