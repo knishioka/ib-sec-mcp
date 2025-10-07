@@ -17,19 +17,11 @@ pip install -r requirements.txt
 Create/update `.env` file with your IB Flex Query credentials:
 
 ```env
-# Single account
 QUERY_ID=your_query_id
 TOKEN=your_token_here
-
-# OR Multiple accounts
-ACCOUNT_1_QUERY_ID=your_query_id
-ACCOUNT_1_TOKEN=your_token_here
-ACCOUNT_1_ALIAS=Main Trading
-
-ACCOUNT_2_QUERY_ID=another_query_id
-ACCOUNT_2_TOKEN=another_token_here
-ACCOUNT_2_ALIAS=Retirement
 ```
+
+**Note**: To analyze multiple accounts, configure them in your IB Flex Query settings.
 
 ### 3. Test Installation
 

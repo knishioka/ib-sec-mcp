@@ -41,18 +41,6 @@ keywords = [
     "ACCOUNT",
 ]
 
-[[rules]]
-id = "ib-account-credentials"
-description = "Interactive Brokers Account Credentials"
-regex = '''(?i)ACCOUNT_\d+_(QUERY_ID|TOKEN)\s*=\s*['"]?([A-Za-z0-9]{7,25})['"]?'''
-secretGroup = 2
-keywords = [
-    "ACCOUNT_1_QUERY_ID",
-    "ACCOUNT_1_TOKEN",
-    "ACCOUNT_2_QUERY_ID",
-    "ACCOUNT_2_TOKEN",
-]
-
 # Additional security patterns
 [[rules]]
 id = "generic-api-key"

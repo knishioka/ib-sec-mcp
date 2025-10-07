@@ -1,6 +1,5 @@
 """Configuration management"""
 
-import os
 from pathlib import Path
 from typing import Optional
 
@@ -15,19 +14,12 @@ class Config(BaseSettings):
     """
     Application configuration loaded from environment variables
 
-    Supports both single and multi-account configurations:
+    Configuration:
+        QUERY_ID=your_query_id
+        TOKEN=your_token
 
-    Single account:
-        QUERY_ID=123
-        TOKEN=abc
-
-    Multiple accounts:
-        ACCOUNT_1_QUERY_ID=123
-        ACCOUNT_1_TOKEN=abc
-        ACCOUNT_1_ALIAS=Main
-        ACCOUNT_2_QUERY_ID=456
-        ACCOUNT_2_TOKEN=def
-        ACCOUNT_2_ALIAS=Trading
+    Note: A single Flex Query can return data for multiple accounts.
+    Configure multiple accounts in your IB Flex Query settings.
     """
 
     model_config = SettingsConfigDict(
@@ -64,55 +56,21 @@ class Config(BaseSettings):
         v.mkdir(parents=True, exist_ok=True)
         return v
 
-    def get_credentials(self) -> list[APICredentials]:
+    def get_credentials(self) -> APICredentials:
         """
         Get API credentials from environment
 
         Returns:
-            List of APICredentials (single or multiple accounts)
+            APICredentials for Flex Query access
         """
-        credentials = []
+        if not self.query_id or not self.token:
+            raise ValueError("QUERY_ID and TOKEN must be set in environment")
 
-        # Try single account config first
-        if self.query_id and self.token:
-            credentials.append(
-                APICredentials(
-                    query_id=self.query_id,
-                    token=self.token,
-                    account_alias="Default",
-                )
-            )
-            return credentials
-
-        # Try multi-account config
-        account_num = 1
-        while True:
-            prefix = f"ACCOUNT_{account_num}_"
-            query_id = os.getenv(f"{prefix}QUERY_ID")
-            token = os.getenv(f"{prefix}TOKEN")
-
-            if not query_id or not token:
-                break
-
-            account_id = os.getenv(f"{prefix}ACCOUNT_ID")
-            alias = os.getenv(f"{prefix}ALIAS", f"Account {account_num}")
-
-            credentials.append(
-                APICredentials(
-                    query_id=query_id,
-                    token=token,
-                    account_id=account_id,
-                    account_alias=alias,
-                )
-            )
-            account_num += 1
-
-        if not credentials:
-            raise ValueError(
-                "No credentials found. Please set QUERY_ID/TOKEN or ACCOUNT_N_QUERY_ID/TOKEN"
-            )
-
-        return credentials
+        return APICredentials(
+            query_id=self.query_id,
+            token=self.token,
+            account_alias="Default",
+        )
 
     @classmethod
     def load(cls, env_file: Optional[Path] = None) -> "Config":

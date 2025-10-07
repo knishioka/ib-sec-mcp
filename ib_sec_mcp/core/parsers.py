@@ -299,6 +299,70 @@ class CSVParser:
             ib_entity=account_info.get("ib_entity"),
         )
 
+    @staticmethod
+    def to_accounts(
+        csv_data: str,
+        from_date: date,
+        to_date: date,
+    ) -> dict[str, Account]:
+        """
+        Convert CSV data containing multiple accounts to Account models
+
+        Args:
+            csv_data: Raw CSV string potentially containing multiple accounts
+            from_date: Statement start date
+            to_date: Statement end date
+
+        Returns:
+            Dictionary mapping account_id to Account instance
+        """
+        from collections import defaultdict
+
+        # Parse all sections
+        sections = CSVParser.parse(csv_data)
+
+        # Group rows by ClientAccountID
+        accounts_data: dict[str, dict[str, list[dict[str, str]]]] = defaultdict(
+            lambda: {
+                "account_info": [],
+                "cash_summary": [],
+                "positions": [],
+                "trades": [],
+            }
+        )
+
+        # Group each section by account
+        for section_name, rows in sections.items():
+            for row in rows:
+                account_id = row.get("ClientAccountID", "UNKNOWN")
+                accounts_data[account_id][section_name].append(row)
+
+        # Create Account object for each account
+        accounts = {}
+        for account_id, sections_by_account in accounts_data.items():
+            if account_id == "UNKNOWN":
+                continue
+
+            # Parse account-specific data
+            account_info = CSVParser.parse_account_info(sections_by_account["account_info"])
+            cash_balances = CSVParser.parse_cash_summary(sections_by_account["cash_summary"])
+            positions = CSVParser.parse_positions(sections_by_account["positions"], account_id)
+            trades = CSVParser.parse_trades(sections_by_account["trades"], account_id)
+
+            accounts[account_id] = Account(
+                account_id=account_id,
+                account_alias=account_info.get("account_alias"),
+                account_type=account_info.get("account_type"),
+                from_date=from_date,
+                to_date=to_date,
+                cash_balances=cash_balances,
+                positions=positions,
+                trades=trades,
+                ib_entity=account_info.get("ib_entity"),
+            )
+
+        return accounts
+
 
 class XMLParser:
     """

@@ -37,25 +37,20 @@ pip install -e ".[dev,mcp,visualization,reporting]"
 Create a `.env` file with your IB Flex Query credentials:
 
 ```env
-# Single account
 QUERY_ID=your_query_id
 TOKEN=your_token_here
-
-# Multiple accounts (optional)
-ACCOUNT_1_QUERY_ID=your_query_id
-ACCOUNT_1_TOKEN=your_token_here
-ACCOUNT_2_QUERY_ID=another_query_id
-ACCOUNT_2_TOKEN=another_token_here
 ```
+
+**Note**: To analyze multiple accounts, configure them in your IB Flex Query settings. A single query can return data for multiple accounts.
 
 ### 2. Fetch Data
 
 ```bash
-# Fetch data for single account
+# Fetch data
 ib-sec-fetch --start-date 2025-01-01 --end-date 2025-10-05
 
-# Fetch data for multiple accounts
-ib-sec-fetch --multi-account --start-date 2025-01-01 --end-date 2025-10-05
+# Split by account (if query contains multiple accounts)
+ib-sec-fetch --split-accounts --start-date 2025-01-01 --end-date 2025-10-05
 ```
 
 ### 3. Run Analysis
