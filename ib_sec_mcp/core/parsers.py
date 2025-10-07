@@ -432,45 +432,78 @@ class XMLParser:
 
     @staticmethod
     def _parse_cash_balances(stmt_elem: Any) -> list[CashBalance]:
-        """Parse cash report from FlexStatement element"""
+        """
+        Parse cash report from FlexStatement element
+
+        For XML format, use BASE_SUMMARY which contains USD-converted total cash.
+        Individual currency reports (JPY, USD) don't have FX rates in CashReport,
+        so using them would require manual FX conversion and lead to incorrect totals.
+        """
         balances = []
         cash_reports = stmt_elem.findall(".//CashReportCurrency")
 
-        # If no currency-specific reports, look for BASE_SUMMARY
-        has_currency_reports = any(
-            report.get("currency") != "BASE_SUMMARY" for report in cash_reports
-        )
-
+        # For XML format, always use BASE_SUMMARY as it's already in USD
+        base_summary_report = None
         for report in cash_reports:
-            currency = report.get("currency", "USD")
+            if report.get("currency") == "BASE_SUMMARY":
+                base_summary_report = report
+                break
 
-            # Skip BASE_SUMMARY if we have currency-specific reports
-            if currency == "BASE_SUMMARY" and has_currency_reports:
-                continue
-
-            # Treat BASE_SUMMARY as USD if it's the only report
-            if currency == "BASE_SUMMARY":
-                currency = "USD"
-
+        if base_summary_report is not None:
+            # Use BASE_SUMMARY (already converted to USD)
             balance = CashBalance(
-                currency=currency,
-                starting_cash=Decimal(parse_decimal_safe(report.get("startingCash", "0"))),
-                ending_cash=Decimal(parse_decimal_safe(report.get("endingCash", "0"))),
-                ending_settled_cash=Decimal(
-                    parse_decimal_safe(report.get("endingSettledCash", "0"))
+                currency="USD",
+                starting_cash=Decimal(
+                    parse_decimal_safe(base_summary_report.get("startingCash", "0"))
                 ),
-                deposits=Decimal(parse_decimal_safe(report.get("deposits", "0"))),
-                withdrawals=Decimal(parse_decimal_safe(report.get("withdrawals", "0"))),
-                dividends=Decimal(parse_decimal_safe(report.get("dividends", "0"))),
-                interest=Decimal(parse_decimal_safe(report.get("brokerInterest", "0"))),
-                commissions=Decimal(parse_decimal_safe(report.get("commissions", "0"))),
-                fees=Decimal(parse_decimal_safe(report.get("otherFees", "0"))),
-                net_trades_sales=Decimal(parse_decimal_safe(report.get("netTradesSales", "0"))),
+                ending_cash=Decimal(parse_decimal_safe(base_summary_report.get("endingCash", "0"))),
+                ending_settled_cash=Decimal(
+                    parse_decimal_safe(base_summary_report.get("endingSettledCash", "0"))
+                ),
+                deposits=Decimal(parse_decimal_safe(base_summary_report.get("deposits", "0"))),
+                withdrawals=Decimal(
+                    parse_decimal_safe(base_summary_report.get("withdrawals", "0"))
+                ),
+                dividends=Decimal(parse_decimal_safe(base_summary_report.get("dividends", "0"))),
+                interest=Decimal(
+                    parse_decimal_safe(base_summary_report.get("brokerInterest", "0"))
+                ),
+                commissions=Decimal(
+                    parse_decimal_safe(base_summary_report.get("commissions", "0"))
+                ),
+                fees=Decimal(parse_decimal_safe(base_summary_report.get("otherFees", "0"))),
+                net_trades_sales=Decimal(
+                    parse_decimal_safe(base_summary_report.get("netTradesSales", "0"))
+                ),
                 net_trades_purchases=Decimal(
-                    parse_decimal_safe(report.get("netTradesPurchases", "0"))
+                    parse_decimal_safe(base_summary_report.get("netTradesPurchases", "0"))
                 ),
             )
             balances.append(balance)
+        else:
+            # Fallback: no BASE_SUMMARY found (shouldn't happen with XML format)
+            for report in cash_reports:
+                currency = report.get("currency", "USD")
+
+                balance = CashBalance(
+                    currency=currency,
+                    starting_cash=Decimal(parse_decimal_safe(report.get("startingCash", "0"))),
+                    ending_cash=Decimal(parse_decimal_safe(report.get("endingCash", "0"))),
+                    ending_settled_cash=Decimal(
+                        parse_decimal_safe(report.get("endingSettledCash", "0"))
+                    ),
+                    deposits=Decimal(parse_decimal_safe(report.get("deposits", "0"))),
+                    withdrawals=Decimal(parse_decimal_safe(report.get("withdrawals", "0"))),
+                    dividends=Decimal(parse_decimal_safe(report.get("dividends", "0"))),
+                    interest=Decimal(parse_decimal_safe(report.get("brokerInterest", "0"))),
+                    commissions=Decimal(parse_decimal_safe(report.get("commissions", "0"))),
+                    fees=Decimal(parse_decimal_safe(report.get("otherFees", "0"))),
+                    net_trades_sales=Decimal(parse_decimal_safe(report.get("netTradesSales", "0"))),
+                    net_trades_purchases=Decimal(
+                        parse_decimal_safe(report.get("netTradesPurchases", "0"))
+                    ),
+                )
+                balances.append(balance)
 
         return balances
 
@@ -500,8 +533,22 @@ class XMLParser:
             quantity = Decimal(parse_decimal_safe(pos_elem.get("position", "0")))
             cost_basis = Decimal(parse_decimal_safe(pos_elem.get("costBasisMoney", "0")))
 
+            # Get FX rate to convert to base currency (USD)
+            fx_rate = Decimal(parse_decimal_safe(pos_elem.get("fxRateToBase", "1")))
+
+            # Apply FX rate to convert values to USD
+            position_value_local = Decimal(parse_decimal_safe(pos_elem.get("positionValue", "0")))
+            position_value_usd = position_value_local * fx_rate
+
+            unrealized_pnl_local = Decimal(
+                parse_decimal_safe(pos_elem.get("fifoPnlUnrealized", "0"))
+            )
+            unrealized_pnl_usd = unrealized_pnl_local * fx_rate
+
+            cost_basis_usd = cost_basis * fx_rate
+
             # Avoid division by zero
-            average_cost = cost_basis / quantity if quantity != 0 else Decimal("0")
+            average_cost = cost_basis_usd / quantity if quantity != 0 else Decimal("0")
 
             position = Position(
                 account_id=account_id,
@@ -513,10 +560,10 @@ class XMLParser:
                 quantity=quantity,
                 multiplier=Decimal(parse_decimal_safe(pos_elem.get("multiplier", "1"))),
                 mark_price=Decimal(parse_decimal_safe(pos_elem.get("markPrice", "0"))),
-                position_value=Decimal(parse_decimal_safe(pos_elem.get("positionValue", "0"))),
+                position_value=position_value_usd,
                 average_cost=average_cost,
-                cost_basis=cost_basis,
-                unrealized_pnl=Decimal(parse_decimal_safe(pos_elem.get("fifoPnlUnrealized", "0"))),
+                cost_basis=cost_basis_usd,
+                unrealized_pnl=unrealized_pnl_usd,
                 realized_pnl=Decimal("0"),  # Not in OpenPosition
                 currency=pos_elem.get("currency", "USD"),
                 position_date=position_date,
