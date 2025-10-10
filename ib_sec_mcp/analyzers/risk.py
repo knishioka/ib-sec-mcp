@@ -1,9 +1,11 @@
 """Risk analyzer"""
 
 from decimal import Decimal
+from typing import Any
 
 from ib_sec_mcp.analyzers.base import AnalysisResult, BaseAnalyzer
 from ib_sec_mcp.core.calculator import PerformanceCalculator
+from ib_sec_mcp.models.position import Position
 from ib_sec_mcp.models.trade import AssetClass
 
 
@@ -44,7 +46,7 @@ class RiskAnalyzer(BaseAnalyzer):
             concentration=concentration,
         )
 
-    def _analyze_interest_rate_scenarios(self, bond_positions) -> dict:
+    def _analyze_interest_rate_scenarios(self, bond_positions: list[Position]) -> dict[str, Any]:
         """Analyze interest rate scenarios for bonds"""
         scenarios = []
 
@@ -110,7 +112,9 @@ class RiskAnalyzer(BaseAnalyzer):
 
         return {"scenarios": scenarios}
 
-    def _analyze_concentration(self, positions, total_value: Decimal) -> dict:
+    def _analyze_concentration(
+        self, positions: list[Position], total_value: Decimal
+    ) -> dict[str, Any]:
         """Analyze portfolio concentration"""
         if total_value == 0:
             return {

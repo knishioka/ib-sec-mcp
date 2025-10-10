@@ -98,13 +98,17 @@ class PerformanceCalculator:
         if not trades:
             return Decimal("0")
 
-        gross_profit = sum(t.fifo_pnl_realized for t in trades if t.fifo_pnl_realized > 0)
-        gross_loss = abs(sum(t.fifo_pnl_realized for t in trades if t.fifo_pnl_realized < 0))
+        gross_profit: Decimal = sum(
+            (t.fifo_pnl_realized for t in trades if t.fifo_pnl_realized > 0), Decimal("0")
+        )
+        gross_loss_value: Decimal = abs(
+            sum((t.fifo_pnl_realized for t in trades if t.fifo_pnl_realized < 0), Decimal("0"))
+        )
 
-        if gross_loss == 0:
+        if gross_loss_value == 0:
             return Decimal("999.99") if gross_profit > 0 else Decimal("0")
 
-        return gross_profit / gross_loss
+        return gross_profit / gross_loss_value
 
     @staticmethod
     def calculate_sharpe_ratio(
@@ -125,10 +129,12 @@ class PerformanceCalculator:
             return Decimal("0")
 
         # Calculate mean return
-        mean_return = sum(returns) / len(returns)
+        mean_return: Decimal = sum(returns, Decimal("0")) / len(returns)
 
         # Calculate standard deviation
-        variance = sum((r - mean_return) ** 2 for r in returns) / (len(returns) - 1)
+        variance: Decimal = sum(((r - mean_return) ** 2 for r in returns), Decimal("0")) / (
+            len(returns) - 1
+        )
         std_dev = Decimal(str(math.sqrt(float(variance))))
 
         if std_dev == 0:

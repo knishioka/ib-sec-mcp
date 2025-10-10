@@ -178,7 +178,7 @@ class FlexQueryClient:
             if not reference_code:
                 raise FlexQueryAPIError("No reference code in response")
 
-            return reference_code
+            return str(reference_code)
 
         except ET.ParseError as e:
             raise FlexQueryAPIError(f"Failed to parse XML response: {e}") from e
@@ -255,7 +255,7 @@ class FlexQueryClient:
             if account_elem is not None:
                 account_id = account_elem.get("accountId")
                 if account_id:
-                    return account_id
+                    return str(account_id)
         except ET.ParseError:
             pass
 
@@ -339,7 +339,7 @@ class FlexQueryClient:
                 if not reference_code:
                     raise FlexQueryAPIError("No reference code in response")
 
-                return reference_code
+                return str(reference_code)
 
             except ET.ParseError as e:
                 raise FlexQueryAPIError(f"Failed to parse XML response: {e}") from e

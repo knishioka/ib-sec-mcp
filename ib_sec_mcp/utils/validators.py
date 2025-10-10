@@ -112,12 +112,12 @@ def validate_isin(isin: str) -> bool:
     total = 0
     reversed_digits = "".join(digits)[::-1]
     for i, digit in enumerate(reversed_digits):
-        value = int(digit)
+        digit_value: int = int(digit)
         if i % 2 == 1:
-            value *= 2
-            if value > 9:
-                value = value // 10 + value % 10
-        total += value
+            digit_value *= 2
+            if digit_value > 9:
+                digit_value = digit_value // 10 + digit_value % 10
+        total += digit_value
 
     check_digit = (10 - (total % 10)) % 10
 

@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from decimal import Decimal
+from typing import Any
 
 from ib_sec_mcp.analyzers.base import AnalysisResult, BaseAnalyzer
 from ib_sec_mcp.core.calculator import PerformanceCalculator
@@ -26,12 +27,12 @@ class PerformanceAnalyzer(BaseAnalyzer):
         positions = self.get_positions()
 
         # Overall metrics
-        total_realized_pnl = sum(t.fifo_pnl_realized for t in trades)
-        total_unrealized_pnl = sum(p.unrealized_pnl for p in positions)
+        total_realized_pnl: Decimal = sum((t.fifo_pnl_realized for t in trades), Decimal("0"))
+        total_unrealized_pnl: Decimal = sum((p.unrealized_pnl for p in positions), Decimal("0"))
         total_pnl = total_realized_pnl + total_unrealized_pnl
 
-        total_commissions = sum(abs(t.ib_commission) for t in trades)
-        total_volume = sum(abs(t.trade_money) for t in trades)
+        total_commissions: Decimal = sum((abs(t.ib_commission) for t in trades), Decimal("0"))
+        total_volume: Decimal = sum((abs(t.trade_money) for t in trades), Decimal("0"))
 
         # Win rate and profit factor
         win_rate, winning_trades, losing_trades = PerformanceCalculator.calculate_win_rate(trades)
@@ -41,8 +42,8 @@ class PerformanceAnalyzer(BaseAnalyzer):
         wins = [t.fifo_pnl_realized for t in trades if t.fifo_pnl_realized > 0]
         losses = [abs(t.fifo_pnl_realized) for t in trades if t.fifo_pnl_realized < 0]
 
-        avg_win = sum(wins) / len(wins) if wins else Decimal("0")
-        avg_loss = sum(losses) / len(losses) if losses else Decimal("0")
+        avg_win: Decimal = sum(wins, Decimal("0")) / len(wins) if wins else Decimal("0")
+        avg_loss: Decimal = sum(losses, Decimal("0")) / len(losses) if losses else Decimal("0")
 
         # Risk/reward
         risk_reward = PerformanceCalculator.calculate_risk_reward_ratio(avg_win, avg_loss)
@@ -105,7 +106,7 @@ class PerformanceAnalyzer(BaseAnalyzer):
             by_symbol=by_symbol,
         )
 
-    def _analyze_by_symbol(self, trades: list[Trade]) -> dict[str, dict]:
+    def _analyze_by_symbol(self, trades: list[Trade]) -> dict[str, dict[str, Any]]:
         """Analyze performance by symbol"""
         by_symbol: dict[str, list[Trade]] = defaultdict(list)
 
