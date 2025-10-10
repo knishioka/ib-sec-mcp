@@ -13,30 +13,15 @@ repos:
         language: system
         pass_filenames: false
 
-  # Python code quality
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
-    hooks:
-      - id: black
-        name: Black - Code Formatter
-        language_version: python3.9
-
+  # Python code quality (Ruff handles linting, formatting, and import sorting)
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.4
     hooks:
       - id: ruff
-        name: Ruff - Linter
+        name: Ruff - Linter & Import Sorter
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
         name: Ruff - Formatter
-
-  # Python imports sorting
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        name: isort - Import Sorting
-        args: ["--profile", "black", "--filter-files"]
 
   # Type checking (optional - can be slow)
   # - repo: https://github.com/pre-commit/mirrors-mypy

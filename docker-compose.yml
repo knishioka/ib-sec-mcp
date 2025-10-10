@@ -1,0 +1,61 @@
+# Docker Compose configuration for IB Analytics MCP Server
+version: '3.8'
+
+services:
+  ib-sec-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ib-sec-mcp:latest
+    container_name: ib-sec-mcp
+    restart: unless-stopped
+
+    # Environment variables (override with .env file)
+    environment:
+      - QUERY_ID=${QUERY_ID}
+      - TOKEN=${TOKEN}
+      - IB_DEBUG=${IB_DEBUG:-0}
+      - PYTHONUNBUFFERED=1
+
+    # Volumes for data persistence
+    volumes:
+      - ./data:/app/data:rw
+
+    # Resource limits (recommended for MCP servers)
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Read-only root filesystem (except /tmp and /app/data)
+    read_only: true
+    tmpfs:
+      - /tmp:size=100M,mode=1777
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Run tests
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: pytest
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - .:/app:ro
+    profiles:
+      - test
