@@ -89,7 +89,29 @@ python_version = "3.9"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
 disallow_untyped_defs = true
+disallow_any_unimported = false
+disallow_any_generics = true
+disallow_subclassing_any = true
+check_untyped_defs = true
+no_implicit_reexport = true
+
+# Ignore missing imports for third-party libraries without stubs
+[[tool.mypy.overrides]]
+module = [
+    "yfinance",
+    "yfinance.*",
+    "fastmcp",
+    "fastmcp.*",
+    "mcp",
+    "mcp.*",
+    "defusedxml",
+    "defusedxml.*",
+    "dotenv",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

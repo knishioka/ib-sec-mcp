@@ -497,14 +497,22 @@ pytest
 # Run tests with coverage
 pytest --cov=ib_sec_mcp --cov-report=html
 
-# Code formatting
-black ib_sec_mcp tests
+# Code formatting with Ruff
+ruff format ib_sec_mcp tests
 
-# Linting
-ruff check ib_sec_mcp tests
+# Linting with Ruff
+ruff check --fix ib_sec_mcp tests
 
-# Type checking
+# Type checking with mypy
 mypy ib_sec_mcp
+# Note: Type checking is configured to check core modules only
+# MCP server code is excluded due to external dependencies
+
+# Run all pre-commit hooks manually
+pre-commit run --all-files
+
+# Run mypy type checking manually (warning mode only)
+pre-commit run mypy --hook-stage manual --all-files
 ```
 
 ## Requirements
