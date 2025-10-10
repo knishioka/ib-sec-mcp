@@ -2,7 +2,6 @@
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -39,7 +38,7 @@ class CashBalance(BaseModel):
         mode="before",
     )
     @classmethod
-    def convert_to_decimal(cls, v: Union[int, float, str, Decimal]) -> Decimal:
+    def convert_to_decimal(cls, v: int | float | str | Decimal) -> Decimal:
         """Convert numeric fields to Decimal"""
         if isinstance(v, (int, float, str)):
             return Decimal(str(v))
@@ -67,8 +66,8 @@ class Account(BaseModel):
     """Account information and data"""
 
     account_id: str = Field(..., description="Account ID")
-    account_alias: Optional[str] = Field(None, description="Account alias")
-    account_type: Optional[str] = Field(None, description="Account type")
+    account_alias: str | None = Field(None, description="Account alias")
+    account_type: str | None = Field(None, description="Account type")
 
     from_date: date = Field(..., description="Statement start date")
     to_date: date = Field(..., description="Statement end date")
@@ -81,7 +80,7 @@ class Account(BaseModel):
 
     # Metadata
     base_currency: str = Field("USD", description="Base currency for reporting")
-    ib_entity: Optional[str] = Field(None, description="IB entity")
+    ib_entity: str | None = Field(None, description="IB entity")
 
     @property
     def total_cash(self) -> Decimal:
@@ -132,14 +131,14 @@ class Account(BaseModel):
         """Get all trades for a specific symbol"""
         return [trade for trade in self.trades if trade.symbol == symbol]
 
-    def get_position_by_symbol(self, symbol: str) -> Optional[Position]:
+    def get_position_by_symbol(self, symbol: str) -> Position | None:
         """Get position for a specific symbol"""
         for position in self.positions:
             if position.symbol == symbol:
                 return position
         return None
 
-    def get_cash_balance(self, currency: str = "USD") -> Optional[CashBalance]:
+    def get_cash_balance(self, currency: str = "USD") -> CashBalance | None:
         """Get cash balance for a specific currency"""
         for balance in self.cash_balances:
             if balance.currency == currency:

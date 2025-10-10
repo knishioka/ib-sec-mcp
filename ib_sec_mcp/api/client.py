@@ -3,7 +3,6 @@
 import asyncio
 import time
 from datetime import date, datetime
-from typing import Optional
 
 import defusedxml.ElementTree as ET  # noqa: N817
 import httpx
@@ -58,9 +57,9 @@ class FlexQueryClient:
 
     def __init__(
         self,
-        query_id: Optional[str] = None,
-        token: Optional[str] = None,
-        credentials: Optional[list[APICredentials]] = None,
+        query_id: str | None = None,
+        token: str | None = None,
+        credentials: list[APICredentials] | None = None,
         timeout: int = 30,
         max_retries: int = 3,
         retry_delay: int = 5,
@@ -89,8 +88,8 @@ class FlexQueryClient:
 
     def fetch_statement(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         credential_index: int = 0,
     ) -> FlexStatement:
         """
@@ -133,8 +132,8 @@ class FlexQueryClient:
     def _send_request(
         self,
         cred: APICredentials,
-        start_date: Optional[date],
-        end_date: Optional[date],
+        start_date: date | None,
+        end_date: date | None,
     ) -> str:
         """Send request to generate statement"""
         params: dict[str, str] = {
@@ -187,8 +186,8 @@ class FlexQueryClient:
         self,
         cred: APICredentials,
         reference_code: str,
-        start_date: Optional[date],
-        end_date: Optional[date],
+        start_date: date | None,
+        end_date: date | None,
     ) -> FlexStatement:
         """Get statement using reference code"""
         params: dict[str, str] = {
@@ -264,8 +263,8 @@ class FlexQueryClient:
 
     async def fetch_statement_async(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
         credential_index: int = 0,
     ) -> FlexStatement:
         """Async version of fetch_statement"""
@@ -296,8 +295,8 @@ class FlexQueryClient:
     async def _send_request_async(
         self,
         cred: APICredentials,
-        start_date: Optional[date],
-        end_date: Optional[date],
+        start_date: date | None,
+        end_date: date | None,
     ) -> str:
         """Async version of _send_request"""
         params: dict[str, str] = {
@@ -348,8 +347,8 @@ class FlexQueryClient:
         self,
         cred: APICredentials,
         reference_code: str,
-        start_date: Optional[date],
-        end_date: Optional[date],
+        start_date: date | None,
+        end_date: date | None,
     ) -> FlexStatement:
         """Async version of _get_statement"""
         params: dict[str, str] = {
@@ -389,8 +388,8 @@ class FlexQueryClient:
 
     async def fetch_all_statements_async(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[FlexStatement]:
         """
         Fetch statements for all configured accounts in parallel
@@ -410,8 +409,8 @@ class FlexQueryClient:
 
     def fetch_all_statements(
         self,
-        start_date: Optional[date] = None,
-        end_date: Optional[date] = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
     ) -> list[FlexStatement]:
         """
         Fetch statements for all configured accounts (synchronous)

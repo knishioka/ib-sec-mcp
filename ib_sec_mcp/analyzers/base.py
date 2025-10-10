@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from ib_sec_mcp.models.account import Account
 from ib_sec_mcp.models.portfolio import Portfolio
@@ -32,8 +32,8 @@ class BaseAnalyzer(ABC):
 
     def __init__(
         self,
-        portfolio: Optional[Portfolio] = None,
-        account: Optional[Account] = None,
+        portfolio: Portfolio | None = None,
+        account: Account | None = None,
     ):
         """
         Initialize analyzer

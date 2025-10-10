@@ -3,7 +3,6 @@
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -20,14 +19,14 @@ class FlexQueryResponse(BaseModel):
     """Response from SendRequest API call"""
 
     status: FlexQueryStatus = Field(..., description="Request status")
-    reference_code: Optional[str] = Field(None, description="Reference code for GetStatement")
-    url: Optional[str] = Field(None, description="URL to fetch statement")
-    error_code: Optional[str] = Field(None, description="Error code if failed")
-    error_message: Optional[str] = Field(None, description="Error message if failed")
+    reference_code: str | None = Field(None, description="Reference code for GetStatement")
+    url: str | None = Field(None, description="URL to fetch statement")
+    error_code: str | None = Field(None, description="Error code if failed")
+    error_message: str | None = Field(None, description="Error message if failed")
 
     @field_validator("reference_code", mode="before")
     @classmethod
-    def validate_reference_code(cls, v: Optional[str]) -> Optional[str]:
+    def validate_reference_code(cls, v: str | None) -> str | None:
         """Validate reference code format"""
         if v and not v.isdigit():
             raise ValueError(f"Invalid reference code format: {v}")
@@ -57,22 +56,22 @@ class AccountInfo(BaseModel):
     """Account information section"""
 
     account_id: str = Field(..., alias="ClientAccountID")
-    account_alias: Optional[str] = Field(None, alias="AccountAlias")
-    account_type: Optional[str] = Field(None, alias="AccountType")
-    customer_type: Optional[str] = Field(None, alias="CustomerType")
-    account_capabilities: Optional[str] = Field(None, alias="AccountCapabilities")
-    trading_permissions: Optional[str] = Field(None, alias="TradingPermissions")
-    date_opened: Optional[date] = Field(None, alias="DateOpened")
-    date_funded: Optional[date] = Field(None, alias="DateFunded")
-    date_closed: Optional[date] = Field(None, alias="DateClosed")
-    master_name: Optional[str] = Field(None, alias="MasterName")
-    ib_entity: Optional[str] = Field(None, alias="IBEntity")
-    primary_email: Optional[str] = Field(None, alias="PrimaryEmail")
-    street: Optional[str] = Field(None, alias="Street")
-    city: Optional[str] = Field(None, alias="City")
-    state: Optional[str] = Field(None, alias="State")
-    country: Optional[str] = Field(None, alias="Country")
-    postal_code: Optional[str] = Field(None, alias="PostalCode")
+    account_alias: str | None = Field(None, alias="AccountAlias")
+    account_type: str | None = Field(None, alias="AccountType")
+    customer_type: str | None = Field(None, alias="CustomerType")
+    account_capabilities: str | None = Field(None, alias="AccountCapabilities")
+    trading_permissions: str | None = Field(None, alias="TradingPermissions")
+    date_opened: date | None = Field(None, alias="DateOpened")
+    date_funded: date | None = Field(None, alias="DateFunded")
+    date_closed: date | None = Field(None, alias="DateClosed")
+    master_name: str | None = Field(None, alias="MasterName")
+    ib_entity: str | None = Field(None, alias="IBEntity")
+    primary_email: str | None = Field(None, alias="PrimaryEmail")
+    street: str | None = Field(None, alias="Street")
+    city: str | None = Field(None, alias="City")
+    state: str | None = Field(None, alias="State")
+    country: str | None = Field(None, alias="Country")
+    postal_code: str | None = Field(None, alias="PostalCode")
 
     class Config:
         """Pydantic config"""
@@ -84,8 +83,8 @@ class CashSummary(BaseModel):
     """Cash summary section"""
 
     account_id: str = Field(..., alias="ClientAccountID")
-    acct_alias: Optional[str] = Field(None, alias="AcctAlias")
-    model: Optional[str] = Field(None, alias="Model")
+    acct_alias: str | None = Field(None, alias="AcctAlias")
+    model: str | None = Field(None, alias="Model")
     currency: str = Field(..., alias="Currency")
     from_date: date = Field(..., alias="FromDate")
     to_date: date = Field(..., alias="ToDate")
@@ -121,8 +120,8 @@ class APICredentials(BaseModel):
 
     query_id: str = Field(..., description="Flex Query ID")
     token: str = Field(..., description="Flex Query Token")
-    account_id: Optional[str] = Field(None, description="Account ID (optional identifier)")
-    account_alias: Optional[str] = Field(None, description="Human-readable account name")
+    account_id: str | None = Field(None, description="Account ID (optional identifier)")
+    account_alias: str | None = Field(None, description="Human-readable account name")
 
     @field_validator("query_id", "token")
     @classmethod

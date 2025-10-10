@@ -5,7 +5,6 @@ Stock performance comparison and analyst consensus tools.
 
 import asyncio
 import json
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -31,7 +30,7 @@ def register_market_comparison_tools(mcp: FastMCP) -> None:
         symbol: str,
         benchmark: str = "SPY",
         period: str = "1y",
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Compare stock/fund performance with benchmark
@@ -158,7 +157,7 @@ def register_market_comparison_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def get_analyst_consensus(
         symbol: str,
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Get analyst consensus and recommendations

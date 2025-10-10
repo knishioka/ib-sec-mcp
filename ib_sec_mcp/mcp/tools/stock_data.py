@@ -5,7 +5,6 @@ Yahoo Finance stock data retrieval tools for market data and company information
 
 import asyncio
 import json
-from typing import Optional
 
 from fastmcp import Context, FastMCP
 
@@ -30,8 +29,8 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
         symbol: str,
         period: str = "1mo",
         interval: str = "1d",
-        indicators: Optional[str] = None,
-        ctx: Optional[Context] = None,
+        indicators: str | None = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Get historical stock price data with optional technical indicators
@@ -81,7 +80,7 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
 
             try:
                 hist = await asyncio.wait_for(fetch_yf_data(), timeout=DEFAULT_TIMEOUT)
-            except asyncio.TimeoutError as e:
+            except TimeoutError as e:
                 if ctx:
                     await ctx.error(f"Yahoo Finance API timed out after {DEFAULT_TIMEOUT}s")
                 raise IBTimeoutError(
@@ -302,7 +301,7 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def get_current_price(
         symbol: str,
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Get current/latest price and key metrics for a stock
@@ -349,7 +348,7 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def get_stock_info(
         symbol: str,
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Get comprehensive company/fund information

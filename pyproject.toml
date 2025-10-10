@@ -76,7 +76,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "T20", "SIM"]
-ignore = ["E501"]
+ignore = ["E501", "UP038"]  # UP038: isinstance with tuple is fine
 
 [tool.ruff.lint.per-file-ignores]
 "scripts/*.py" = ["T201"]  # Allow print in scripts

@@ -2,7 +2,6 @@
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -96,7 +95,7 @@ class Portfolio(BaseModel):
             positions.extend(account.positions)
         return positions
 
-    def get_account(self, account_id: str) -> Optional[Account]:
+    def get_account(self, account_id: str) -> Account | None:
         """Get specific account by ID"""
         for account in self.accounts:
             if account.account_id == account_id:

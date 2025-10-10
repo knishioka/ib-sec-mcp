@@ -2,7 +2,6 @@
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -14,11 +13,11 @@ class Position(BaseModel):
 
     account_id: str = Field(..., description="Account ID")
     symbol: str = Field(..., description="Trading symbol")
-    description: Optional[str] = Field(None, description="Security description")
+    description: str | None = Field(None, description="Security description")
     asset_class: AssetClass = Field(..., description="Asset class")
 
-    cusip: Optional[str] = Field(None, description="CUSIP")
-    isin: Optional[str] = Field(None, description="ISIN")
+    cusip: str | None = Field(None, description="CUSIP")
+    isin: str | None = Field(None, description="ISIN")
 
     quantity: Decimal = Field(..., description="Position quantity")
     multiplier: Decimal = Field(Decimal("1"), description="Contract multiplier")
@@ -38,14 +37,14 @@ class Position(BaseModel):
     position_date: date = Field(..., description="Position as of date")
 
     # Bond-specific fields
-    coupon_rate: Optional[Decimal] = Field(None, description="Coupon rate (for bonds)")
-    maturity_date: Optional[date] = Field(None, description="Maturity date (for bonds)")
-    ytm: Optional[Decimal] = Field(None, description="Yield to maturity (for bonds)")
-    duration: Optional[Decimal] = Field(None, description="Duration (for bonds)")
+    coupon_rate: Decimal | None = Field(None, description="Coupon rate (for bonds)")
+    maturity_date: date | None = Field(None, description="Maturity date (for bonds)")
+    ytm: Decimal | None = Field(None, description="Yield to maturity (for bonds)")
+    duration: Decimal | None = Field(None, description="Duration (for bonds)")
 
     @field_validator("quantity", "mark_price", "position_value", mode="before")
     @classmethod
-    def convert_to_decimal(cls, v: Union[int, float, str, Decimal]) -> Decimal:
+    def convert_to_decimal(cls, v: int | float | str | Decimal) -> Decimal:
         """Convert numeric fields to Decimal"""
         if isinstance(v, (int, float, str)):
             return Decimal(str(v))
