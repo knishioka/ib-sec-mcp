@@ -700,6 +700,60 @@ class XMLParser:
             ib_entity=account_info.get("ib_entity"),
         )
 
+    @staticmethod
+    def to_accounts(
+        xml_data: str,
+        from_date: date,
+        to_date: date,
+    ) -> dict[str, Account]:
+        """
+        Convert XML data containing multiple accounts to Account models
+
+        Args:
+            xml_data: Raw XML string from IB Flex Query
+            from_date: Statement start date
+            to_date: Statement end date
+
+        Returns:
+            Dictionary mapping account_id to Account instance
+        """
+        import defusedxml.ElementTree as ET  # noqa: N817
+
+        root = ET.fromstring(xml_data)
+        statements = root.findall(".//FlexStatement")
+
+        if not statements:
+            raise ValueError("No FlexStatement found in XML data")
+
+        accounts = {}
+
+        # Process each FlexStatement (one per account)
+        for stmt in statements:
+            # Parse sections for this account
+            account_info = XMLParser._parse_account_info(stmt)
+            acc_id = account_info.get("account_id", "UNKNOWN")
+
+            if acc_id == "UNKNOWN":
+                continue
+
+            cash_balances = XMLParser._parse_cash_balances(stmt)
+            positions = XMLParser._parse_positions_xml(stmt, acc_id)
+            trades = XMLParser._parse_trades_xml(stmt, acc_id)
+
+            accounts[acc_id] = Account(
+                account_id=acc_id,
+                account_alias=account_info.get("account_alias"),
+                account_type=account_info.get("account_type"),
+                from_date=from_date,
+                to_date=to_date,
+                cash_balances=cash_balances,
+                positions=positions,
+                trades=trades,
+                ib_entity=account_info.get("ib_entity"),
+            )
+
+        return accounts
+
 
 def detect_format(data: str) -> str:
     """
