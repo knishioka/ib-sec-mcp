@@ -21,9 +21,9 @@ from ib_sec_mcp.mcp.exceptions import (
     APIError,
     ConfigurationError,
     FileOperationError,
+    IBTimeoutError,
     ValidationError,
 )
-from ib_sec_mcp.mcp.exceptions import TimeoutError as IBTimeoutError
 from ib_sec_mcp.mcp.validators import (
     validate_account_index,
     validate_date_range,
@@ -86,7 +86,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             ConfigurationError: If credentials are missing or invalid
             APIError: If IB API call fails
             FileOperationError: If file operations fail
-            TimeoutError: If operation times out
+            IBTimeoutError: If operation times out
         """
         try:
             # Validate inputs
