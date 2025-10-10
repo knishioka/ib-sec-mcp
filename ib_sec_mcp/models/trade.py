@@ -3,7 +3,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -63,7 +63,7 @@ class Trade(BaseModel):
 
     @field_validator("quantity", "trade_price", mode="before")
     @classmethod
-    def convert_to_decimal(cls, v):
+    def convert_to_decimal(cls, v: Union[int, float, str, Decimal]) -> Decimal:
         """Convert numeric fields to Decimal"""
         if isinstance(v, (int, float, str)):
             return Decimal(str(v))
