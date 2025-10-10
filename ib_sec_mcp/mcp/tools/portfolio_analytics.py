@@ -7,7 +7,6 @@ import asyncio
 import json
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -33,7 +32,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
         benchmark: str = "SPY",
         risk_free_rate: float = 0.05,
         period: str = "1y",
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Calculate advanced portfolio performance metrics
@@ -236,7 +235,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
     async def analyze_portfolio_correlation(
         csv_path: str,
         period: str = "1y",
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Analyze correlation between portfolio positions

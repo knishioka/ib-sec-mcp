@@ -1,7 +1,5 @@
 """CLI for running analysis"""
 
-from typing import Optional, Union
-
 import typer
 from rich.console import Console
 
@@ -23,7 +21,7 @@ console = Console()
 @app.command()
 def analyze(
     data_file: str = typer.Argument(..., help="Path to CSV data file"),
-    analyzers: Optional[list[str]] = typer.Option(  # noqa: B008
+    analyzers: list[str] | None = typer.Option(  # noqa: B008
         None,
         "--analyzer",
         "-a",
@@ -40,7 +38,7 @@ def analyze(
         "-t",
         help="Tax rate for estimates (default: 0.30)",
     ),
-    output: Optional[str] = typer.Option(
+    output: str | None = typer.Option(
         None,
         "--output",
         "-o",
@@ -107,9 +105,7 @@ def analyze(
         console.print(f"Running {analyzer_name} analyzer...", style="cyan")
 
         try:
-            analyzer: Union[
-                PerformanceAnalyzer, CostAnalyzer, BondAnalyzer, TaxAnalyzer, RiskAnalyzer
-            ]
+            analyzer: PerformanceAnalyzer | CostAnalyzer | BondAnalyzer | TaxAnalyzer | RiskAnalyzer
             if analyzer_name == "performance":
                 analyzer = PerformanceAnalyzer(account=account)
             elif analyzer_name == "cost":

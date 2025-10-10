@@ -4,7 +4,6 @@ Yahoo Finance options chain and analysis tools.
 """
 
 import json
-from typing import Optional
 
 from fastmcp import Context, FastMCP
 
@@ -15,8 +14,8 @@ def register_options_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def get_options_chain(
         symbol: str,
-        expiration_date: Optional[str] = None,
-        ctx: Optional[Context] = None,
+        expiration_date: str | None = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Get options chain data (calls and puts) for a stock
@@ -79,9 +78,9 @@ def register_options_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def calculate_put_call_ratio(
         symbol: str,
-        expiration_date: Optional[str] = None,
+        expiration_date: str | None = None,
         ratio_type: str = "open_interest",
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Calculate Put/Call Ratio for a stock's options

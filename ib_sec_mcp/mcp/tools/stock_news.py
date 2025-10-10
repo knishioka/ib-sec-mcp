@@ -6,7 +6,6 @@ Yahoo Finance news retrieval tools for market intelligence.
 import asyncio
 import json
 from datetime import datetime
-from typing import Optional
 
 from fastmcp import Context, FastMCP
 
@@ -25,7 +24,7 @@ def register_stock_news_tools(mcp: FastMCP) -> None:
     async def get_stock_news(
         symbol: str,
         limit: int = 10,
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Get latest news articles for a stock symbol
@@ -119,7 +118,7 @@ def register_stock_news_tools(mcp: FastMCP) -> None:
 
         except (ValidationError, YahooFinanceError, IBTimeoutError):
             raise
-        except asyncio.TimeoutError as e:
+        except TimeoutError as e:
             if ctx:
                 await ctx.error(f"Timeout fetching news for {symbol}")
             raise IBTimeoutError(f"News fetch timed out after {DEFAULT_TIMEOUT} seconds") from e

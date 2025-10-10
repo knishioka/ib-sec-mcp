@@ -5,7 +5,7 @@ import csv
 from datetime import date, datetime
 from decimal import Decimal
 from io import StringIO
-from typing import Any, Optional
+from typing import Any
 
 from ib_sec_mcp.models.account import Account, CashBalance
 from ib_sec_mcp.models.position import Position
@@ -25,7 +25,7 @@ class CSVParser:
     """
 
     @staticmethod
-    def parse(csv_data: str, account_id: Optional[str] = None) -> dict[str, list[dict[str, str]]]:
+    def parse(csv_data: str, account_id: str | None = None) -> dict[str, list[dict[str, str]]]:
         """
         Parse CSV data into sections
 
@@ -43,7 +43,7 @@ class CSVParser:
             "trades": [],
         }
 
-        current_section: Optional[str] = None
+        current_section: str | None = None
         headers: list[str] = []
 
         reader = csv.reader(StringIO(csv_data))
@@ -70,7 +70,7 @@ class CSVParser:
 
             elif current_section and headers:
                 # Parse data row
-                row_dict = dict(zip(headers, row))
+                row_dict = dict(zip(headers, row, strict=False))
                 sections[current_section].append(row_dict)
 
         return sections
@@ -227,7 +227,7 @@ class CSVParser:
         return trades
 
     @staticmethod
-    def _parse_date(date_str: Optional[str]) -> date:
+    def _parse_date(date_str: str | None) -> date:
         """Parse date string in YYYYMMDD format"""
         if not date_str:
             return date.today()
@@ -241,7 +241,7 @@ class CSVParser:
                 return date.today()
 
     @staticmethod
-    def _parse_datetime(datetime_str: Optional[str]) -> Optional[datetime]:
+    def _parse_datetime(datetime_str: str | None) -> datetime | None:
         """Parse datetime string"""
         if not datetime_str:
             return None
@@ -265,7 +265,7 @@ class CSVParser:
         csv_data: str,
         from_date: date,
         to_date: date,
-        account_id: Optional[str] = None,
+        account_id: str | None = None,
     ) -> Account:
         """
         Convert CSV data to Account model
@@ -405,7 +405,7 @@ class XMLParser:
         return {"statements": statements}
 
     @staticmethod
-    def _parse_date_yyyymmdd(date_str: Optional[str]) -> date:
+    def _parse_date_yyyymmdd(date_str: str | None) -> date:
         """Parse date string in YYYYMMDD format"""
         if not date_str:
             return date.today()
@@ -655,7 +655,7 @@ class XMLParser:
         xml_data: str,
         from_date: date,
         to_date: date,
-        account_id: Optional[str] = None,
+        account_id: str | None = None,
     ) -> Account:
         """
         Convert XML data to Account model

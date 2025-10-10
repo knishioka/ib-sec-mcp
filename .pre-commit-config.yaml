@@ -36,7 +36,7 @@ repos:
         args:
           - --config-file=pyproject.toml
           - --no-incremental
-          - --python-version=3.9
+          - --python-version=3.12
           - --warn-unused-ignores
           - --no-error-summary
         pass_filenames: true
@@ -83,7 +83,7 @@ repos:
 
 # Configuration for specific hooks
 default_language_version:
-  python: python3.9
+  python: python3.12
 
 # Files to exclude from all hooks
 exclude: |

@@ -6,7 +6,6 @@ Provides input validation and security checks for MCP tools.
 import re
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 from ib_sec_mcp.mcp.exceptions import ValidationError
 
@@ -242,7 +241,7 @@ def validate_interval(interval: str) -> str:
     return interval
 
 
-def validate_indicators(indicators: Optional[str]) -> Optional[list[str]]:
+def validate_indicators(indicators: str | None) -> list[str] | None:
     """
     Validate technical indicators string
 

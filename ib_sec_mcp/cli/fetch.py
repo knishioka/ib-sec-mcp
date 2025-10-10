@@ -2,7 +2,6 @@
 
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -16,13 +15,13 @@ console = Console()
 
 @app.command()
 def fetch(
-    start_date: Optional[str] = typer.Option(
+    start_date: str | None = typer.Option(
         None,
         "--start-date",
         "-s",
         help="Start date (YYYY-MM-DD). Defaults to beginning of current year",
     ),
-    end_date: Optional[str] = typer.Option(
+    end_date: str | None = typer.Option(
         None,
         "--end-date",
         "-e",
@@ -34,7 +33,7 @@ def fetch(
         "-s",
         help="Split CSV into separate files by account (if multiple accounts in query)",
     ),
-    output_dir: Optional[str] = typer.Option(
+    output_dir: str | None = typer.Option(
         None,
         "--output",
         "-o",

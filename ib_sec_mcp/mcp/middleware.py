@@ -6,7 +6,7 @@ Provides error handling, retry logic, and request/response logging.
 import asyncio
 import logging
 import time
-from typing import Any, Optional
+from typing import Any
 
 from fastmcp.server.middleware import CallNext, Middleware, MiddlewareContext
 
@@ -109,7 +109,7 @@ class IBAnalyticsRetryMiddleware(Middleware):
         Returns:
             Result from next middleware
         """
-        last_exception: Optional[Exception] = None
+        last_exception: Exception | None = None
 
         for attempt in range(self.max_retries + 1):
             try:

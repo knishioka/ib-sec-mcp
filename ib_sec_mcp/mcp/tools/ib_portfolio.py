@@ -7,7 +7,6 @@ import asyncio
 import json
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 from fastmcp import Context, FastMCP
 
@@ -66,9 +65,9 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def fetch_ib_data(
         start_date: str,
-        end_date: Optional[str] = None,
+        end_date: str | None = None,
         account_index: int = 0,
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> dict:
         """
         Fetch Interactive Brokers data from Flex Query API
@@ -134,7 +133,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
                 statement = await asyncio.wait_for(fetch_with_timeout(), timeout=API_FETCH_TIMEOUT)
 
-            except asyncio.TimeoutError as e:
+            except TimeoutError as e:
                 if ctx:
                     await ctx.error(
                         f"API call timed out after {API_FETCH_TIMEOUT}s",
@@ -175,7 +174,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                         },
                     )
 
-            except asyncio.TimeoutError as e:
+            except TimeoutError as e:
                 if ctx:
                     await ctx.error(f"File write timed out after {FILE_OPERATION_TIMEOUT}s")
                 raise IBTimeoutError(
@@ -208,7 +207,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             raise APIError(f"Unexpected error while fetching IB data: {str(e)}") from e
 
     @mcp.tool
-    async def analyze_performance(csv_path: str, ctx: Optional[Context] = None) -> str:
+    async def analyze_performance(csv_path: str, ctx: Context | None = None) -> str:
         """
         Analyze trading performance from CSV/XML data
 
@@ -242,7 +241,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
-    async def analyze_costs(csv_path: str, ctx: Optional[Context] = None) -> str:
+    async def analyze_costs(csv_path: str, ctx: Context | None = None) -> str:
         """
         Analyze trading costs and commissions from CSV/XML data
 
@@ -274,7 +273,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
-    async def analyze_bonds(csv_path: str, ctx: Optional[Context] = None) -> str:
+    async def analyze_bonds(csv_path: str, ctx: Context | None = None) -> str:
         """
         Analyze zero-coupon bonds (STRIPS) from CSV/XML data
 
@@ -306,7 +305,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
-    async def analyze_tax(csv_path: str, ctx: Optional[Context] = None) -> str:
+    async def analyze_tax(csv_path: str, ctx: Context | None = None) -> str:
         """
         Analyze tax implications including Phantom Income (OID) for bonds
 
@@ -341,7 +340,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
     async def analyze_risk(
         csv_path: str,
         interest_rate_change: float = 0.01,
-        ctx: Optional[Context] = None,
+        ctx: Context | None = None,
     ) -> str:
         """
         Analyze portfolio risk including interest rate scenarios
@@ -377,7 +376,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
-    async def get_portfolio_summary(csv_path: str, ctx: Optional[Context] = None) -> str:
+    async def get_portfolio_summary(csv_path: str, ctx: Context | None = None) -> str:
         """
         Get comprehensive portfolio summary
 

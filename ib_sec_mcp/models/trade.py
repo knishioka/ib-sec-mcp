@@ -3,7 +3,6 @@
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -33,13 +32,13 @@ class Trade(BaseModel):
     account_id: str = Field(..., description="Account ID")
     trade_id: str = Field(..., description="Unique trade ID")
     trade_date: date = Field(..., description="Trade execution date")
-    settle_date: Optional[date] = Field(None, description="Settlement date")
+    settle_date: date | None = Field(None, description="Settlement date")
 
     symbol: str = Field(..., description="Trading symbol")
-    description: Optional[str] = Field(None, description="Security description")
+    description: str | None = Field(None, description="Security description")
     asset_class: AssetClass = Field(..., description="Asset class")
-    cusip: Optional[str] = Field(None, description="CUSIP")
-    isin: Optional[str] = Field(None, description="ISIN")
+    cusip: str | None = Field(None, description="CUSIP")
+    isin: str | None = Field(None, description="ISIN")
 
     buy_sell: BuySell = Field(..., description="Buy or Sell")
     quantity: Decimal = Field(..., description="Trade quantity")
@@ -55,15 +54,15 @@ class Trade(BaseModel):
     fifo_pnl_realized: Decimal = Field(Decimal("0"), description="Realized P&L (FIFO)")
     mtm_pnl: Decimal = Field(Decimal("0"), description="Mark-to-market P&L")
 
-    order_id: Optional[str] = Field(None, description="Order ID")
-    execution_id: Optional[str] = Field(None, description="Execution ID")
-    order_time: Optional[datetime] = Field(None, description="Order time")
+    order_id: str | None = Field(None, description="Order ID")
+    execution_id: str | None = Field(None, description="Execution ID")
+    order_time: datetime | None = Field(None, description="Order time")
 
-    notes: Optional[str] = Field(None, description="Additional notes")
+    notes: str | None = Field(None, description="Additional notes")
 
     @field_validator("quantity", "trade_price", mode="before")
     @classmethod
-    def convert_to_decimal(cls, v: Union[int, float, str, Decimal]) -> Decimal:
+    def convert_to_decimal(cls, v: int | float | str | Decimal) -> Decimal:
         """Convert numeric fields to Decimal"""
         if isinstance(v, (int, float, str)):
             return Decimal(str(v))

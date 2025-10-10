@@ -2,11 +2,10 @@
 
 import re
 from datetime import date, datetime
-from typing import Union
 
 
 def validate_date(
-    value: Union[str, date, datetime],
+    value: str | date | datetime,
     fmt: str = "%Y-%m-%d",
 ) -> date:
     """
@@ -142,7 +141,7 @@ def validate_account_id(account_id: str) -> bool:
     return bool(re.match(pattern, account_id))
 
 
-def parse_decimal_safe(value: Union[str, int, float], default: float = 0.0) -> float:
+def parse_decimal_safe(value: str | int | float, default: float = 0.0) -> float:
     """
     Safely parse decimal value
 

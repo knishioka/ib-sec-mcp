@@ -1,7 +1,6 @@
 """Configuration management"""
 
 from pathlib import Path
-from typing import Optional, Union
 
 from dotenv import load_dotenv
 from pydantic import Field, field_validator
@@ -30,8 +29,8 @@ class Config(BaseSettings):
     )
 
     # Single account config
-    query_id: Optional[str] = Field(None, description="Single account query ID")
-    token: Optional[str] = Field(None, description="Single account token")
+    query_id: str | None = Field(None, description="Single account query ID")
+    token: str | None = Field(None, description="Single account token")
 
     # API settings
     api_timeout: int = Field(30, description="API timeout in seconds")
@@ -49,7 +48,7 @@ class Config(BaseSettings):
 
     @field_validator("data_dir", "raw_data_dir", "processed_data_dir", mode="before")
     @classmethod
-    def create_directories(cls, v: Union[str, Path]) -> Path:
+    def create_directories(cls, v: str | Path) -> Path:
         """Ensure directories exist"""
         if isinstance(v, str):
             v = Path(v)
@@ -73,7 +72,7 @@ class Config(BaseSettings):
         )
 
     @classmethod
-    def load(cls, env_file: Optional[Path] = None) -> "Config":
+    def load(cls, env_file: Path | None = None) -> "Config":
         """
         Load configuration from .env file
 
