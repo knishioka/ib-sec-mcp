@@ -2,7 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -39,7 +39,7 @@ class CashBalance(BaseModel):
         mode="before",
     )
     @classmethod
-    def convert_to_decimal(cls, v):
+    def convert_to_decimal(cls, v: Union[int, float, str, Decimal]) -> Decimal:
         """Convert numeric fields to Decimal"""
         if isinstance(v, (int, float, str)):
             return Decimal(str(v))
@@ -86,12 +86,14 @@ class Account(BaseModel):
     @property
     def total_cash(self) -> Decimal:
         """Total cash in base currency"""
-        return sum(balance.ending_cash for balance in self.cash_balances)
+        total: Decimal = sum((balance.ending_cash for balance in self.cash_balances), Decimal("0"))
+        return total
 
     @property
     def total_position_value(self) -> Decimal:
         """Total position value in base currency"""
-        return sum(position.position_value for position in self.positions)
+        total: Decimal = sum((position.position_value for position in self.positions), Decimal("0"))
+        return total
 
     @property
     def total_value(self) -> Decimal:
@@ -101,17 +103,20 @@ class Account(BaseModel):
     @property
     def total_unrealized_pnl(self) -> Decimal:
         """Total unrealized P&L"""
-        return sum(position.unrealized_pnl for position in self.positions)
+        total: Decimal = sum((position.unrealized_pnl for position in self.positions), Decimal("0"))
+        return total
 
     @property
     def total_realized_pnl(self) -> Decimal:
         """Total realized P&L from trades"""
-        return sum(trade.fifo_pnl_realized for trade in self.trades)
+        total: Decimal = sum((trade.fifo_pnl_realized for trade in self.trades), Decimal("0"))
+        return total
 
     @property
     def total_commissions(self) -> Decimal:
         """Total commissions paid"""
-        return sum(abs(trade.ib_commission) for trade in self.trades)
+        total: Decimal = sum((abs(trade.ib_commission) for trade in self.trades), Decimal("0"))
+        return total
 
     @property
     def trade_count(self) -> int:

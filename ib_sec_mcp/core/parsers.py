@@ -157,6 +157,7 @@ class CSVParser:
                 unrealized_pnl=Decimal(parse_decimal_safe(row.get("UnrealizedPnl", "0"))),
                 realized_pnl=Decimal(parse_decimal_safe(row.get("RealizedPnl", "0"))),
                 currency=row.get("Currency", "USD"),
+                fx_rate_to_base=Decimal("1.0"),
                 position_date=position_date,
                 coupon_rate=(
                     Decimal(parse_decimal_safe(row.get("Coupon", "0")))
@@ -164,6 +165,8 @@ class CSVParser:
                     else None
                 ),
                 maturity_date=maturity_date,
+                ytm=None,
+                duration=None,
             )
             positions.append(position)
 
@@ -296,6 +299,7 @@ class CSVParser:
             cash_balances=cash_balances,
             positions=positions,
             trades=trades,
+            base_currency="USD",
             ib_entity=account_info.get("ib_entity"),
         )
 
@@ -358,6 +362,7 @@ class CSVParser:
                 cash_balances=cash_balances,
                 positions=positions,
                 trades=trades,
+                base_currency="USD",
                 ib_entity=account_info.get("ib_entity"),
             )
 
@@ -566,6 +571,7 @@ class XMLParser:
                 unrealized_pnl=unrealized_pnl_usd,
                 realized_pnl=Decimal("0"),  # Not in OpenPosition
                 currency=pos_elem.get("currency", "USD"),
+                fx_rate_to_base=fx_rate,
                 position_date=position_date,
                 coupon_rate=(
                     Decimal(parse_decimal_safe(pos_elem.get("coupon", "0")))
@@ -573,6 +579,8 @@ class XMLParser:
                     else None
                 ),
                 maturity_date=maturity_date,
+                ytm=None,
+                duration=None,
             )
             positions.append(position)
 
@@ -697,6 +705,7 @@ class XMLParser:
             cash_balances=cash_balances,
             positions=positions,
             trades=trades,
+            base_currency="USD",
             ib_entity=account_info.get("ib_entity"),
         )
 
@@ -749,6 +758,7 @@ class XMLParser:
                 cash_balances=cash_balances,
                 positions=positions,
                 trades=trades,
+                base_currency="USD",
                 ib_entity=account_info.get("ib_entity"),
             )
 

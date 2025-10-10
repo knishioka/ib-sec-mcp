@@ -31,32 +31,44 @@ class Portfolio(BaseModel):
     @property
     def total_value(self) -> Decimal:
         """Total portfolio value across all accounts"""
-        return sum(account.total_value for account in self.accounts)
+        total: Decimal = sum((account.total_value for account in self.accounts), Decimal("0"))
+        return total
 
     @property
     def total_cash(self) -> Decimal:
         """Total cash across all accounts"""
-        return sum(account.total_cash for account in self.accounts)
+        total: Decimal = sum((account.total_cash for account in self.accounts), Decimal("0"))
+        return total
 
     @property
     def total_position_value(self) -> Decimal:
         """Total position value across all accounts"""
-        return sum(account.total_position_value for account in self.accounts)
+        total: Decimal = sum(
+            (account.total_position_value for account in self.accounts), Decimal("0")
+        )
+        return total
 
     @property
     def total_unrealized_pnl(self) -> Decimal:
         """Total unrealized P&L across all accounts"""
-        return sum(account.total_unrealized_pnl for account in self.accounts)
+        total: Decimal = sum(
+            (account.total_unrealized_pnl for account in self.accounts), Decimal("0")
+        )
+        return total
 
     @property
     def total_realized_pnl(self) -> Decimal:
         """Total realized P&L across all accounts"""
-        return sum(account.total_realized_pnl for account in self.accounts)
+        total: Decimal = sum(
+            (account.total_realized_pnl for account in self.accounts), Decimal("0")
+        )
+        return total
 
     @property
     def total_commissions(self) -> Decimal:
         """Total commissions across all accounts"""
-        return sum(account.total_commissions for account in self.accounts)
+        total: Decimal = sum((account.total_commissions for account in self.accounts), Decimal("0"))
+        return total
 
     @property
     def total_trades(self) -> int:

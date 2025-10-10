@@ -2,7 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -45,7 +45,7 @@ class Position(BaseModel):
 
     @field_validator("quantity", "mark_price", "position_value", mode="before")
     @classmethod
-    def convert_to_decimal(cls, v):
+    def convert_to_decimal(cls, v: Union[int, float, str, Decimal]) -> Decimal:
         """Convert numeric fields to Decimal"""
         if isinstance(v, (int, float, str)):
             return Decimal(str(v))
