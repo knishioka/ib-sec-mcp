@@ -2,9 +2,11 @@
 
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
 from ib_sec_mcp.analyzers.base import AnalysisResult, BaseAnalyzer
 from ib_sec_mcp.core.calculator import PerformanceCalculator
+from ib_sec_mcp.models.position import Position
 from ib_sec_mcp.models.trade import AssetClass
 
 
@@ -77,7 +79,7 @@ class BondAnalyzer(BaseAnalyzer):
             total_pnl=str(total_bond_unrealized_pnl + total_bond_realized_pnl),
         )
 
-    def _analyze_bond_position(self, position) -> dict:
+    def _analyze_bond_position(self, position: Position) -> dict[str, Any]:
         """Analyze individual bond position"""
         # Calculate years to maturity
         if position.maturity_date:

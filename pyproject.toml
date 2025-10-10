@@ -97,6 +97,7 @@ disallow_any_generics = true
 disallow_subclassing_any = true
 check_untyped_defs = true
 no_implicit_reexport = true
+plugins = ["pydantic.mypy"]
 
 # Ignore missing imports for third-party libraries without stubs
 [[tool.mypy.overrides]]
@@ -110,8 +111,15 @@ module = [
     "defusedxml",
     "defusedxml.*",
     "dotenv",
+    "pydantic_settings",
+    "pydantic_settings.*",
 ]
 ignore_missing_imports = true
+
+# Skip config.py due to pydantic-settings Python 3.10+ stub syntax
+[[tool.mypy.overrides]]
+module = "ib_sec_mcp.utils.config"
+follow_imports = "skip"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

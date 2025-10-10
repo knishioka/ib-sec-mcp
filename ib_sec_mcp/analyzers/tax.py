@@ -2,9 +2,11 @@
 
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
 from ib_sec_mcp.analyzers.base import AnalysisResult, BaseAnalyzer
 from ib_sec_mcp.core.calculator import PerformanceCalculator
+from ib_sec_mcp.models.position import Position
 from ib_sec_mcp.models.trade import AssetClass
 
 
@@ -15,7 +17,7 @@ class TaxAnalyzer(BaseAnalyzer):
     Focuses on phantom income (OID) for zero-coupon bonds
     """
 
-    def __init__(self, tax_rate: Decimal = Decimal("0.30"), **kwargs):
+    def __init__(self, tax_rate: Decimal = Decimal("0.30"), **kwargs: Any) -> None:
         """
         Initialize tax analyzer
 
@@ -37,20 +39,26 @@ class TaxAnalyzer(BaseAnalyzer):
         positions = self.get_positions()
 
         # Realized gains/losses (capital gains tax)
-        total_realized_pnl = sum(t.fifo_pnl_realized for t in trades)
-        short_term_gains = sum(
-            t.fifo_pnl_realized
-            for t in trades
-            if t.fifo_pnl_realized > 0
-            and t.settle_date
-            and (t.settle_date - t.trade_date).days <= 365
+        total_realized_pnl: Decimal = sum((t.fifo_pnl_realized for t in trades), Decimal("0"))
+        short_term_gains: Decimal = sum(
+            (
+                t.fifo_pnl_realized
+                for t in trades
+                if t.fifo_pnl_realized > 0
+                and t.settle_date
+                and (t.settle_date - t.trade_date).days <= 365
+            ),
+            Decimal("0"),
         )
-        long_term_gains = sum(
-            t.fifo_pnl_realized
-            for t in trades
-            if t.fifo_pnl_realized > 0
-            and t.settle_date
-            and (t.settle_date - t.trade_date).days > 365
+        long_term_gains: Decimal = sum(
+            (
+                t.fifo_pnl_realized
+                for t in trades
+                if t.fifo_pnl_realized > 0
+                and t.settle_date
+                and (t.settle_date - t.trade_date).days > 365
+            ),
+            Decimal("0"),
         )
 
         # Phantom income (OID) for zero-coupon bonds
@@ -85,7 +93,7 @@ class TaxAnalyzer(BaseAnalyzer):
             ),
         )
 
-    def _analyze_phantom_income(self, bond_positions) -> dict:
+    def _analyze_phantom_income(self, bond_positions: list[Position]) -> dict[str, Any]:
         """Analyze phantom income for zero-coupon bonds"""
         total_phantom_income = Decimal("0")
         by_position = []

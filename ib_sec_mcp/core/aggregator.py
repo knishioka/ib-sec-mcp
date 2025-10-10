@@ -91,9 +91,9 @@ class MultiAccountAggregator:
         positions_by_symbol = MultiAccountAggregator.aggregate_positions_by_symbol(portfolio)
 
         for symbol, positions in positions_by_symbol.items():
-            total_qty = sum(p.quantity for p in positions)
-            total_value = sum(p.position_value for p in positions)
-            total_pnl = sum(p.unrealized_pnl for p in positions)
+            total_qty: Decimal = sum((p.quantity for p in positions), Decimal("0"))
+            total_value: Decimal = sum((p.position_value for p in positions), Decimal("0"))
+            total_pnl: Decimal = sum((p.unrealized_pnl for p in positions), Decimal("0"))
 
             totals[symbol] = (total_qty, total_value, total_pnl)
 
@@ -118,8 +118,8 @@ class MultiAccountAggregator:
 
         for symbol, trades in trades_by_symbol.items():
             trade_count = len(trades)
-            total_volume = sum(abs(t.trade_money) for t in trades)
-            total_pnl = sum(t.fifo_pnl_realized for t in trades)
+            total_volume: Decimal = sum((abs(t.trade_money) for t in trades), Decimal("0"))
+            total_pnl: Decimal = sum((t.fifo_pnl_realized for t in trades), Decimal("0"))
 
             totals[symbol] = (trade_count, total_volume, total_pnl)
 

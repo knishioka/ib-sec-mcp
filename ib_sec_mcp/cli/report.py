@@ -21,7 +21,7 @@ def generate(
         "-o",
         help="Output file path",
     ),
-):
+) -> None:
     """
     Generate comprehensive report
 

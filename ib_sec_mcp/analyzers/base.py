@@ -1,10 +1,13 @@
 """Base analyzer class"""
 
 from abc import ABC, abstractmethod
+from decimal import Decimal
 from typing import Any, Optional
 
 from ib_sec_mcp.models.account import Account
 from ib_sec_mcp.models.portfolio import Portfolio
+from ib_sec_mcp.models.position import Position
+from ib_sec_mcp.models.trade import Trade
 
 
 class AnalysisResult(dict[str, Any]):
@@ -14,7 +17,7 @@ class AnalysisResult(dict[str, Any]):
     Flexible dictionary-based result with metadata
     """
 
-    def __init__(self, analyzer_name: str, **kwargs):
+    def __init__(self, analyzer_name: str, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self["analyzer"] = analyzer_name
         self["timestamp"] = None  # Set during analysis
@@ -64,7 +67,7 @@ class BaseAnalyzer(ABC):
         """
         pass
 
-    def _create_result(self, **kwargs) -> AnalysisResult:
+    def _create_result(self, **kwargs: Any) -> AnalysisResult:
         """
         Create analysis result with metadata
 
@@ -91,7 +94,7 @@ class BaseAnalyzer(ABC):
 
         return result
 
-    def get_trades(self):
+    def get_trades(self) -> list[Trade]:
         """Get trades from portfolio or account"""
         if self.is_multi_account and self.portfolio:
             return self.portfolio.all_trades
@@ -99,7 +102,7 @@ class BaseAnalyzer(ABC):
             return self.account.trades
         return []
 
-    def get_positions(self):
+    def get_positions(self) -> list[Position]:
         """Get positions from portfolio or account"""
         if self.is_multi_account and self.portfolio:
             return self.portfolio.all_positions
@@ -107,18 +110,18 @@ class BaseAnalyzer(ABC):
             return self.account.positions
         return []
 
-    def get_total_value(self):
+    def get_total_value(self) -> Decimal:
         """Get total value from portfolio or account"""
         if self.is_multi_account and self.portfolio:
             return self.portfolio.total_value
         elif self.account:
             return self.account.total_value
-        return 0
+        return Decimal("0")
 
-    def get_total_cash(self):
+    def get_total_cash(self) -> Decimal:
         """Get total cash from portfolio or account"""
         if self.is_multi_account and self.portfolio:
             return self.portfolio.total_cash
         elif self.account:
             return self.account.total_cash
-        return 0
+        return Decimal("0")

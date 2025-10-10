@@ -1,6 +1,6 @@
 """CLI for running analysis"""
 
-from typing import Optional
+from typing import Optional, Union
 
 import typer
 from rich.console import Console
@@ -46,7 +46,7 @@ def analyze(
         "-o",
         help="Save report to file",
     ),
-):
+) -> None:
     """
     Analyze trading data
 
@@ -107,6 +107,9 @@ def analyze(
         console.print(f"Running {analyzer_name} analyzer...", style="cyan")
 
         try:
+            analyzer: Union[
+                PerformanceAnalyzer, CostAnalyzer, BondAnalyzer, TaxAnalyzer, RiskAnalyzer
+            ]
             if analyzer_name == "performance":
                 analyzer = PerformanceAnalyzer(account=account)
             elif analyzer_name == "cost":

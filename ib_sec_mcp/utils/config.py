@@ -1,7 +1,7 @@
 """Configuration management"""
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from dotenv import load_dotenv
 from pydantic import Field, field_validator
@@ -49,7 +49,7 @@ class Config(BaseSettings):
 
     @field_validator("data_dir", "raw_data_dir", "processed_data_dir", mode="before")
     @classmethod
-    def create_directories(cls, v: Path) -> Path:
+    def create_directories(cls, v: Union[str, Path]) -> Path:
         """Ensure directories exist"""
         if isinstance(v, str):
             v = Path(v)

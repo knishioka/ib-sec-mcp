@@ -40,7 +40,7 @@ def fetch(
         "-o",
         help="Output directory (defaults to data/raw)",
     ),
-):
+) -> None:
     """
     Fetch trading data from Interactive Brokers
 

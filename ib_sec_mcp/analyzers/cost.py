@@ -2,6 +2,7 @@
 
 from collections import defaultdict
 from decimal import Decimal
+from typing import Any
 
 from ib_sec_mcp.analyzers.base import AnalysisResult, BaseAnalyzer
 from ib_sec_mcp.core.calculator import PerformanceCalculator
@@ -34,14 +35,14 @@ class CostAnalyzer(BaseAnalyzer):
             )
 
         # Overall metrics
-        total_commissions = sum(abs(t.ib_commission) for t in trades)
-        total_volume = sum(abs(t.trade_money) for t in trades)
+        total_commissions: Decimal = sum((abs(t.ib_commission) for t in trades), Decimal("0"))
+        total_volume: Decimal = sum((abs(t.trade_money) for t in trades), Decimal("0"))
         overall_rate = PerformanceCalculator.calculate_commission_rate(
             total_commissions, total_volume
         )
 
         # Impact on P&L
-        total_realized_pnl = sum(t.fifo_pnl_realized for t in trades)
+        total_realized_pnl: Decimal = sum((t.fifo_pnl_realized for t in trades), Decimal("0"))
         commission_impact_pct = (
             (total_commissions / abs(total_realized_pnl)) * 100
             if total_realized_pnl != 0
@@ -95,7 +96,7 @@ class CostAnalyzer(BaseAnalyzer):
             by_symbol=by_symbol,
         )
 
-    def _analyze_by_asset_class(self, trades: list[Trade]) -> dict[str, dict]:
+    def _analyze_by_asset_class(self, trades: list[Trade]) -> dict[str, dict[str, Any]]:
         """Analyze costs by asset class"""
         by_asset: dict[AssetClass, list[Trade]] = defaultdict(list)
 
@@ -105,8 +106,8 @@ class CostAnalyzer(BaseAnalyzer):
         results = {}
 
         for asset_class, asset_trades in by_asset.items():
-            commissions = sum(abs(t.ib_commission) for t in asset_trades)
-            volume = sum(abs(t.trade_money) for t in asset_trades)
+            commissions: Decimal = sum((abs(t.ib_commission) for t in asset_trades), Decimal("0"))
+            volume: Decimal = sum((abs(t.trade_money) for t in asset_trades), Decimal("0"))
             rate = PerformanceCalculator.calculate_commission_rate(commissions, volume)
 
             results[asset_class.value] = {
@@ -118,7 +119,7 @@ class CostAnalyzer(BaseAnalyzer):
 
         return results
 
-    def _analyze_by_symbol(self, trades: list[Trade]) -> dict[str, dict]:
+    def _analyze_by_symbol(self, trades: list[Trade]) -> dict[str, dict[str, Any]]:
         """Analyze costs by symbol"""
         by_symbol: dict[str, list[Trade]] = defaultdict(list)
 
@@ -128,8 +129,8 @@ class CostAnalyzer(BaseAnalyzer):
         results = {}
 
         for symbol, symbol_trades in by_symbol.items():
-            commissions = sum(abs(t.ib_commission) for t in symbol_trades)
-            volume = sum(abs(t.trade_money) for t in symbol_trades)
+            commissions: Decimal = sum((abs(t.ib_commission) for t in symbol_trades), Decimal("0"))
+            volume: Decimal = sum((abs(t.trade_money) for t in symbol_trades), Decimal("0"))
             rate = PerformanceCalculator.calculate_commission_rate(commissions, volume)
 
             results[symbol] = {
