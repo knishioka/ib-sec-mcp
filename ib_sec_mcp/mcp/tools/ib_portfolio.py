@@ -59,6 +59,153 @@ def _extract_dates_from_filename(csv_path: str) -> tuple[date, date]:
     return date(date.today().year, 1, 1), date.today()
 
 
+async def _get_or_fetch_data(
+    start_date: str,
+    end_date: str | None = None,
+    account_index: int = 0,
+    use_cache: bool = True,
+    ctx: Context | None = None,
+) -> tuple[str, date, date]:
+    """
+    Get data from cache or fetch from IB API
+
+    Args:
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format (defaults to today)
+        account_index: Account index (0 for first account, 1 for second, etc.)
+        use_cache: Use cached data if available (default: True)
+        ctx: MCP context for logging
+
+    Returns:
+        Tuple of (data_string, from_date, to_date)
+
+    Raises:
+        ValidationError: If input validation fails
+        ConfigurationError: If credentials are missing
+        APIError: If IB API call fails
+        FileOperationError: If file operations fail
+        IBTimeoutError: If operation times out
+    """
+    # Validate inputs
+    from_date = validate_date_string(start_date, "start_date")
+    to_date = validate_date_string(end_date, "end_date") if end_date else date.today()
+    from_date, to_date = validate_date_range(from_date, to_date)
+    validate_account_index(account_index)
+
+    # Check cache first
+    if use_cache:
+        # Load config to get account ID for cache lookup
+        try:
+            config = Config.load()
+            credentials = config.get_credentials()
+            if account_index < len(credentials):
+                # Try to find cached file
+                data_dir = Path("data/raw")
+                # We don't know exact account_id yet, so try pattern matching
+                pattern = f"*_{from_date}_{to_date}.csv"
+                cached_files = list(data_dir.glob(pattern))
+
+                if cached_files:
+                    cached_file = cached_files[0]  # Use first match
+                    if ctx:
+                        await ctx.info(f"Using cached data from {cached_file}")
+
+                    with open(cached_file) as f:
+                        data = f.read()
+                    return data, from_date, to_date
+        except Exception:  # nosec B110
+            # If cache lookup fails, proceed to fetch
+            pass
+
+    # No cache or cache disabled - fetch from API
+    if ctx:
+        await ctx.info(f"Fetching fresh data from IB API for {from_date} to {to_date}")
+
+    # Load configuration
+    try:
+        config = Config.load()
+        credentials_list = config.get_credentials()
+        if account_index >= len(credentials_list):
+            raise ConfigurationError(
+                f"Account index {account_index} out of range (have {len(credentials_list)} accounts)"
+            )
+        credentials = credentials_list[account_index]
+    except Exception as e:
+        if ctx:
+            await ctx.error(f"Configuration error: {str(e)}")
+        raise ConfigurationError(
+            "Failed to load credentials. Ensure QUERY_ID and TOKEN are set in .env file"
+        ) from e
+
+    # Create client
+    client = FlexQueryClient(
+        query_id=credentials.query_id,
+        token=credentials.token,
+    )
+
+    # Fetch statement with timeout
+    try:
+        if ctx:
+            await ctx.debug(f"Calling IB Flex Query API (timeout={API_FETCH_TIMEOUT}s)")
+
+        async def fetch_with_timeout():
+            return await asyncio.to_thread(client.fetch_statement, from_date, to_date)
+
+        statement = await asyncio.wait_for(fetch_with_timeout(), timeout=API_FETCH_TIMEOUT)
+
+    except asyncio.TimeoutError as e:  # noqa: UP041
+        if ctx:
+            await ctx.error(
+                f"API call timed out after {API_FETCH_TIMEOUT}s",
+                extra={"timeout": API_FETCH_TIMEOUT, "operation": "fetch_statement"},
+            )
+        raise IBTimeoutError(
+            f"IB API call timed out after {API_FETCH_TIMEOUT} seconds",
+            operation="fetch_statement",
+        ) from e
+
+    except FlexQueryAPIError as e:
+        if ctx:
+            await ctx.error(f"IB API error: {str(e)}", extra={"error_type": "FlexQueryAPIError"})
+        raise APIError(str(e)) from e
+
+    # Save to cache
+    try:
+        data_dir = Path("data/raw")
+        data_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"{statement.account_id}_{from_date}_{to_date}.csv"
+        filepath = data_dir / filename
+
+        async def save_file():
+            await asyncio.to_thread(filepath.write_text, statement.raw_data, encoding="utf-8")
+
+        await asyncio.wait_for(save_file(), timeout=FILE_OPERATION_TIMEOUT)
+
+        if ctx:
+            await ctx.info(
+                f"Saved data to {filepath}",
+                extra={
+                    "file_path": str(filepath),
+                    "file_size_bytes": len(statement.raw_data),
+                },
+            )
+
+    except asyncio.TimeoutError as e:  # noqa: UP041
+        if ctx:
+            await ctx.error(f"File write timed out after {FILE_OPERATION_TIMEOUT}s")
+        raise IBTimeoutError(
+            f"File write timed out after {FILE_OPERATION_TIMEOUT} seconds",
+            operation="save_file",
+        ) from e
+
+    except Exception as e:
+        if ctx:
+            await ctx.error(f"File operation failed: {str(e)}")
+        raise FileOperationError(f"Failed to save data to {filepath}: {str(e)}") from e
+
+    return statement.raw_data, from_date, to_date
+
+
 def register_ib_portfolio_tools(mcp: FastMCP) -> None:
     """Register IB portfolio analysis tools"""
 
@@ -133,7 +280,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
                 statement = await asyncio.wait_for(fetch_with_timeout(), timeout=API_FETCH_TIMEOUT)
 
-            except TimeoutError as e:
+            except asyncio.TimeoutError as e:  # noqa: UP041
                 if ctx:
                     await ctx.error(
                         f"API call timed out after {API_FETCH_TIMEOUT}s",
@@ -174,7 +321,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                         },
                     )
 
-            except TimeoutError as e:
+            except asyncio.TimeoutError as e:  # noqa: UP041
                 if ctx:
                     await ctx.error(f"File write timed out after {FILE_OPERATION_TIMEOUT}s")
                 raise IBTimeoutError(
@@ -207,25 +354,41 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             raise APIError(f"Unexpected error while fetching IB data: {str(e)}") from e
 
     @mcp.tool
-    async def analyze_performance(csv_path: str, ctx: Context | None = None) -> str:
+    async def analyze_performance(
+        start_date: str,
+        end_date: str | None = None,
+        account_index: int = 0,
+        use_cache: bool = True,
+        ctx: Context | None = None,
+    ) -> str:
         """
-        Analyze trading performance from CSV/XML data
+        Analyze trading performance
+
+        Automatically fetches data from IB API (with caching) and performs analysis.
 
         Args:
-            csv_path: Path to IB Flex Query CSV/XML file
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+            account_index: Account index (0 for first account, 1 for second, etc.)
+            use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
         Returns:
             JSON string with performance metrics
+
+        Raises:
+            ValidationError: If input validation fails
+            ConfigurationError: If credentials are missing
+            APIError: If IB API call fails
+            IBTimeoutError: If operation times out
         """
         if ctx:
-            await ctx.info(f"Analyzing performance from {csv_path}")
+            await ctx.info(f"Analyzing performance for {start_date} to {end_date or 'today'}")
 
-        # Read and detect format
-        with open(csv_path) as f:
-            data = f.read()
-
-        from_date, to_date = _extract_dates_from_filename(csv_path)
+        # Get or fetch data
+        data, from_date, to_date = await _get_or_fetch_data(
+            start_date, end_date, account_index, use_cache, ctx
+        )
 
         # Auto-detect format and parse
         format_type = detect_format(data)
@@ -241,26 +404,35 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
-    async def analyze_costs(csv_path: str, ctx: Context | None = None) -> str:
+    async def analyze_costs(
+        start_date: str,
+        end_date: str | None = None,
+        account_index: int = 0,
+        use_cache: bool = True,
+        ctx: Context | None = None,
+    ) -> str:
         """
-        Analyze trading costs and commissions from CSV/XML data
+        Analyze trading costs and commissions
+
+        Automatically fetches data from IB API (with caching) and performs analysis.
 
         Args:
-            csv_path: Path to IB Flex Query CSV/XML file
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+            account_index: Account index (0 for first account, 1 for second, etc.)
+            use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
         Returns:
             JSON string with cost analysis
         """
         if ctx:
-            await ctx.info(f"Analyzing costs from {csv_path}")
+            await ctx.info(f"Analyzing costs for {start_date} to {end_date or 'today'}")
 
-        with open(csv_path) as f:
-            data = f.read()
+        data, from_date, to_date = await _get_or_fetch_data(
+            start_date, end_date, account_index, use_cache, ctx
+        )
 
-        from_date, to_date = _extract_dates_from_filename(csv_path)
-
-        # Auto-detect format and parse
         format_type = detect_format(data)
         if format_type == "xml":
             account = XMLParser.to_account(data, from_date, to_date)
@@ -273,26 +445,35 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
-    async def analyze_bonds(csv_path: str, ctx: Context | None = None) -> str:
+    async def analyze_bonds(
+        start_date: str,
+        end_date: str | None = None,
+        account_index: int = 0,
+        use_cache: bool = True,
+        ctx: Context | None = None,
+    ) -> str:
         """
-        Analyze zero-coupon bonds (STRIPS) from CSV/XML data
+        Analyze zero-coupon bonds (STRIPS)
+
+        Automatically fetches data from IB API (with caching) and performs analysis.
 
         Args:
-            csv_path: Path to IB Flex Query CSV/XML file
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+            account_index: Account index (0 for first account, 1 for second, etc.)
+            use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
         Returns:
             JSON string with bond analysis including YTM, duration, etc.
         """
         if ctx:
-            await ctx.info(f"Analyzing bonds from {csv_path}")
+            await ctx.info(f"Analyzing bonds for {start_date} to {end_date or 'today'}")
 
-        with open(csv_path) as f:
-            data = f.read()
+        data, from_date, to_date = await _get_or_fetch_data(
+            start_date, end_date, account_index, use_cache, ctx
+        )
 
-        from_date, to_date = _extract_dates_from_filename(csv_path)
-
-        # Auto-detect format and parse
         format_type = detect_format(data)
         if format_type == "xml":
             account = XMLParser.to_account(data, from_date, to_date)
@@ -305,26 +486,35 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
-    async def analyze_tax(csv_path: str, ctx: Context | None = None) -> str:
+    async def analyze_tax(
+        start_date: str,
+        end_date: str | None = None,
+        account_index: int = 0,
+        use_cache: bool = True,
+        ctx: Context | None = None,
+    ) -> str:
         """
         Analyze tax implications including Phantom Income (OID) for bonds
 
+        Automatically fetches data from IB API (with caching) and performs analysis.
+
         Args:
-            csv_path: Path to IB Flex Query CSV/XML file
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+            account_index: Account index (0 for first account, 1 for second, etc.)
+            use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
         Returns:
             JSON string with tax analysis
         """
         if ctx:
-            await ctx.info(f"Analyzing tax from {csv_path}")
+            await ctx.info(f"Analyzing tax for {start_date} to {end_date or 'today'}")
 
-        with open(csv_path) as f:
-            data = f.read()
+        data, from_date, to_date = await _get_or_fetch_data(
+            start_date, end_date, account_index, use_cache, ctx
+        )
 
-        from_date, to_date = _extract_dates_from_filename(csv_path)
-
-        # Auto-detect format and parse
         format_type = detect_format(data)
         if format_type == "xml":
             account = XMLParser.to_account(data, from_date, to_date)
@@ -338,16 +528,24 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
     @mcp.tool
     async def analyze_risk(
-        csv_path: str,
+        start_date: str,
+        end_date: str | None = None,
+        account_index: int = 0,
         interest_rate_change: float = 0.01,
+        use_cache: bool = True,
         ctx: Context | None = None,
     ) -> str:
         """
         Analyze portfolio risk including interest rate scenarios
 
+        Automatically fetches data from IB API (with caching) and performs analysis.
+
         Args:
-            csv_path: Path to IB Flex Query CSV/XML file
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+            account_index: Account index (0 for first account, 1 for second, etc.)
             interest_rate_change: Interest rate change for scenario (default: 0.01 = 1%)
+            use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
         Returns:
@@ -355,15 +553,13 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         """
         if ctx:
             await ctx.info(
-                f"Analyzing risk from {csv_path} with {interest_rate_change * 100:.2f}% rate change"
+                f"Analyzing risk for {start_date} to {end_date or 'today'} with {interest_rate_change * 100:.2f}% rate change"
             )
 
-        with open(csv_path) as f:
-            data = f.read()
+        data, from_date, to_date = await _get_or_fetch_data(
+            start_date, end_date, account_index, use_cache, ctx
+        )
 
-        from_date, to_date = _extract_dates_from_filename(csv_path)
-
-        # Auto-detect format and parse
         format_type = detect_format(data)
         if format_type == "xml":
             account = XMLParser.to_account(data, from_date, to_date)
