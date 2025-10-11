@@ -1,5 +1,6 @@
 """Configuration management"""
 
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -7,6 +8,9 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ib_sec_mcp.api.models import APICredentials
+from ib_sec_mcp.utils.logger import get_logger, mask_sensitive
+
+logger = get_logger(__name__)
 
 
 class Config(BaseSettings):
@@ -62,14 +66,31 @@ class Config(BaseSettings):
         Returns:
             APICredentials for Flex Query access
         """
+        logger.debug("Attempting to load credentials from environment")
+
+        # Check if credentials exist in environment
+        query_id_exists = bool(self.query_id)
+        token_exists = bool(self.token)
+
+        logger.debug(f"QUERY_ID present: {query_id_exists}")
+        logger.debug(f"TOKEN present: {token_exists}")
+
         if not self.query_id or not self.token:
+            logger.error("Missing credentials: QUERY_ID and TOKEN must be set in environment")
             raise ValueError("QUERY_ID and TOKEN must be set in environment")
 
-        return APICredentials(
+        # Log masked credentials for debugging
+        logger.debug(f"Loaded credentials: QUERY_ID={mask_sensitive(self.query_id, 4)}")
+        logger.debug(f"Loaded credentials: TOKEN={mask_sensitive(self.token, 4)}")
+
+        credentials = APICredentials(
             query_id=self.query_id,
             token=self.token,
             account_alias="Default",
         )
+
+        logger.info("Credentials loaded successfully")
+        return credentials
 
     @classmethod
     def load(cls, env_file: Path | None = None) -> "Config":
@@ -82,9 +103,38 @@ class Config(BaseSettings):
         Returns:
             Config instance
         """
-        if env_file:
-            load_dotenv(env_file)
-        else:
-            load_dotenv()
+        # Determine .env file path
+        env_path = Path(env_file) if env_file else Path.cwd() / ".env"
 
-        return cls()
+        logger.debug(f"Loading configuration from: {env_path}")
+        logger.debug(f"Current working directory: {Path.cwd()}")
+        logger.debug(f".env file exists: {env_path.exists()}")
+
+        # Check environment before loading .env
+        query_id_before = os.getenv("QUERY_ID")
+        token_before = os.getenv("TOKEN")
+        logger.debug(
+            f"Environment before load: QUERY_ID={bool(query_id_before)}, TOKEN={bool(token_before)}"
+        )
+
+        # Load .env file
+        loaded = load_dotenv(env_file) if env_file else load_dotenv()
+
+        logger.debug(f"dotenv load_dotenv() returned: {loaded}")
+
+        # Check environment after loading .env
+        query_id_after = os.getenv("QUERY_ID")
+        token_after = os.getenv("TOKEN")
+        logger.debug(
+            f"Environment after load: QUERY_ID={bool(query_id_after)}, TOKEN={bool(token_after)}"
+        )
+
+        if query_id_after:
+            logger.debug(f"QUERY_ID value: {mask_sensitive(query_id_after, 4)}")
+        if token_after:
+            logger.debug(f"TOKEN value: {mask_sensitive(token_after, 4)}")
+
+        config = cls()
+        logger.info(f"Configuration loaded from {env_path}")
+
+        return config

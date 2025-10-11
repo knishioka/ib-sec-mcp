@@ -30,6 +30,9 @@ from ib_sec_mcp.mcp.validators import (
     validate_date_string,
 )
 from ib_sec_mcp.utils.config import Config
+from ib_sec_mcp.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Timeout constants (in seconds)
 API_FETCH_TIMEOUT = 60
@@ -86,48 +89,71 @@ async def _get_or_fetch_data(
         FileOperationError: If file operations fail
         IBTimeoutError: If operation times out
     """
+    logger.debug(
+        f"_get_or_fetch_data called: start_date={start_date}, end_date={end_date}, account_index={account_index}, use_cache={use_cache}"
+    )
+
     # Validate inputs
     from_date = validate_date_string(start_date, "start_date")
     to_date = validate_date_string(end_date, "end_date") if end_date else date.today()
     from_date, to_date = validate_date_range(from_date, to_date)
     validate_account_index(account_index)
 
+    logger.debug(f"Validated date range: {from_date} to {to_date}")
+
     # Check cache first
     if use_cache:
+        logger.debug("Checking cache for existing data")
         # Try to find cached file
         try:
             data_dir = Path("data/raw")
             # We don't know exact account_id yet, so try pattern matching
             pattern = f"*_{from_date}_{to_date}.csv"
+            logger.debug(f"Cache search pattern: {pattern} in {data_dir}")
+
             cached_files = list(data_dir.glob(pattern))
+            logger.debug(f"Found {len(cached_files)} cached file(s)")
 
             if cached_files:
                 cached_file = cached_files[0]  # Use first match
+                logger.info(f"Using cached data from {cached_file}")
                 if ctx:
                     await ctx.info(f"Using cached data from {cached_file}")
 
                 with open(cached_file) as f:
                     data = f.read()
+
+                logger.debug(f"Loaded {len(data)} bytes from cache")
                 return data, from_date, to_date
-        except Exception:  # nosec B110
+            else:
+                logger.debug("No cached files found, will fetch from API")
+        except Exception as e:  # nosec B110
             # If cache lookup fails, proceed to fetch
+            logger.warning(f"Cache lookup failed: {e}, proceeding to API fetch")
             pass
+    else:
+        logger.debug("Cache disabled (use_cache=False), will fetch from API")
 
     # No cache or cache disabled - fetch from API
+    logger.info(f"Fetching fresh data from IB API for {from_date} to {to_date}")
     if ctx:
         await ctx.info(f"Fetching fresh data from IB API for {from_date} to {to_date}")
 
     # Load configuration
     try:
+        logger.debug("Loading configuration and credentials")
         config = Config.load()
         credentials = config.get_credentials()
+
         # Note: account_index currently not supported (single account config)
         # Multi-account support requires config changes
-        if account_index != 0 and ctx:
-            await ctx.warning(
-                f"account_index {account_index} specified but only single account supported. Using default account."
-            )
+        if account_index != 0:
+            warning_msg = f"account_index {account_index} specified but only single account supported. Using default account."
+            logger.warning(warning_msg)
+            if ctx:
+                await ctx.warning(warning_msg)
     except Exception as e:
+        logger.error(f"Configuration error: {str(e)}", exc_info=True)
         if ctx:
             await ctx.error(f"Configuration error: {str(e)}")
         raise ConfigurationError(
@@ -135,6 +161,7 @@ async def _get_or_fetch_data(
         ) from e
 
     # Create client
+    logger.debug("Creating FlexQueryClient")
     client = FlexQueryClient(
         query_id=credentials.query_id,
         token=credentials.token,
@@ -142,6 +169,7 @@ async def _get_or_fetch_data(
 
     # Fetch statement with timeout
     try:
+        logger.debug(f"Calling IB Flex Query API (timeout={API_FETCH_TIMEOUT}s)")
         if ctx:
             await ctx.debug(f"Calling IB Flex Query API (timeout={API_FETCH_TIMEOUT}s)")
 
@@ -149,8 +177,10 @@ async def _get_or_fetch_data(
             return await asyncio.to_thread(client.fetch_statement, from_date, to_date)
 
         statement = await asyncio.wait_for(fetch_with_timeout(), timeout=API_FETCH_TIMEOUT)
+        logger.info(f"Successfully fetched data from IB API: {len(statement.raw_data)} bytes")
 
     except asyncio.TimeoutError as e:  # noqa: UP041
+        logger.error(f"API call timed out after {API_FETCH_TIMEOUT}s")
         if ctx:
             await ctx.error(
                 f"API call timed out after {API_FETCH_TIMEOUT}s",
@@ -162,6 +192,7 @@ async def _get_or_fetch_data(
         ) from e
 
     except FlexQueryAPIError as e:
+        logger.error(f"IB API error: {str(e)}")
         if ctx:
             await ctx.error(f"IB API error: {str(e)}", extra={"error_type": "FlexQueryAPIError"})
         raise APIError(str(e)) from e
@@ -173,11 +204,14 @@ async def _get_or_fetch_data(
         filename = f"{statement.account_id}_{from_date}_{to_date}.csv"
         filepath = data_dir / filename
 
+        logger.debug(f"Saving data to cache: {filepath}")
+
         async def save_file():
             await asyncio.to_thread(filepath.write_text, statement.raw_data, encoding="utf-8")
 
         await asyncio.wait_for(save_file(), timeout=FILE_OPERATION_TIMEOUT)
 
+        logger.info(f"Saved data to cache: {filepath} ({len(statement.raw_data)} bytes)")
         if ctx:
             await ctx.info(
                 f"Saved data to {filepath}",
@@ -188,6 +222,7 @@ async def _get_or_fetch_data(
             )
 
     except asyncio.TimeoutError as e:  # noqa: UP041
+        logger.error(f"File write timed out after {FILE_OPERATION_TIMEOUT}s")
         if ctx:
             await ctx.error(f"File write timed out after {FILE_OPERATION_TIMEOUT}s")
         raise IBTimeoutError(
@@ -196,10 +231,12 @@ async def _get_or_fetch_data(
         ) from e
 
     except Exception as e:
+        logger.error(f"File operation failed: {str(e)}")
         if ctx:
             await ctx.error(f"File operation failed: {str(e)}")
         raise FileOperationError(f"Failed to save data to {filepath}: {str(e)}") from e
 
+    logger.debug("_get_or_fetch_data completed successfully")
     return statement.raw_data, from_date, to_date
 
 
