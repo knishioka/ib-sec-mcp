@@ -529,7 +529,7 @@ IB Analytics provides an MCP server interface for Claude Desktop and other MCP c
 
 ### MCP Components
 
-**Tools** (7 tools available):
+**Analysis Tools** (7 tools - coarse-grained, complete analysis):
 - `fetch_ib_data` - Fetch data from IB Flex Query API
 - `analyze_performance` - Trading performance metrics
 - `analyze_costs` - Commission and cost analysis
@@ -538,12 +538,24 @@ IB Analytics provides an MCP server interface for Claude Desktop and other MCP c
 - `analyze_risk` - Portfolio risk with interest rate scenarios
 - `get_portfolio_summary` - Portfolio overview
 
-**Resources** (6 URI patterns):
+**Composable Data Tools** (5 tools - fine-grained, sub-agent friendly):
+- `get_trades` - Filtered trade data (by symbol, asset class, date range)
+- `get_positions` - Current positions with filtering options
+- `get_account_summary` - Account overview with P&L breakdown
+- `calculate_metric` - Individual metrics (win_rate, profit_factor, etc.)
+- `compare_periods` - Period-over-period metric comparison
+
+**Data Resources** (6 URI patterns - raw data access):
 - `ib://portfolio/list` - List available CSV files
 - `ib://portfolio/latest` - Latest portfolio summary
 - `ib://accounts/{account_id}` - Specific account data
 - `ib://trades/recent` - Recent trades (last 10)
 - `ib://positions/current` - Current positions
+
+**Strategy Resources** (3 URI patterns - strategic context):
+- `ib://strategy/tax-context` - Tax planning with loss harvesting opportunities
+- `ib://strategy/rebalancing-context` - Portfolio allocation and drift analysis
+- `ib://strategy/risk-context` - Risk metrics and scenario analysis
 
 **Prompts** (5 templates):
 - `analyze_portfolio` - Comprehensive portfolio analysis
@@ -588,20 +600,43 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ### MCP Usage Examples
 
-In Claude Desktop:
-
+**Traditional Analysis (Coarse-Grained)**:
 ```
 # Fetch latest data
 "Please fetch my IB data for the last 30 days"
 
-# Portfolio analysis
+# Complete analysis
 "Analyze my portfolio using the latest data"
-
-# Use a prompt template
-"Use the tax_planning prompt for my latest portfolio file"
 
 # Access resources
 "Show me my current positions" → reads ib://positions/current
+```
+
+**Sub-Agent Collaboration (Fine-Grained)**:
+```
+# Get specific data
+"Get my AAPL trades from the last quarter"
+→ Uses get_trades(symbol="AAPL")
+
+# Calculate specific metrics
+"What's my win rate on bond trades?"
+→ Uses calculate_metric(metric_name="win_rate", asset_class="BOND")
+
+# Compare periods
+"How did my performance in Q1 compare to Q2?"
+→ Uses compare_periods(period1_start, period1_end, period2_start, period2_end)
+
+# Strategy context
+"What are my tax loss harvesting opportunities?"
+→ Reads ib://strategy/tax-context
+
+# Rebalancing guidance
+"Does my portfolio need rebalancing?"
+→ Reads ib://strategy/rebalancing-context
+
+# Risk assessment
+"What's my interest rate risk?"
+→ Reads ib://strategy/risk-context
 ```
 
 ### MCP Architecture

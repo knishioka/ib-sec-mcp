@@ -192,7 +192,19 @@ def validate_period(period: str) -> str:
     Raises:
         ValidationError: If period is invalid
     """
-    valid_periods = {"1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"}
+    valid_periods = {
+        "1d",
+        "5d",
+        "1mo",
+        "3mo",
+        "6mo",
+        "1y",
+        "2y",
+        "5y",
+        "10y",
+        "ytd",
+        "max",
+    }
 
     if period not in valid_periods:
         raise ValidationError(

@@ -214,8 +214,8 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
                     "tracking_error_pct": round(tracking_error * 100, 2),
                 },
                 "interpretation": {
-                    "sharpe": "Good" if sharpe > 1 else "Moderate" if sharpe > 0.5 else "Poor",
-                    "sortino": "Good" if sortino > 1.5 else "Moderate" if sortino > 1 else "Poor",
+                    "sharpe": ("Good" if sharpe > 1 else "Moderate" if sharpe > 0.5 else "Poor"),
+                    "sortino": ("Good" if sortino > 1.5 else "Moderate" if sortino > 1 else "Poor"),
                     "max_drawdown": (
                         "Low risk"
                         if max_drawdown > -10
