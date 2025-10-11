@@ -250,12 +250,231 @@ pytest --cov=ib_sec_mcp --cov-report=html
 - When adding tests, use `pytest` with fixtures in `tests/fixtures/`
 - Mock API calls using `pytest-asyncio` for async tests
 
-## Custom Slash Commands
+## Claude Code Extensions
 
-Custom commands are stored in `.claude/commands/` directory. Each command is a markdown file with natural language instructions.
+### Custom Slash Commands
+
+Slash commands are prompt templates stored in `.claude/commands/` directory for repeated workflows.
+
+#### Creating New Slash Commands
+
+**File Structure**: `.claude/commands/{command-name}.md`
+
+**Frontmatter (Optional)**:
+```yaml
+---
+description: Brief command description
+allowed-tools: Optional tool permissions (comma-separated)
+argument-hint: [optional argument format]
+---
+```
+
+**Command Body**: Natural language instructions with argument placeholders
+
+**Argument Placeholders**:
+- `$ARGUMENTS` - Captures entire argument string
+- `$1`, `$2`, `$3`, etc. - Positional arguments (space-separated)
+
+**Example Command** (`.claude/commands/example.md`):
+```markdown
+---
+description: Run analysis with custom tax rate
+allowed-tools: Read, mcp__ib-sec-mcp__analyze_tax
+argument-hint: tax-rate
+---
+
+Run tax analysis with tax rate: $ARGUMENTS
+
+If no arguments provided, use default rate of 0.30 (30%).
+
+Steps:
+1. Load latest CSV from data/raw/
+2. Run tax analyzer with specified rate
+3. Display results with rich formatting
+```
+
+**Usage**: `/example 0.25`
+
+**Best Practices**:
+- Use clear, descriptive command names (kebab-case)
+- Provide `description` in frontmatter (shows in command menu)
+- Use `argument-hint` to guide users on expected arguments
+- Delegate complex tasks to sub-agents
+- Include error handling instructions
+- Document expected output format
+
+**Available Commands**: See `.claude/README.md` for full list (14 commands)
+
+### Specialized Sub-Agents
+
+Sub-agents are AI assistants with dedicated context windows for specific tasks.
+
+#### Creating New Sub-Agents
+
+**File Structure**: `.claude/agents/{agent-name}.md`
+
+**Required Frontmatter**:
+```yaml
+---
+name: agent-name
+description: When to use this subagent and what it does
+tools: tool1, tool2, tool3  # Comma-separated, or omit to inherit all
+model: sonnet  # Optional: sonnet, opus, haiku, or inherit
+---
+```
+
+**Agent Body**: Specialized system prompt with domain knowledge and workflows
+
+**Example Sub-Agent** (`.claude/agents/example.md`):
+```markdown
+---
+name: security-auditor
+description: Security specialist for vulnerability assessment and threat modeling. Use for security reviews, penetration testing, and compliance checks.
+tools: Read, Grep, Bash(bandit:*), Bash(safety:*)
+model: sonnet
+---
+
+You are a security specialist with expertise in:
+- Vulnerability assessment
+- Threat modeling
+- Security best practices
+- Compliance (SOC2, GDPR, etc.)
+
+## Your Responsibilities
+
+1. Code Security Review
+2. Dependency Vulnerability Scanning
+3. Authentication/Authorization Analysis
+4. Data Protection Assessment
+
+## Security Checklist
+
+- [ ] No hardcoded secrets
+- [ ] Input validation present
+- [ ] SQL injection prevention
+- [ ] XSS protection
+- [ ] CSRF tokens implemented
+
+## Tools Usage
+
+**Bandit** (Python security linter):
+```bash
+bandit -r ib_sec_mcp/
+```
+
+**Safety** (Dependency checker):
+```bash
+safety check
+```
+
+Always provide severity ratings (CRITICAL, HIGH, MEDIUM, LOW) and remediation steps.
+```
+
+**Agent Activation**:
+- **Automatic**: Based on query patterns matching description
+- **Explicit**: "Use the {agent-name} subagent to..."
+- **Proactive**: Add "use PROACTIVELY" in description for auto-activation
+
+**Best Practices**:
+- Keep agents focused on single domain
+- Provide detailed expertise in system prompt
+- Include specific tool commands and workflows
+- Use clear section headers (## format)
+- Add examples of expected output
+- Limit tool access to necessary permissions only
+
+**Tool Permissions**:
+- Omit `tools:` to inherit all tools from main agent
+- Specify exact tools for security isolation
+- Use wildcards: `Bash(pytest:*)` for pattern matching
+- Add MCP tools: `mcp__server-name__tool-name`
+
+**Model Selection**:
+- `sonnet` - Balanced (default, recommended)
+- `opus` - Maximum capability (slower, expensive)
+- `haiku` - Fast and efficient (simpler tasks)
+- `inherit` - Use same model as main conversation
+- Omit to use default model
+
+#### Managing Sub-Agents
+
+**Using `/agents` Command**:
+```bash
+# Interactive tool permission management
+/agents
+
+# Shows all agents and their tool access
+# Allows adding/removing tools
+```
+
+**Sub-Agent Delegation Patterns**:
+
+```
+# Automatic delegation
+User: "Run tests with coverage"
+Claude: [Detects "test" keyword, delegates to test-runner]
+
+# Explicit delegation
+User: "Use the data-analyzer subagent to analyze my bonds"
+Claude: [Explicitly delegates to data-analyzer]
+
+# Proactive delegation (in agent description)
+description: "...Use this subagent PROACTIVELY after code changes..."
+```
+
+**Available Sub-Agents**: See `.claude/README.md` for full list (5 agents)
+
+### Settings Configuration
+
+Project-level settings: `.claude/settings.local.json` (gitignored)
+
+**Structure**:
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(pytest:*)",
+      "Read",
+      "Write",
+      "mcp__ib-sec-mcp__*"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": ["ib-sec-mcp"]
+}
+```
+
+**Permission Patterns**:
+- `Bash(command:*)` - Allow bash command with any arguments
+- `Read(/path/**)` - Allow reading files in path recursively
+- `mcp__server__tool` - Allow specific MCP tool
+- Use wildcards for flexibility
+
+### Quick Reference
+
+**Create Slash Command**:
+1. Create `.claude/commands/{name}.md`
+2. Add frontmatter with description
+3. Write natural language instructions
+4. Use `$ARGUMENTS` for parameters
+5. Test with `/{name}`
+
+**Create Sub-Agent**:
+1. Create `.claude/agents/{name}.md`
+2. Add required frontmatter (name, description, tools, model)
+3. Write specialized system prompt
+4. Add domain expertise and workflows
+5. Test by invoking explicitly or waiting for auto-activation
+
+**Manage Permissions**:
+1. Use `/permissions` for interactive management
+2. Or edit `.claude/settings.local.json` directly
+3. Add tools to sub-agent frontmatter for isolation
 
 ### Available Commands
-(To be added as needed using `#` key during development)
+See `.claude/README.md` for complete documentation (14 slash commands, 5 sub-agents)
 
 ## Special Notes
 
@@ -414,6 +633,9 @@ Based on **FastMCP 2.0+** (Model Context Protocol Python SDK):
 
 ---
 
-**Last Updated**: 2025-10-07
+**Last Updated**: 2025-10-11
 **Maintained By**: Kenichiro Nishioka
 **Project Version**: 0.1.0
+
+**Claude Code Setup**: 5 sub-agents, 14 slash commands
+See `.claude/README.md` and `.claude/WORKFLOWS.md` for complete documentation
