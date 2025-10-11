@@ -249,14 +249,12 @@ def register_resources(mcp: FastMCP) -> None:
 
         for trade in account.trades:
             if trade.fifo_pnl_realized > 0:
-                # Calculate holding period based on trade dates
-                holding_days = (trade.trade_date - trade.trade_date).days  # Simplified
-                # In reality, we'd need to track the original purchase date
-                # For now, use a simplified approach
-                if holding_days < 365:
-                    short_term_gains += trade.fifo_pnl_realized
-                else:
-                    long_term_gains += trade.fifo_pnl_realized
+                # TODO: Holding period calculation requires tracking acquisition dates
+                # Current limitation: Trade model doesn't track original purchase date for SELL trades
+                # Workaround: Classify all realized gains as short-term (conservative approach)
+                # Proper fix: Extend data model to track cost basis lots with acquisition dates
+                short_term_gains += trade.fifo_pnl_realized
+                # Note: long_term_gains will remain 0 until proper holding period tracking is implemented
 
         total_realized_gains = short_term_gains + long_term_gains
 
@@ -381,19 +379,36 @@ def register_resources(mcp: FastMCP) -> None:
         )
         cash_value = account.total_cash
 
-        # Current allocation percentages
-        bond_pct = float((bond_value / total_value) * 100) if total_value > 0 else 0.0
-        stock_pct = float((stock_value / total_value) * 100) if total_value > 0 else 0.0
-        cash_pct = float((cash_value / total_value) * 100) if total_value > 0 else 0.0
+        # Current allocation percentages (using Decimal for precision)
+        bond_pct = (
+            ((bond_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+        stock_pct = (
+            ((stock_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+        cash_pct = (
+            ((cash_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
 
         current_allocation = {
-            "BOND": {"percentage": round(bond_pct, 1), "value": str(bond_value)},
-            "STK": {"percentage": round(stock_pct, 1), "value": str(stock_value)},
-            "CASH": {"percentage": round(cash_pct, 1), "value": str(cash_value)},
+            "BOND": {"percentage": str(bond_pct), "value": str(bond_value)},
+            "STK": {"percentage": str(stock_pct), "value": str(stock_value)},
+            "CASH": {"percentage": str(cash_pct), "value": str(cash_value)},
         }
 
-        # Target allocation (hardcoded as specified)
-        target_allocation = {"BOND": 60.0, "STK": 35.0, "CASH": 5.0}
+        # Target allocation (TODO: Make configurable via config file or tool parameter)
+        # Default conservative allocation (60/35/5)
+        target_allocation = {
+            "BOND": Decimal("60.0"),
+            "STK": Decimal("35.0"),
+            "CASH": Decimal("5.0"),
+        }
 
         # Drift analysis
         bond_drift = bond_pct - target_allocation["BOND"]
@@ -402,7 +417,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         drift_analysis = {
             "BOND": {
-                "drift": round(bond_drift, 1),
+                "drift": str(bond_drift.quantize(Decimal("0.1"))),
                 "status": (
                     "overweight"
                     if bond_drift > 0
@@ -412,7 +427,7 @@ def register_resources(mcp: FastMCP) -> None:
                 ),
             },
             "STK": {
-                "drift": round(stock_drift, 1),
+                "drift": str(stock_drift.quantize(Decimal("0.1"))),
                 "status": (
                     "overweight"
                     if stock_drift > 0
@@ -422,7 +437,7 @@ def register_resources(mcp: FastMCP) -> None:
                 ),
             },
             "CASH": {
-                "drift": round(cash_drift, 1),
+                "drift": str(cash_drift.quantize(Decimal("0.1"))),
                 "status": (
                     "overweight"
                     if cash_drift > 0
@@ -434,15 +449,19 @@ def register_resources(mcp: FastMCP) -> None:
         }
 
         # Check if rebalancing is needed (if any drift > ±5%)
-        rebalancing_needed = abs(bond_drift) > 5 or abs(stock_drift) > 5 or abs(cash_drift) > 5
+        rebalancing_needed = (
+            abs(bond_drift) > Decimal("5")
+            or abs(stock_drift) > Decimal("5")
+            or abs(cash_drift) > Decimal("5")
+        )
 
         # Suggested actions
         suggested_actions = []
 
         if rebalancing_needed:
             # Calculate target values
-            target_bond_value = total_value * Decimal(str(target_allocation["BOND"] / 100))
-            target_stock_value = total_value * Decimal(str(target_allocation["STK"] / 100))
+            target_bond_value = total_value * (target_allocation["BOND"] / Decimal("100"))
+            target_stock_value = total_value * (target_allocation["STK"] / Decimal("100"))
 
             # Bond rebalancing
             bond_diff = bond_value - target_bond_value
@@ -453,7 +472,7 @@ def register_resources(mcp: FastMCP) -> None:
                             "action": "sell",
                             "asset_class": "BOND",
                             "amount": str(abs(bond_diff)),
-                            "reason": f"Reduce from {bond_pct:.1f}% to {target_allocation['BOND']}% target",
+                            "reason": f"Reduce from {bond_pct}% to {target_allocation['BOND']}% target",
                         }
                     )
                 else:
@@ -462,7 +481,7 @@ def register_resources(mcp: FastMCP) -> None:
                             "action": "buy",
                             "asset_class": "BOND",
                             "amount": str(abs(bond_diff)),
-                            "reason": f"Increase from {bond_pct:.1f}% to {target_allocation['BOND']}% target",
+                            "reason": f"Increase from {bond_pct}% to {target_allocation['BOND']}% target",
                         }
                     )
 
@@ -475,7 +494,7 @@ def register_resources(mcp: FastMCP) -> None:
                             "action": "sell",
                             "asset_class": "STK",
                             "amount": str(abs(stock_diff)),
-                            "reason": f"Reduce from {stock_pct:.1f}% to {target_allocation['STK']}% target",
+                            "reason": f"Reduce from {stock_pct}% to {target_allocation['STK']}% target",
                         }
                     )
                 else:
@@ -484,39 +503,45 @@ def register_resources(mcp: FastMCP) -> None:
                             "action": "buy",
                             "asset_class": "STK",
                             "amount": str(abs(stock_diff)),
-                            "reason": f"Increase from {stock_pct:.1f}% to {target_allocation['STK']}% target",
+                            "reason": f"Increase from {stock_pct}% to {target_allocation['STK']}% target",
                         }
                     )
 
         # Concentration risk
         top_holdings = []
         sorted_positions = sorted(account.positions, key=lambda p: p.position_value, reverse=True)
-        max_position_size = 0.0
+        max_position_size = Decimal("0")
 
         for position in sorted_positions[:2]:  # Top 2 holdings
             position_pct = (
-                float((position.position_value / total_value) * 100) if total_value > 0 else 0.0
+                ((position.position_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+                if total_value > 0
+                else Decimal("0.0")
             )
-            top_holdings.append({"symbol": position.symbol, "percentage": round(position_pct, 1)})
+            top_holdings.append({"symbol": position.symbol, "percentage": str(position_pct)})
             max_position_size = max(max_position_size, position_pct)
 
         # Diversification score
-        if max_position_size < 15:
+        if max_position_size < Decimal("15"):
             diversification_score = "good"
-        elif max_position_size <= 25:
+        elif max_position_size <= Decimal("25"):
             diversification_score = "moderate"
         else:
             diversification_score = "poor"
 
         rebalancing_context = {
             "current_allocation": current_allocation,
-            "target_allocation": target_allocation,
+            "target_allocation": {
+                "BOND": str(target_allocation["BOND"]),
+                "STK": str(target_allocation["STK"]),
+                "CASH": str(target_allocation["CASH"]),
+            },
             "drift_analysis": drift_analysis,
             "rebalancing_needed": rebalancing_needed,
             "suggested_actions": suggested_actions,
             "concentration_risk": {
                 "top_holdings": top_holdings,
-                "max_position_size": round(max_position_size, 1),
+                "max_position_size": str(max_position_size),
                 "diversification_score": diversification_score,
             },
         }
@@ -563,10 +588,20 @@ def register_resources(mcp: FastMCP) -> None:
         )
         cash_value = account.total_cash
 
-        cash_percentage = float((cash_value / total_value) * 100) if total_value > 0 else 0.0
-        equity_percentage = float((stock_value / total_value) * 100) if total_value > 0 else 0.0
+        cash_percentage = (
+            ((cash_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+        equity_percentage = (
+            ((stock_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
         fixed_income_percentage = (
-            float((bond_value / total_value) * 100) if total_value > 0 else 0.0
+            ((bond_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
         )
 
         # Calculate bond portfolio duration and maturity
@@ -583,7 +618,8 @@ def register_resources(mcp: FastMCP) -> None:
                     "365.25"
                 )
                 total_maturity_years += years_to_maturity
-                # Simple duration approximation for zero-coupon bonds
+                # For zero-coupon bonds, duration equals time to maturity (exact, not approximation)
+                # Note: For coupon-bearing bonds, use Macaulay/Modified duration instead
                 total_duration += years_to_maturity
                 bond_count += 1
 
@@ -612,19 +648,23 @@ def register_resources(mcp: FastMCP) -> None:
             "1_percent_rise": {
                 "estimated_impact": str(interest_rate_impact_1pct_rise),
                 "new_portfolio_value": str(total_value + interest_rate_impact_1pct_rise),
-                "percentage_change": (
-                    float(interest_rate_impact_1pct_rise / total_value * 100)
+                "percentage_change": str(
+                    ((interest_rate_impact_1pct_rise / total_value) * Decimal("100")).quantize(
+                        Decimal("0.1")
+                    )
                     if total_value > 0
-                    else 0.0
+                    else Decimal("0.0")
                 ),
             },
             "1_percent_fall": {
                 "estimated_impact": str(interest_rate_impact_1pct_fall),
                 "new_portfolio_value": str(total_value + interest_rate_impact_1pct_fall),
-                "percentage_change": (
-                    float(interest_rate_impact_1pct_fall / total_value * 100)
+                "percentage_change": str(
+                    ((interest_rate_impact_1pct_fall / total_value) * Decimal("100")).quantize(
+                        Decimal("0.1")
+                    )
                     if total_value > 0
-                    else 0.0
+                    else Decimal("0.0")
                 ),
             },
         }
@@ -649,23 +689,31 @@ def register_resources(mcp: FastMCP) -> None:
 
         # Find max single position
         max_position = None
-        max_position_pct = 0.0
+        max_position_pct = Decimal("0.0")
         if account.positions:
             sorted_positions = sorted(
                 account.positions, key=lambda p: p.position_value, reverse=True
             )
             max_position = sorted_positions[0]
             max_position_pct = (
-                float((max_position.position_value / total_value) * 100) if total_value > 0 else 0.0
+                ((max_position.position_value / total_value) * Decimal("100")).quantize(
+                    Decimal("0.1")
+                )
+                if total_value > 0
+                else Decimal("0.0")
             )
 
         single_security_risk = {
             "max_position": {
                 "symbol": max_position.symbol if max_position else None,
-                "percentage": round(max_position_pct, 1),
+                "percentage": str(max_position_pct),
             },
             "risk_level": (
-                "high" if max_position_pct > 25 else "moderate" if max_position_pct > 15 else "low"
+                "high"
+                if max_position_pct > Decimal("25")
+                else "moderate"
+                if max_position_pct > Decimal("15")
+                else "low"
             ),
         }
 
@@ -724,9 +772,9 @@ def register_resources(mcp: FastMCP) -> None:
         risk_context = {
             "portfolio_risk_metrics": {
                 "total_value": str(total_value),
-                "cash_percentage": round(cash_percentage, 1),
-                "equity_percentage": round(equity_percentage, 1),
-                "fixed_income_percentage": round(fixed_income_percentage, 1),
+                "cash_percentage": str(cash_percentage),
+                "equity_percentage": str(equity_percentage),
+                "fixed_income_percentage": str(fixed_income_percentage),
                 "portfolio_duration": avg_duration,
                 "average_maturity_years": avg_maturity,
             },
