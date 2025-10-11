@@ -318,7 +318,10 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 if ctx:
                     await ctx.error(
                         f"API call timed out after {API_FETCH_TIMEOUT}s",
-                        extra={"timeout": API_FETCH_TIMEOUT, "operation": "fetch_statement"},
+                        extra={
+                            "timeout": API_FETCH_TIMEOUT,
+                            "operation": "fetch_statement",
+                        },
                     )
                 raise IBTimeoutError(
                     f"IB API call timed out after {API_FETCH_TIMEOUT} seconds",
@@ -328,7 +331,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             except FlexQueryAPIError as e:
                 if ctx:
                     await ctx.error(
-                        f"IB API error: {str(e)}", extra={"error_type": "FlexQueryAPIError"}
+                        f"IB API error: {str(e)}",
+                        extra={"error_type": "FlexQueryAPIError"},
                     )
                 raise APIError(str(e)) from e
 
@@ -375,7 +379,13 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 "status": "success",
             }
 
-        except (ValidationError, ConfigurationError, APIError, FileOperationError, IBTimeoutError):
+        except (
+            ValidationError,
+            ConfigurationError,
+            APIError,
+            FileOperationError,
+            IBTimeoutError,
+        ):
             # Re-raise our custom exceptions (they are already ToolErrors)
             raise
 
@@ -383,7 +393,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             # Catch any unexpected errors
             if ctx:
                 await ctx.error(
-                    f"Unexpected error: {str(e)}", extra={"error_type": type(e).__name__}
+                    f"Unexpected error: {str(e)}",
+                    extra={"error_type": type(e).__name__},
                 )
             raise APIError(f"Unexpected error while fetching IB data: {str(e)}") from e
 

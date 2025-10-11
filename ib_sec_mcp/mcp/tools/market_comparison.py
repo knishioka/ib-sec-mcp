@@ -197,7 +197,7 @@ def register_market_comparison_tools(mcp: FastMCP) -> None:
                 strong_sell = int(latest.get("strongSell", 0))
 
                 rec_summary = {
-                    "period": str(latest.name) if hasattr(latest.name, "__str__") else "current",
+                    "period": (str(latest.name) if hasattr(latest.name, "__str__") else "current"),
                     "strong_buy": strong_buy,
                     "buy": buy,
                     "hold": hold,

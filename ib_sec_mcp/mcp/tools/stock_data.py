@@ -293,7 +293,8 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
             # Catch any unexpected errors
             if ctx:
                 await ctx.error(
-                    f"Unexpected error: {str(e)}", extra={"error_type": type(e).__name__}
+                    f"Unexpected error: {str(e)}",
+                    extra={"error_type": type(e).__name__},
                 )
             raise YahooFinanceError(f"Unexpected error while fetching stock data: {str(e)}") from e
 

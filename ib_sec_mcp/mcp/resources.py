@@ -4,11 +4,16 @@ Provides read-only access to portfolio data via URI patterns.
 """
 
 import json
+from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 from fastmcp import FastMCP
 
+from ib_sec_mcp.analyzers.risk import RiskAnalyzer
+from ib_sec_mcp.analyzers.tax import TaxAnalyzer
 from ib_sec_mcp.core.parsers import CSVParser
+from ib_sec_mcp.models.trade import AssetClass, BuySell
 
 
 def register_resources(mcp: FastMCP) -> None:
@@ -205,3 +210,581 @@ def register_resources(mcp: FastMCP) -> None:
         ]
 
         return json.dumps({"positions": positions_data, "count": len(positions_data)}, indent=2)
+
+    @mcp.resource("ib://strategy/tax-context")
+    def get_tax_context() -> str:
+        """
+        Get tax planning context with gains/losses and opportunities
+
+        Provides comprehensive tax information for investment decisions including
+        realized gains, estimated tax liability, loss harvesting opportunities,
+        and wash sale warnings.
+
+        Returns:
+            JSON string with tax context data
+        """
+        data_dir = Path("data/raw")
+        if not data_dir.exists():
+            return json.dumps({"error": "No data directory found"})
+
+        csv_files = list(data_dir.glob("*.csv"))
+        if not csv_files:
+            return json.dumps({"error": "No CSV files found"})
+
+        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+
+        with open(latest_file) as f:
+            csv_data = f.read()
+
+        account = CSVParser.to_account(csv_data)
+
+        # Run tax analysis
+        analyzer = TaxAnalyzer(account=account)
+        tax_result = analyzer.analyze()
+
+        # Calculate short-term vs long-term gains from trades
+        today = date.today()
+        short_term_gains = Decimal("0")
+        long_term_gains = Decimal("0")
+
+        for trade in account.trades:
+            if trade.fifo_pnl_realized > 0:
+                # TODO: Holding period calculation requires tracking acquisition dates
+                # Current limitation: Trade model doesn't track original purchase date for SELL trades
+                # Workaround: Classify all realized gains as short-term (conservative approach)
+                # Proper fix: Extend data model to track cost basis lots with acquisition dates
+                short_term_gains += trade.fifo_pnl_realized
+                # Note: long_term_gains will remain 0 until proper holding period tracking is implemented
+
+        total_realized_gains = short_term_gains + long_term_gains
+
+        # Find tax loss harvesting opportunities
+        loss_harvesting_opportunities = []
+        for position in account.positions:
+            if position.unrealized_pnl < 0:
+                # Find earliest trade for this position to calculate holding period
+                position_trades = [
+                    t
+                    for t in account.trades
+                    if t.symbol == position.symbol and t.buy_sell == BuySell.BUY
+                ]
+                if position_trades:
+                    earliest_trade = min(position_trades, key=lambda t: t.trade_date)
+                    holding_period_days = (today - earliest_trade.trade_date).days
+                else:
+                    holding_period_days = 0
+
+                potential_tax_savings = abs(position.unrealized_pnl) * Decimal("0.30")
+                loss_harvesting_opportunities.append(
+                    {
+                        "symbol": position.symbol,
+                        "unrealized_loss": str(position.unrealized_pnl),
+                        "holding_period_days": holding_period_days,
+                        "potential_tax_savings": str(potential_tax_savings),
+                    }
+                )
+
+        # Tax lot summary
+        long_term_lots = sum(
+            1
+            for t in account.trades
+            if t.buy_sell == BuySell.BUY and (today - t.trade_date).days >= 365
+        )
+        short_term_lots = sum(
+            1
+            for t in account.trades
+            if t.buy_sell == BuySell.BUY and (today - t.trade_date).days < 365
+        )
+        total_lots = long_term_lots + short_term_lots
+
+        # Wash sale warnings (simplified - check if any symbol was sold at loss and rebought within 30 days)
+        wash_sale_warnings = []
+        for symbol in {t.symbol for t in account.trades}:
+            symbol_trades = [t for t in account.trades if t.symbol == symbol]
+            symbol_trades.sort(key=lambda t: t.trade_date)
+
+            for i, trade in enumerate(symbol_trades):
+                if trade.buy_sell == BuySell.SELL and trade.fifo_pnl_realized < 0:
+                    # Check if rebought within 30 days
+                    for future_trade in symbol_trades[i + 1 :]:
+                        if future_trade.buy_sell == BuySell.BUY:
+                            days_between = (future_trade.trade_date - trade.trade_date).days
+                            if days_between <= 30:
+                                wash_sale_warnings.append(
+                                    {
+                                        "symbol": symbol,
+                                        "message": f"Potential wash sale: sold at loss on {trade.trade_date}, rebought on {future_trade.trade_date}",
+                                    }
+                                )
+                                break
+
+        # Extract OID income from tax result
+        bond_oid_income = Decimal(tax_result.data.get("phantom_income_total", "0"))
+        estimated_tax_liability = Decimal(tax_result.data.get("total_estimated_tax", "0"))
+
+        tax_context = {
+            "short_term_gains": str(short_term_gains),
+            "long_term_gains": str(long_term_gains),
+            "total_realized_gains": str(total_realized_gains),
+            "bond_oid_income": str(bond_oid_income),
+            "estimated_tax_liability": str(estimated_tax_liability),
+            "tax_loss_harvesting_opportunities": loss_harvesting_opportunities,
+            "tax_lot_summary": {
+                "total_lots": total_lots,
+                "long_term_lots": long_term_lots,
+                "short_term_lots": short_term_lots,
+            },
+            "wash_sale_warnings": wash_sale_warnings,
+        }
+
+        return json.dumps(tax_context, indent=2, default=str)
+
+    @mcp.resource("ib://strategy/rebalancing-context")
+    def get_rebalancing_context() -> str:
+        """
+        Get portfolio rebalancing context with allocation and drift analysis
+
+        Provides portfolio allocation, target allocations, drift analysis,
+        and suggested rebalancing actions.
+
+        Returns:
+            JSON string with rebalancing context data
+        """
+        data_dir = Path("data/raw")
+        if not data_dir.exists():
+            return json.dumps({"error": "No data directory found"})
+
+        csv_files = list(data_dir.glob("*.csv"))
+        if not csv_files:
+            return json.dumps({"error": "No CSV files found"})
+
+        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+
+        with open(latest_file) as f:
+            csv_data = f.read()
+
+        account = CSVParser.to_account(csv_data)
+
+        # Calculate current allocation
+        total_value = account.total_value
+        if total_value == 0:
+            return json.dumps({"error": "No portfolio value found"})
+
+        # Calculate asset class values
+        bond_value = sum(
+            p.position_value for p in account.positions if p.asset_class == AssetClass.BOND
+        )
+        stock_value = sum(
+            p.position_value for p in account.positions if p.asset_class == AssetClass.STOCK
+        )
+        cash_value = account.total_cash
+
+        # Current allocation percentages (using Decimal for precision)
+        bond_pct = (
+            ((bond_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+        stock_pct = (
+            ((stock_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+        cash_pct = (
+            ((cash_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+
+        current_allocation = {
+            "BOND": {"percentage": str(bond_pct), "value": str(bond_value)},
+            "STK": {"percentage": str(stock_pct), "value": str(stock_value)},
+            "CASH": {"percentage": str(cash_pct), "value": str(cash_value)},
+        }
+
+        # Target allocation (TODO: Make configurable via config file or tool parameter)
+        # Default conservative allocation (60/35/5)
+        target_allocation = {
+            "BOND": Decimal("60.0"),
+            "STK": Decimal("35.0"),
+            "CASH": Decimal("5.0"),
+        }
+
+        # Drift analysis
+        bond_drift = bond_pct - target_allocation["BOND"]
+        stock_drift = stock_pct - target_allocation["STK"]
+        cash_drift = cash_pct - target_allocation["CASH"]
+
+        drift_analysis = {
+            "BOND": {
+                "drift": str(bond_drift.quantize(Decimal("0.1"))),
+                "status": (
+                    "overweight"
+                    if bond_drift > 0
+                    else "underweight"
+                    if bond_drift < 0
+                    else "balanced"
+                ),
+            },
+            "STK": {
+                "drift": str(stock_drift.quantize(Decimal("0.1"))),
+                "status": (
+                    "overweight"
+                    if stock_drift > 0
+                    else "underweight"
+                    if stock_drift < 0
+                    else "balanced"
+                ),
+            },
+            "CASH": {
+                "drift": str(cash_drift.quantize(Decimal("0.1"))),
+                "status": (
+                    "overweight"
+                    if cash_drift > 0
+                    else "underweight"
+                    if cash_drift < 0
+                    else "balanced"
+                ),
+            },
+        }
+
+        # Check if rebalancing is needed (if any drift > ±5%)
+        rebalancing_needed = (
+            abs(bond_drift) > Decimal("5")
+            or abs(stock_drift) > Decimal("5")
+            or abs(cash_drift) > Decimal("5")
+        )
+
+        # Suggested actions
+        suggested_actions = []
+
+        if rebalancing_needed:
+            # Calculate target values
+            target_bond_value = total_value * (target_allocation["BOND"] / Decimal("100"))
+            target_stock_value = total_value * (target_allocation["STK"] / Decimal("100"))
+
+            # Bond rebalancing
+            bond_diff = bond_value - target_bond_value
+            if abs(bond_diff) > Decimal("1000"):  # Only suggest if difference > $1000
+                if bond_diff > 0:
+                    suggested_actions.append(
+                        {
+                            "action": "sell",
+                            "asset_class": "BOND",
+                            "amount": str(abs(bond_diff)),
+                            "reason": f"Reduce from {bond_pct}% to {target_allocation['BOND']}% target",
+                        }
+                    )
+                else:
+                    suggested_actions.append(
+                        {
+                            "action": "buy",
+                            "asset_class": "BOND",
+                            "amount": str(abs(bond_diff)),
+                            "reason": f"Increase from {bond_pct}% to {target_allocation['BOND']}% target",
+                        }
+                    )
+
+            # Stock rebalancing
+            stock_diff = stock_value - target_stock_value
+            if abs(stock_diff) > Decimal("1000"):
+                if stock_diff > 0:
+                    suggested_actions.append(
+                        {
+                            "action": "sell",
+                            "asset_class": "STK",
+                            "amount": str(abs(stock_diff)),
+                            "reason": f"Reduce from {stock_pct}% to {target_allocation['STK']}% target",
+                        }
+                    )
+                else:
+                    suggested_actions.append(
+                        {
+                            "action": "buy",
+                            "asset_class": "STK",
+                            "amount": str(abs(stock_diff)),
+                            "reason": f"Increase from {stock_pct}% to {target_allocation['STK']}% target",
+                        }
+                    )
+
+        # Concentration risk
+        top_holdings = []
+        sorted_positions = sorted(account.positions, key=lambda p: p.position_value, reverse=True)
+        max_position_size = Decimal("0")
+
+        for position in sorted_positions[:2]:  # Top 2 holdings
+            position_pct = (
+                ((position.position_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+                if total_value > 0
+                else Decimal("0.0")
+            )
+            top_holdings.append({"symbol": position.symbol, "percentage": str(position_pct)})
+            max_position_size = max(max_position_size, position_pct)
+
+        # Diversification score
+        if max_position_size < Decimal("15"):
+            diversification_score = "good"
+        elif max_position_size <= Decimal("25"):
+            diversification_score = "moderate"
+        else:
+            diversification_score = "poor"
+
+        rebalancing_context = {
+            "current_allocation": current_allocation,
+            "target_allocation": {
+                "BOND": str(target_allocation["BOND"]),
+                "STK": str(target_allocation["STK"]),
+                "CASH": str(target_allocation["CASH"]),
+            },
+            "drift_analysis": drift_analysis,
+            "rebalancing_needed": rebalancing_needed,
+            "suggested_actions": suggested_actions,
+            "concentration_risk": {
+                "top_holdings": top_holdings,
+                "max_position_size": str(max_position_size),
+                "diversification_score": diversification_score,
+            },
+        }
+
+        return json.dumps(rebalancing_context, indent=2, default=str)
+
+    @mcp.resource("ib://strategy/risk-context")
+    def get_risk_context() -> str:
+        """
+        Get comprehensive risk assessment context
+
+        Provides portfolio risk metrics, interest rate scenarios,
+        concentration risk, liquidity risk, and maturity ladder.
+
+        Returns:
+            JSON string with risk context data
+        """
+        data_dir = Path("data/raw")
+        if not data_dir.exists():
+            return json.dumps({"error": "No data directory found"})
+
+        csv_files = list(data_dir.glob("*.csv"))
+        if not csv_files:
+            return json.dumps({"error": "No CSV files found"})
+
+        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+
+        with open(latest_file) as f:
+            csv_data = f.read()
+
+        account = CSVParser.to_account(csv_data)
+
+        # Portfolio risk metrics
+        total_value = account.total_value
+        if total_value == 0:
+            return json.dumps({"error": "No portfolio value found"})
+
+        # Asset class percentages
+        bond_value = sum(
+            p.position_value for p in account.positions if p.asset_class == AssetClass.BOND
+        )
+        stock_value = sum(
+            p.position_value for p in account.positions if p.asset_class == AssetClass.STOCK
+        )
+        cash_value = account.total_cash
+
+        cash_percentage = (
+            ((cash_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+        equity_percentage = (
+            ((stock_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+        fixed_income_percentage = (
+            ((bond_value / total_value) * Decimal("100")).quantize(Decimal("0.1"))
+            if total_value > 0
+            else Decimal("0.0")
+        )
+
+        # Calculate bond portfolio duration and maturity
+        bond_positions = [p for p in account.positions if p.asset_class == AssetClass.BOND]
+
+        # Calculate average duration and maturity
+        total_duration = Decimal("0")
+        total_maturity_years = Decimal("0")
+        bond_count = 0
+
+        for position in bond_positions:
+            if position.maturity_date:
+                years_to_maturity = Decimal((position.maturity_date - date.today()).days) / Decimal(
+                    "365.25"
+                )
+                total_maturity_years += years_to_maturity
+                # For zero-coupon bonds, duration equals time to maturity (exact, not approximation)
+                # Note: For coupon-bearing bonds, use Macaulay/Modified duration instead
+                total_duration += years_to_maturity
+                bond_count += 1
+
+        avg_duration = str(total_duration / bond_count) if bond_count > 0 else "0"
+        avg_maturity = str(total_maturity_years / bond_count) if bond_count > 0 else "0"
+
+        # Interest rate scenarios using RiskAnalyzer
+        risk_analyzer = RiskAnalyzer(account=account)
+        risk_result = risk_analyzer.analyze()
+
+        # Extract specific scenarios for ±1% rate changes
+        interest_rate_impact_1pct_rise = Decimal("0")
+        interest_rate_impact_1pct_fall = Decimal("0")
+
+        if (
+            "interest_rate_scenarios" in risk_result.data
+            and "scenarios" in risk_result.data["interest_rate_scenarios"]
+        ):
+            for scenario in risk_result.data["interest_rate_scenarios"]["scenarios"]:
+                if scenario["rate_change"] == "1.0":
+                    interest_rate_impact_1pct_rise = Decimal(scenario["total_value_change"])
+                elif scenario["rate_change"] == "-1.0":
+                    interest_rate_impact_1pct_fall = Decimal(scenario["total_value_change"])
+
+        interest_rate_scenarios = {
+            "1_percent_rise": {
+                "estimated_impact": str(interest_rate_impact_1pct_rise),
+                "new_portfolio_value": str(total_value + interest_rate_impact_1pct_rise),
+                "percentage_change": str(
+                    ((interest_rate_impact_1pct_rise / total_value) * Decimal("100")).quantize(
+                        Decimal("0.1")
+                    )
+                    if total_value > 0
+                    else Decimal("0.0")
+                ),
+            },
+            "1_percent_fall": {
+                "estimated_impact": str(interest_rate_impact_1pct_fall),
+                "new_portfolio_value": str(total_value + interest_rate_impact_1pct_fall),
+                "percentage_change": str(
+                    ((interest_rate_impact_1pct_fall / total_value) * Decimal("100")).quantize(
+                        Decimal("0.1")
+                    )
+                    if total_value > 0
+                    else Decimal("0.0")
+                ),
+            },
+        }
+
+        # Concentration risk
+        asset_class_concentration = {
+            "bonds": (
+                "high"
+                if fixed_income_percentage > 60
+                else "moderate"
+                if fixed_income_percentage > 40
+                else "low"
+            ),
+            "stocks": (
+                "high"
+                if equity_percentage > 60
+                else "moderate"
+                if equity_percentage > 40
+                else "low"
+            ),
+        }
+
+        # Find max single position
+        max_position = None
+        max_position_pct = Decimal("0.0")
+        if account.positions:
+            sorted_positions = sorted(
+                account.positions, key=lambda p: p.position_value, reverse=True
+            )
+            max_position = sorted_positions[0]
+            max_position_pct = (
+                ((max_position.position_value / total_value) * Decimal("100")).quantize(
+                    Decimal("0.1")
+                )
+                if total_value > 0
+                else Decimal("0.0")
+            )
+
+        single_security_risk = {
+            "max_position": {
+                "symbol": max_position.symbol if max_position else None,
+                "percentage": str(max_position_pct),
+            },
+            "risk_level": (
+                "high"
+                if max_position_pct > Decimal("25")
+                else "moderate"
+                if max_position_pct > Decimal("15")
+                else "low"
+            ),
+        }
+
+        # Liquidity risk
+        today = date.today()
+        liquid_positions = 0
+        illiquid_positions = 0
+
+        for position in account.positions:
+            if position.asset_class == AssetClass.STOCK:
+                liquid_positions += 1
+            elif position.asset_class == AssetClass.BOND:
+                # Bonds maturing within 1 year are considered less liquid
+                if position.maturity_date:
+                    days_to_maturity = (position.maturity_date - today).days
+                    if days_to_maturity < 365:
+                        illiquid_positions += 1
+                    else:
+                        liquid_positions += 1
+                else:
+                    liquid_positions += 1
+
+        total_positions = liquid_positions + illiquid_positions
+        liquidity_ratio = liquid_positions / total_positions if total_positions > 0 else 0.0
+
+        liquidity_risk = {
+            "liquid_positions": liquid_positions,
+            "illiquid_positions": illiquid_positions,
+            "liquidity_ratio": round(liquidity_ratio, 2),
+        }
+
+        # Maturity ladder
+        maturity_ladder = []
+        maturity_by_year = {}
+
+        for position in bond_positions:
+            if position.maturity_date:
+                maturity_year = position.maturity_date.year
+                if maturity_year not in maturity_by_year:
+                    maturity_by_year[maturity_year] = {
+                        "value": Decimal("0"),
+                        "count": 0,
+                    }
+                maturity_by_year[maturity_year]["value"] += position.position_value
+                maturity_by_year[maturity_year]["count"] += 1
+
+        for year in sorted(maturity_by_year.keys())[:3]:  # Next 3 maturity years
+            maturity_ladder.append(
+                {
+                    "year": year,
+                    "value": str(maturity_by_year[year]["value"]),
+                    "count": maturity_by_year[year]["count"],
+                }
+            )
+
+        risk_context = {
+            "portfolio_risk_metrics": {
+                "total_value": str(total_value),
+                "cash_percentage": str(cash_percentage),
+                "equity_percentage": str(equity_percentage),
+                "fixed_income_percentage": str(fixed_income_percentage),
+                "portfolio_duration": avg_duration,
+                "average_maturity_years": avg_maturity,
+            },
+            "interest_rate_scenarios": interest_rate_scenarios,
+            "concentration_risk": {
+                "asset_class_concentration": asset_class_concentration,
+                "single_security_risk": single_security_risk,
+            },
+            "liquidity_risk": liquidity_risk,
+            "maturity_ladder": maturity_ladder,
+        }
+
+        return json.dumps(risk_context, indent=2, default=str)
