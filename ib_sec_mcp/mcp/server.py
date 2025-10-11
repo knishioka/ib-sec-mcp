@@ -78,7 +78,12 @@ def main() -> None:
     # Check for debug mode from environment
     import os
 
+    from ib_sec_mcp.utils.logger import configure_logging as configure_app_logging
+
     enable_debug = os.getenv("IB_DEBUG", "").lower() in ("1", "true", "yes")
+
+    # Configure application-wide logging first
+    configure_app_logging(debug=enable_debug)
 
     # Configure FastMCP logging with rich tracebacks
     configure_logging(
