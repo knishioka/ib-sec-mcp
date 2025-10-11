@@ -19,7 +19,7 @@ This file provides guidance to Claude Code when working with code in this reposi
   - `rich` 13.7.0+ (console UI)
   - `typer` 0.12.0+ (CLI framework)
 - **Package Management**: `pip` with `pyproject.toml` (setuptools backend)
-- **Code Quality**: `black`, `ruff`, `mypy` (optional dev dependencies)
+- **Code Quality**: `ruff`, `mypy` (optional dev dependencies)
 - **Testing**: `pytest`, `pytest-asyncio`, `pytest-cov` (optional dev dependencies)
 
 ## Project Structure
@@ -99,10 +99,10 @@ ib-sec-analyze data.csv -a performance -a cost -a bond -a tax
 ### Development Commands
 ```bash
 # Code formatting
-black ib_sec_mcp tests
+ruff format ib_sec_mcp tests
 
 # Linting
-ruff check ib_sec_mcp tests
+ruff check ib_sec_mcp tests --fix
 
 # Type checking
 mypy ib_sec_mcp
@@ -116,7 +116,7 @@ pytest --cov=ib_sec_mcp --cov-report=html
 
 ### Python Style
 - **Line Length**: 100 characters max
-- **Formatter**: Black (100 char limit)
+- **Formatter**: Ruff (100 char limit)
 - **Linter**: Ruff (E, F, I, N, W, UP, B, A, C4, T20, SIM rules)
 - **Type Checking**: mypy in strict mode
 - **Import Order**: stdlib → third-party → local (managed by ruff)
