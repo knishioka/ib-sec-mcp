@@ -441,6 +441,111 @@ Once you've set up the MCP server in Claude Desktop, you can use natural languag
 - |r| < 0.3: Low correlation (good diversification)
 - Negative correlation: Positions move in opposite directions (excellent diversification)
 
+## Usage Modes
+
+IB Analytics supports **three distinct usage modes** for different user types and workflows:
+
+### 1. Claude Desktop (Conversational Analysis)
+
+**Target Users**: Investors, portfolio managers, financial analysts
+
+**Use Case**: Natural language portfolio analysis and investment research
+
+**Setup**: Install MCP server in Claude Desktop configuration
+
+**Capabilities**:
+- Natural language queries ("What's my portfolio performance this quarter?")
+- Automated data fetching from IB Flex Query API
+- Comprehensive portfolio analysis with one question
+- Investment research (stock info, news, analyst ratings)
+- Risk assessment and tax planning recommendations
+
+**Example Workflow**:
+```
+You: "Analyze my portfolio performance and suggest tax optimization strategies"
+Claude: [Fetches latest data, runs performance/tax analysis, provides recommendations]
+```
+
+### 2. Claude Code + MCP (Custom Analysis)
+
+**Target Users**: Data scientists, quantitative analysts, developers
+
+**Use Case**: Flexible data analysis with composable MCP tools
+
+**Setup**: Use Claude Code with MCP server enabled
+
+**Capabilities**:
+- Compose multiple MCP tools for custom analysis
+- Fine-grained data access (get_trades, get_positions, calculate_metric)
+- Period-over-period comparisons
+- Custom metric calculations
+- Strategy resources (tax context, rebalancing context, risk context)
+
+**Example Workflow**:
+```python
+# Get AAPL trades from Q1
+trades = get_trades(symbol="AAPL", start_date="2025-01-01", end_date="2025-03-31")
+
+# Calculate win rate for bond trades
+bond_performance = calculate_metric(metric_name="win_rate", asset_class="BOND")
+
+# Compare Q1 vs Q2 performance
+comparison = compare_periods(
+    period1_start="2025-01-01", period1_end="2025-03-31",
+    period2_start="2025-04-01", period2_end="2025-06-30"
+)
+```
+
+### 3. Claude Code + Repository (Advanced Development)
+
+**Target Users**: Developers, power users, automation engineers
+
+**Use Case**: Complete development workflow automation with specialized sub-agents
+
+**Setup**: Clone repository and use Claude Code in project directory
+
+**Capabilities**:
+- **7 Specialized Sub-Agents**:
+  - `data-analyzer`: Financial data analysis specialist
+  - `test-runner`: Testing and quality assurance
+  - `code-implementer`: Feature implementation with TDD
+  - `code-reviewer`: Code quality enforcement
+  - `performance-optimizer`: Profiling and optimization
+  - `api-debugger`: IB API troubleshooting
+  - `issue-analyzer`: GitHub issue analysis
+- **12 Slash Commands**: Automated workflows (see `.claude/README.md`)
+- **GitHub Integration**: Issue → Branch → Tests → Code → PR workflow
+- **Quality Gates**: Automated black, ruff, mypy, pytest execution
+- **TDD Workflow**: Test-first development enforced
+
+**Example Workflow**:
+```bash
+# Resolve GitHub issue with complete automation
+/resolve-gh-issue 42
+
+# Workflow executes:
+# 1. Analyze issue requirements (issue-analyzer)
+# 2. Create failing tests (test-runner, TDD)
+# 3. Implement feature (code-implementer)
+# 4. Quality checks (code-reviewer)
+# 5. Generate PR with comprehensive description
+# 6. Monitor CI checks
+# Result: 80 minutes → 8 minutes (90% time savings)
+```
+
+**Additional Commands**:
+```bash
+/optimize-portfolio              # Deep portfolio analysis
+/compare-periods 2025-01-01 2025-03-31 2025-04-01 2025-06-30
+/tax-report --save               # Generate tax planning report
+/quality-check --fix             # Run all quality gates
+/benchmark --full                # Performance profiling
+```
+
+See [.claude/README.md](.claude/README.md) for complete sub-agent and slash command documentation.
+
+---
+
 ## MCP Server Integration
 
 IB Analytics provides a **Model Context Protocol (MCP)** server for integration with Claude Desktop and other MCP clients.
@@ -483,7 +588,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-See [.claude/CLAUDE.md](.claude/CLAUDE.md) for detailed MCP documentation.
+See [.claude/CLAUDE.md](.claude/CLAUDE.md) for detailed MCP documentation and usage patterns.
 
 ## Development
 
