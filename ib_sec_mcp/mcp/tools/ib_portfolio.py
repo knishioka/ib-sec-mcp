@@ -94,25 +94,21 @@ async def _get_or_fetch_data(
 
     # Check cache first
     if use_cache:
-        # Load config to get account ID for cache lookup
+        # Try to find cached file
         try:
-            config = Config.load()
-            credentials = config.get_credentials()
-            if account_index < len(credentials):
-                # Try to find cached file
-                data_dir = Path("data/raw")
-                # We don't know exact account_id yet, so try pattern matching
-                pattern = f"*_{from_date}_{to_date}.csv"
-                cached_files = list(data_dir.glob(pattern))
+            data_dir = Path("data/raw")
+            # We don't know exact account_id yet, so try pattern matching
+            pattern = f"*_{from_date}_{to_date}.csv"
+            cached_files = list(data_dir.glob(pattern))
 
-                if cached_files:
-                    cached_file = cached_files[0]  # Use first match
-                    if ctx:
-                        await ctx.info(f"Using cached data from {cached_file}")
+            if cached_files:
+                cached_file = cached_files[0]  # Use first match
+                if ctx:
+                    await ctx.info(f"Using cached data from {cached_file}")
 
-                    with open(cached_file) as f:
-                        data = f.read()
-                    return data, from_date, to_date
+                with open(cached_file) as f:
+                    data = f.read()
+                return data, from_date, to_date
         except Exception:  # nosec B110
             # If cache lookup fails, proceed to fetch
             pass
@@ -124,12 +120,13 @@ async def _get_or_fetch_data(
     # Load configuration
     try:
         config = Config.load()
-        credentials_list = config.get_credentials()
-        if account_index >= len(credentials_list):
-            raise ConfigurationError(
-                f"Account index {account_index} out of range (have {len(credentials_list)} accounts)"
+        credentials = config.get_credentials()
+        # Note: account_index currently not supported (single account config)
+        # Multi-account support requires config changes
+        if account_index != 0 and ctx:
+            await ctx.warning(
+                f"account_index {account_index} specified but only single account supported. Using default account."
             )
-        credentials = credentials_list[account_index]
     except Exception as e:
         if ctx:
             await ctx.error(f"Configuration error: {str(e)}")
