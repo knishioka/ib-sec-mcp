@@ -146,9 +146,7 @@ def register_options_tools(mcp: FastMCP) -> None:
                 "interpretation": (
                     "Bearish (PCR > 1.0)"
                     if pcr > 1.0
-                    else "Neutral (PCR ≈ 1.0)"
-                    if 0.7 <= pcr <= 1.3
-                    else "Bullish (PCR < 0.7)"
+                    else ("Neutral (PCR ≈ 1.0)" if 0.7 <= pcr <= 1.3 else "Bullish (PCR < 0.7)")
                 ),
                 "details": {
                     "total_puts": int(put_total),

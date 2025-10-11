@@ -9,7 +9,8 @@ from fastmcp import FastMCP
 def register_all_tools(mcp: FastMCP) -> None:
     """Register all IB Analytics tools with MCP server"""
 
-    # Import and register tools from各モジュール
+    # Import and register tools from each module
+    from ib_sec_mcp.mcp.tools.composable_data import register_composable_data_tools
     from ib_sec_mcp.mcp.tools.ib_portfolio import register_ib_portfolio_tools
     from ib_sec_mcp.mcp.tools.market_comparison import register_market_comparison_tools
     from ib_sec_mcp.mcp.tools.options import register_options_tools
@@ -21,6 +22,7 @@ def register_all_tools(mcp: FastMCP) -> None:
 
     # Register all tool groups
     register_ib_portfolio_tools(mcp)
+    register_composable_data_tools(mcp)  # Add composable data tools
     register_stock_data_tools(mcp)
     register_stock_news_tools(mcp)
     register_options_tools(mcp)
