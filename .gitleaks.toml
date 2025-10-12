@@ -34,12 +34,8 @@ keywords = [
 [[rules]]
 id = "ib-account-id"
 description = "Interactive Brokers Account ID"
-regex = '''U\d{8}'''
-keywords = [
-    "account",
-    "Account",
-    "ACCOUNT",
-]
+regex = '''U\d{7,10}'''
+# Note: No keywords required - should always detect U followed by 7-10 digits
 
 # Additional security patterns
 [[rules]]
@@ -62,16 +58,12 @@ paths = [
     '''\.env\.example$''',
     '''\.env\.template$''',
 
-    # Documentation
-    '''README\.md$''',
-    '''INSTALL\.md$''',
-    '''PROJECT_SUMMARY\.md$''',
-    '''\.claude/.*\.md$''',
-    '''CHANGELOG\.md$''',
-
     # Configuration examples
     '''.pre-commit-config\.yaml$''',
     '''.gitleaks\.toml$''',
+
+    # IMPORTANT: Documentation files are NOT allowlisted
+    # Real account IDs should be detected in docs
 ]
 
 regexes = [
@@ -85,8 +77,9 @@ regexes = [
     '''1234567890123456789012345''', # Generic placeholder numbers
 
     # Generic account IDs (for documentation examples)
-    '''U12345678''',
-    '''U87654321''',
+    # Use U followed by 7 digits for examples (e.g., U1234567)
+    '''U1234567''',
+    '''U7654321''',
 
     # Code placeholders
     '''\.\.\.$''', # Ellipsis placeholders
@@ -97,8 +90,8 @@ regexes = [
     '''test''',
     '''dummy''',
 
+    # IMPORTANT: Real account IDs (U followed by 8-10 digits) will be detected
     # Note: DO NOT add real credentials here
-    # Real credentials in .env will still be detected (as expected)
 ]
 
 # Stopwords to reduce false positives
