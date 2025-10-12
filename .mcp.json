@@ -8,6 +8,12 @@
         "QUERY_ID": "${QUERY_ID}",
         "TOKEN": "${TOKEN}"
       }
+    },
+    "codex": {
+      "type": "stdio",
+      "command": "codex",
+      "args": ["mcp"],
+      "env": {}
     }
   }
 }
