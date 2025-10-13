@@ -1,7 +1,7 @@
 ---
 name: market-analyst
 description: Market analysis specialist for technical analysis, options strategies, and ETF comparison. Use this subagent for stock/options market analysis, entry/exit timing, and trading strategy recommendations.
-tools: Read, mcp__ib-sec-mcp__get_stock_analysis, mcp__ib-sec-mcp__get_multi_timeframe_analysis, mcp__ib-sec-mcp__calculate_greeks, mcp__ib-sec-mcp__calculate_iv_metrics, mcp__ib-sec-mcp__calculate_max_pain, mcp__ib-sec-mcp__get_options_chain, mcp__ib-sec-mcp__compare_etf_performance, mcp__ib-sec-mcp__get_stock_news, mcp__ib-sec-mcp__get_stock_info, mcp__ib-sec-mcp__get_stock_data, mcp__ib-sec-mcp__get_current_price
+tools: mcp__ib-sec-mcp__get_stock_analysis, mcp__ib-sec-mcp__get_multi_timeframe_analysis, mcp__ib-sec-mcp__calculate_greeks, mcp__ib-sec-mcp__calculate_iv_metrics, mcp__ib-sec-mcp__calculate_max_pain, mcp__ib-sec-mcp__get_options_chain, mcp__ib-sec-mcp__compare_etf_performance, mcp__ib-sec-mcp__get_stock_news, mcp__ib-sec-mcp__get_stock_info, mcp__ib-sec-mcp__get_stock_data, mcp__ib-sec-mcp__get_current_price
 model: sonnet
 ---
 
