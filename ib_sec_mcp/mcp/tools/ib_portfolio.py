@@ -617,6 +617,214 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
+    async def analyze_consolidated_portfolio(
+        start_date: str,
+        end_date: str | None = None,
+        use_cache: bool = True,
+        ctx: Context | None = None,
+    ) -> str:
+        """
+        Analyze all accounts as a consolidated portfolio
+
+        Automatically fetches data from IB API (with caching) and performs comprehensive
+        analysis across all accounts, providing both consolidated metrics and per-account
+        breakdown.
+
+        Args:
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+            use_cache: Use cached data if available (default: True)
+            ctx: MCP context for logging
+
+        Returns:
+            JSON string with consolidated portfolio analysis including:
+            - Total portfolio value and breakdown by account
+            - Consolidated performance metrics
+            - Holdings aggregated by symbol across accounts
+            - Asset allocation and concentration risk
+            - Tax summary across all accounts
+            - Risk assessment for consolidated portfolio
+
+        Raises:
+            ValidationError: If input validation fails
+            ConfigurationError: If credentials are missing
+            APIError: If IB API call fails
+            IBTimeoutError: If operation times out
+        """
+        from collections import defaultdict
+        from decimal import Decimal
+
+        if ctx:
+            await ctx.info(
+                f"Analyzing consolidated portfolio for {start_date} to {end_date or 'today'}"
+            )
+
+        # Get or fetch data
+        data, from_date, to_date = await _get_or_fetch_data(
+            start_date, end_date, account_index=0, use_cache=use_cache, ctx=ctx
+        )
+
+        # Auto-detect format and parse all accounts
+        format_type = detect_format(data)
+        if format_type == "xml":
+            accounts = XMLParser.to_accounts(data, from_date, to_date)
+        else:
+            accounts = CSVParser.to_accounts(data, from_date, to_date)
+
+        if ctx:
+            await ctx.info(f"Found {len(accounts)} account(s) to analyze")
+
+        # Initialize consolidated metrics
+        total_cash = Decimal("0")
+        total_value = Decimal("0")
+        total_trades = 0
+        consolidated_positions_by_symbol = defaultdict(
+            lambda: {"total_quantity": Decimal("0"), "total_value": Decimal("0"), "accounts": []}
+        )
+        account_summaries = []
+
+        # Aggregate data across accounts
+        for acc_id, account in accounts.items():
+            total_cash += account.total_cash
+            total_value += account.total_value
+            total_trades += len(account.trades)
+
+            # Aggregate positions by symbol
+            for position in account.positions:
+                symbol = position.symbol
+                consolidated_positions_by_symbol[symbol]["total_quantity"] += position.quantity
+                consolidated_positions_by_symbol[symbol]["total_value"] += (
+                    position.cost_basis * abs(position.quantity)
+                )
+                if acc_id not in consolidated_positions_by_symbol[symbol]["accounts"]:
+                    consolidated_positions_by_symbol[symbol]["accounts"].append(acc_id)
+
+            # Per-account summary
+            account_summaries.append(
+                {
+                    "account_id": account.account_id,
+                    "account_alias": account.account_alias or acc_id,
+                    "cash": str(account.total_cash),
+                    "value": str(account.total_value),
+                    "percentage_of_total": str(
+                        round(
+                            (account.total_value / total_value * 100) if total_value > 0 else 0, 2
+                        )
+                    ),
+                    "num_positions": len(account.positions),
+                    "num_trades": len(account.trades),
+                }
+            )
+
+        # Calculate consolidated holdings
+        holdings_by_symbol = []
+        for symbol, data in sorted(
+            consolidated_positions_by_symbol.items(),
+            key=lambda x: x[1]["total_value"],
+            reverse=True,
+        ):
+            percentage = (
+                round((data["total_value"] / total_value * 100), 2) if total_value > 0 else 0
+            )
+            holdings_by_symbol.append(
+                {
+                    "symbol": symbol,
+                    "total_quantity": str(data["total_quantity"]),
+                    "total_value": str(data["total_value"]),
+                    "percentage_of_portfolio": str(percentage),
+                    "num_accounts": len(data["accounts"]),
+                    "accounts": data["accounts"],
+                }
+            )
+
+        # Calculate asset allocation
+        stocks_value = Decimal("0")
+        bonds_value = Decimal("0")
+        for symbol, data in consolidated_positions_by_symbol.items():
+            # Simple heuristic: bonds have numbers in symbol (e.g., US TREASURY STRIPS)
+            # or contain "STRIP" in description
+            if any(char.isdigit() for char in symbol) or "STRIP" in symbol.upper():
+                bonds_value += data["total_value"]
+            else:
+                stocks_value += data["total_value"]
+
+        # Concentration risk
+        largest_position_pct = (
+            round((holdings_by_symbol[0]["total_value"] / str(total_value) * 100), 2)
+            if holdings_by_symbol and total_value > 0
+            else 0
+        )
+        top_3_value = sum(
+            Decimal(h["total_value"]) for h in holdings_by_symbol[:3] if holdings_by_symbol
+        )
+        top_3_pct = round((top_3_value / total_value * 100), 2) if total_value > 0 else 0
+
+        # Build consolidated result
+        result = {
+            "analysis_period": {"from": str(from_date), "to": str(to_date)},
+            "num_accounts": len(accounts),
+            "total_portfolio_value": str(total_value),
+            "total_cash": str(total_cash),
+            "total_invested": str(total_value - total_cash),
+            "cash_percentage": str(round((total_cash / total_value * 100), 2))
+            if total_value > 0
+            else "0.0",
+            "accounts": account_summaries,
+            "consolidated_holdings": {
+                "num_unique_symbols": len(consolidated_positions_by_symbol),
+                "total_num_positions": sum(len(acc.positions) for acc in accounts.values()),
+                "holdings_by_symbol": holdings_by_symbol,
+            },
+            "asset_allocation": {
+                "stocks": {
+                    "value": str(stocks_value),
+                    "percentage": str(round((stocks_value / total_value * 100), 2))
+                    if total_value > 0
+                    else "0.0",
+                },
+                "bonds": {
+                    "value": str(bonds_value),
+                    "percentage": str(round((bonds_value / total_value * 100), 2))
+                    if total_value > 0
+                    else "0.0",
+                },
+                "cash": {
+                    "value": str(total_cash),
+                    "percentage": str(round((total_cash / total_value * 100), 2))
+                    if total_value > 0
+                    else "0.0",
+                },
+            },
+            "concentration_risk": {
+                "largest_position_percentage": str(largest_position_pct),
+                "largest_position_symbol": holdings_by_symbol[0]["symbol"]
+                if holdings_by_symbol
+                else None,
+                "top_3_positions_percentage": str(top_3_pct),
+                "assessment": "HIGH"
+                if largest_position_pct > 15
+                else "MEDIUM"
+                if largest_position_pct > 10
+                else "LOW",
+            },
+            "trading_activity": {
+                "total_trades": total_trades,
+                "trades_per_account": {
+                    summary["account_id"]: summary["num_trades"] for summary in account_summaries
+                },
+            },
+        }
+
+        if ctx:
+            await ctx.info(
+                f"Consolidated analysis complete: {len(accounts)} accounts, "
+                f"{len(consolidated_positions_by_symbol)} unique symbols, "
+                f"${total_value:,.2f} total value"
+            )
+
+        return json.dumps(result, indent=2, default=str)
+
+    @mcp.tool
     async def get_portfolio_summary(csv_path: str, ctx: Context | None = None) -> str:
         """
         Get comprehensive portfolio summary

@@ -23,9 +23,11 @@ The **strategy-coordinator** subagent will:
 
 **1. Orchestrate Portfolio Analysis (via data-analyzer)**
 - Load latest portfolio data
-- Analyze performance, costs, bonds, taxes, risks
-- Identify current holdings and their status
-- Assess portfolio strengths and weaknesses
+- **Perform CONSOLIDATED ANALYSIS across ALL accounts**
+- Analyze performance, costs, bonds, taxes, risks at portfolio level
+- Identify current holdings aggregated by symbol (not per-account)
+- Show which accounts hold each symbol
+- Assess portfolio strengths and weaknesses at consolidated level
 
 **2. Orchestrate Market Analysis (via market-analyst)**
 - Analyze each current holding:
@@ -54,9 +56,11 @@ Please orchestrate the following:
 
 1. Portfolio Analysis Phase:
    - Delegate to data-analyzer subagent
-   - Get current holdings with performance metrics
-   - Analyze tax situation and risk profile
-   - Identify portfolio strengths and concerns
+   - **Use CONSOLIDATED portfolio analysis across ALL accounts**
+   - Get current holdings aggregated by symbol (show which accounts hold each)
+   - Analyze tax situation and risk profile at portfolio level
+   - Provide per-account breakdown for rebalancing
+   - Identify portfolio strengths and concerns at consolidated level
 
 2. Market Analysis Phase:
    - Delegate to market-analyst subagent
@@ -76,11 +80,12 @@ Please orchestrate the following:
      - Analyze technical setups and entry points
      - Define position sizing and risk management
 
-   - Portfolio-level recommendations:
-     - Rebalancing needs
-     - Tax optimization strategies
-     - Options for income/protection
-     - Risk management adjustments
+   - Portfolio-level recommendations (CONSOLIDATED):
+     - Rebalancing needs across ALL accounts
+     - Cross-account tax optimization strategies
+     - Options for income/protection per account
+     - Risk management adjustments at portfolio level
+     - Asset location efficiency across accounts
 
 4. Action Prioritization:
    - Urgent actions (this week)
@@ -104,7 +109,7 @@ $ARGUMENTS
 ```
 === COMPREHENSIVE INVESTMENT STRATEGY ===
 Generated: [DATE]
-Portfolio Value: $XXX,XXX
+Portfolio Value: $XXX,XXX (Consolidated across N accounts)
 Analysis Period: [START] to [END]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -113,7 +118,13 @@ Analysis Period: [START] to [END]
 
 Portfolio Health: [EXCELLENT|GOOD|FAIR|NEEDS ATTENTION]
 
-Performance Summary:
+**Multi-Account Overview**:
+- Account 1 (Family Sub): $XX,XXX (X.X%)
+- Account 2 (Private): $XX,XXX (XX.X%)
+- Account 3 (Family Main): $XXX,XXX (XX.X%)
+- **Total**: $XXX,XXX
+
+Performance Summary (Consolidated):
 - YTD Return: +X.X%
 - Total P&L: $X,XXX
 - Win Rate: XX%
@@ -126,9 +137,10 @@ Key Findings:
    • [Strength 3: e.g., Low cost structure]
 
 ⚠️ Concerns:
-   • [Concern 1: e.g., Overconcentration in tech sector (45%)]
-   • [Concern 2: e.g., Short-term capital gains tax exposure]
-   • [Concern 3: e.g., Negative technical signals on key holdings]
+   • [Concern 1: e.g., PORTFOLIO-LEVEL concentration (accurate across all accounts)]
+   • [Concern 2: e.g., Short-term capital gains tax exposure in Account 2]
+   • [Concern 3: e.g., Suboptimal asset location across accounts]
+   • [Concern 4: e.g., Negative technical signals on key holdings]
 
 💡 Strategic Direction:
 [2-3 paragraph summary of recommended strategic direction]
@@ -145,16 +157,21 @@ Expected Impact:
 
 ### Current Holdings
 
-**1. [SYMBOL] - XXX shares @ $XXX.XX**
-   Current Price: $XXX.XX | Cost Basis: $XXX.XX
-   Position Value: $XX,XXX | P&L: +$X,XXX (+XX.X%)
+**1. [SYMBOL] - CONSOLIDATED POSITION**
+   **Total Across All Accounts**: $XX,XXX (XX.X% of total portfolio)
+   **Holdings Breakdown**:
+   - Account 1 (Family Sub): XXX shares @ $XXX.XX (X.X%)
+   - Account 2 (Private): XXX shares @ $XXX.XX (XX.X%)
+   **Consolidated Metrics**: Cost Basis: $XXX.XX | P&L: +$XXX (+XX%)
 
    📊 Portfolio Analysis (from data-analyzer):
    - Performance: [Win rate, profit factor if traded]
-   - Position Size: XX.X% of portfolio
-   - Tax Status: [Short-term/Long-term] gain
-   - Holding Period: XXX days
-   - Risk Contribution: [Concentration, correlation]
+   - Position Size: XX.X% of TOTAL portfolio (not per-account)
+   - Tax Status: [Per account - may differ]
+     * Account 1: Long-term (held XX months)
+     * Account 2: Short-term (held X months)
+   - Risk Contribution: [PORTFOLIO-LEVEL concentration]
+   - Accounts Holding: [Which accounts, for rebalancing decisions]
 
    📈 Market Analysis (from market-analyst):
    - Technical Outlook: [BULLISH/NEUTRAL/BEARISH]
@@ -186,16 +203,18 @@ Expected Impact:
    Action Plan:
    Primary Action:
    - [Specific action: e.g., HOLD with covered call strategy]
+   - [Which account to execute in for tax efficiency]
    - [Price targets and stop loss]
    - [Position sizing: maintain / reduce to X% / add to X%]
 
-   Options Strategy:
-   - [If applicable: Covered call at $XXX strike, earn $XXX premium]
-   - [Or: Protective put at $XXX strike for downside protection]
+   Options Strategy (Account-Specific):
+   - Account 1: [If applicable: Covered call at $XXX strike, earn $XXX premium]
+   - Account 2: [Or: Protective put at $XXX strike for downside protection]
 
-   Tax Strategy:
-   - [Hold until [DATE] for long-term treatment, saving $XXX]
-   - [Or: Harvest loss to offset gains, saving $XXX]
+   Tax Strategy (Multi-Account Optimization):
+   - Account 1: Hold until [DATE] for long-term treatment, saving $XXX
+   - Account 2: Sell if needed (already long-term) or harvest loss
+   - Cross-account wash sale avoidance: [Coordinate timing across accounts]
 
    Risk Management:
    - Stop Loss: $XXX.XX (XX% below current)

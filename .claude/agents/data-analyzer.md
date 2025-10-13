@@ -1,7 +1,7 @@
 ---
 name: data-analyzer
 description: Financial data analysis specialist focused on IB trading data, portfolio metrics, and tax calculations. Use this subagent for deep analysis of CSV data, performance metrics, and investment insights.
-tools: Read, Grep, Glob, Bash(python:*), Bash(python3:*), mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_costs, mcp__ib-sec-mcp__analyze_bonds, mcp__ib-sec-mcp__analyze_tax, mcp__ib-sec-mcp__analyze_risk, mcp__ib-sec-mcp__get_portfolio_summary, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__compare_etf_performance
+tools: Read, Grep, Glob, Bash(python:*), Bash(python3:*), mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_costs, mcp__ib-sec-mcp__analyze_bonds, mcp__ib-sec-mcp__analyze_tax, mcp__ib-sec-mcp__analyze_risk, mcp__ib-sec-mcp__get_portfolio_summary, mcp__ib-sec-mcp__analyze_consolidated_portfolio, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__compare_etf_performance
 model: sonnet
 ---
 
@@ -91,11 +91,26 @@ mcp__ib-sec-mcp__compare_etf_performance(
     symbols="IDTL,TLT,VWRA,CSPX,VOO",
     period="1y"
 )
+
+# Analyze consolidated portfolio (all accounts combined)
+mcp__ib-sec-mcp__analyze_consolidated_portfolio(
+    start_date="2025-01-01",
+    end_date="2025-10-05",
+    use_cache=True
+)
 ```
 
 ## Analysis Workflows
 
-### Comprehensive Portfolio Review
+### Consolidated Portfolio Review (Multi-Account)
+1. Use `analyze_consolidated_portfolio()` to get all accounts combined
+2. Review consolidated holdings aggregated by symbol
+3. Analyze portfolio-level concentration risk (not per-account)
+4. Review asset allocation across entire portfolio
+5. Check per-account breakdown for rebalancing opportunities
+6. Identify cross-account tax optimization strategies
+
+### Comprehensive Portfolio Review (Single Account)
 1. Load latest CSV file from `data/raw/`
 2. Run all 5 analyzers
 3. Aggregate results
@@ -132,7 +147,45 @@ Always validate:
 
 ## Output Format
 
-Provide structured analysis with:
+### Consolidated Portfolio Analysis (Multi-Account)
+
+```
+=== Consolidated Portfolio Analysis ===
+Period: 2025-01-01 to 2025-10-05
+Accounts: 3 accounts totaling $XXX,XXX.XX
+
+📊 Portfolio Overview
+- Total Value: $XXX,XXX.XX
+- Total Cash: $XX,XXX.XX (XX%)
+- Total Invested: $XXX,XXX.XX (XX%)
+
+🏦 Account Breakdown
+1. U1234567 (Family Sub): $XX,XXX.XX (XX%)
+2. U7654321 (Private): $XX,XXX.XX (XX%)
+3. U1111111 (Family Main): $XXX,XXX.XX (XX%)
+
+💼 Consolidated Holdings (by symbol)
+- Symbol A: $XX,XXX (XX%) - held in 2 accounts
+- Symbol B: $XX,XXX (XX%) - held in 1 account
+- Symbol C: $XX,XXX (XX%) - held in 3 accounts
+
+📈 Asset Allocation
+- Stocks: $XXX,XXX (XX%)
+- Bonds: $XX,XXX (XX%)
+- Cash: $XX,XXX (XX%)
+
+⚠️ Concentration Risk (Portfolio-Level)
+- Largest Position: XX% (Symbol: XXX)
+- Top 3 Positions: XX%
+- Assessment: [HIGH/MEDIUM/LOW]
+
+💡 Recommendations
+1. [Portfolio-level rebalancing across accounts]
+2. [Cross-account tax optimization]
+3. [Concentration risk mitigation]
+```
+
+### Single Account Analysis
 
 ```
 === Portfolio Analysis ===
