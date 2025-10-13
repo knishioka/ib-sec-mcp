@@ -251,8 +251,18 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
             returns_dict = {
                 symbol: data["_returns_series"] for symbol, data in performance_data.items()
             }
-            returns_df = pd.DataFrame(returns_dict).dropna()
-            corr_matrix = returns_df.corr()
+            # Use outer join to align different trading calendars, then drop rows with any NaN
+            returns_df = pd.DataFrame(returns_dict)
+
+            # Check if we have enough overlapping data points
+            overlapping_rows = returns_df.dropna()
+            if len(overlapping_rows) < 20:  # Need at least 20 common trading days
+                # Fall back to pairwise correlation with maximum available data
+                corr_matrix = returns_df.corr(method="pearson", min_periods=20)
+            else:
+                # Use only rows with data for all symbols
+                returns_df = overlapping_rows
+                corr_matrix = returns_df.corr()
 
             # Convert correlation matrix to dict
             corr_dict = {}
