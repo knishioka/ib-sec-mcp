@@ -29,6 +29,8 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
         period: str = "1mo",
         interval: str = "1d",
         indicators: str | None = None,
+        limit: int | None = None,
+        summary_only: bool = False,
         ctx: Context | None = None,
     ) -> str:
         """
@@ -41,6 +43,8 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
             indicators: Comma-separated technical indicators (optional)
                        Available: sma_20, sma_50, sma_200, ema_12, ema_26, rsi, macd, bollinger, volume_ma
                        Example: "sma_20,rsi,macd"
+            limit: Return only the latest N data points (None for all data)
+            summary_only: If True, return only summary statistics without detailed data points
             ctx: MCP context for logging
 
         Returns:
@@ -253,22 +257,32 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
                             ),
                         }
 
+            # Apply limit if specified (return latest N records)
+            hist_limited = hist.tail(limit) if limit and limit > 0 else hist
+
             # Convert to JSON-friendly format
             result = {
                 "symbol": symbol,
                 "period": period,
                 "interval": interval,
-                "data": hist.reset_index().to_dict(orient="records"),
                 "summary": {
                     "start_date": str(hist.index[0]),
                     "end_date": str(hist.index[-1]),
                     "num_records": len(hist),
+                    "num_records_returned": len(hist_limited) if not summary_only else 0,
                     "latest_close": float(hist["Close"].iloc[-1]),
+                    "period_high": float(hist["High"].max()),
+                    "period_low": float(hist["Low"].min()),
                     "period_return": float(
                         (hist["Close"].iloc[-1] / hist["Close"].iloc[0] - 1) * 100
                     ),
+                    "avg_volume": float(hist["Volume"].mean()),
                 },
             }
+
+            # Add detailed data unless summary_only is True
+            if not summary_only:
+                result["data"] = hist_limited.reset_index().to_dict(orient="records")
 
             if technical_data:
                 result["technical_indicators"] = technical_data
