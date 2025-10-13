@@ -257,19 +257,25 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
             # Check if we have enough overlapping data points
             overlapping_rows = returns_df.dropna()
             if len(overlapping_rows) < 20:  # Need at least 20 common trading days
-                # Fall back to pairwise correlation with maximum available data
-                corr_matrix = returns_df.corr(method="pearson", min_periods=20)
+                # Fall back to pairwise correlation with reduced minimum periods
+                # This allows correlation between ETFs on different exchanges
+                corr_matrix = returns_df.corr(method="pearson", min_periods=10)
             else:
                 # Use only rows with data for all symbols
                 returns_df = overlapping_rows
                 corr_matrix = returns_df.corr()
 
             # Convert correlation matrix to dict
+            # Replace NaN with None for cleaner JSON output
             corr_dict = {}
             for symbol1 in corr_matrix.index:
                 corr_dict[symbol1] = {}
                 for symbol2 in corr_matrix.columns:
-                    corr_dict[symbol1][symbol2] = round(corr_matrix.loc[symbol1, symbol2], 3)
+                    val = corr_matrix.loc[symbol1, symbol2]
+                    if pd.isna(val):
+                        corr_dict[symbol1][symbol2] = None
+                    else:
+                        corr_dict[symbol1][symbol2] = round(val, 3)
 
             # Find high correlation pairs
             high_corr_pairs = []
@@ -366,6 +372,7 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
                 "correlation_analysis": {
                     "matrix": corr_dict,
                     "high_correlation_pairs": high_corr_pairs,
+                    "note": "Correlation may be null for ETFs on different exchanges with limited overlapping trading days",
                 },
                 "investment_insights": {
                     "best_total_return": f"{best_performer[0]} "
