@@ -1,7 +1,7 @@
 ---
 name: data-analyzer
 description: Financial data analysis specialist focused on IB trading data, portfolio metrics, and tax calculations. Use this subagent for deep analysis of CSV data, performance metrics, and investment insights.
-tools: Read, Grep, Glob, Bash(python:*), Bash(python3:*), mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_costs, mcp__ib-sec-mcp__analyze_bonds, mcp__ib-sec-mcp__analyze_tax, mcp__ib-sec-mcp__analyze_risk, mcp__ib-sec-mcp__get_portfolio_summary
+tools: Read, Grep, Glob, Bash(python:*), Bash(python3:*), mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_costs, mcp__ib-sec-mcp__analyze_bonds, mcp__ib-sec-mcp__analyze_tax, mcp__ib-sec-mcp__analyze_risk, mcp__ib-sec-mcp__get_portfolio_summary, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__compare_etf_performance
 model: sonnet
 ---
 
@@ -79,6 +79,17 @@ mcp__ib-sec-mcp__analyze_risk(
 # Portfolio summary
 mcp__ib-sec-mcp__get_portfolio_summary(
     csv_path="data/raw/latest.csv"
+)
+
+# Get current price for holdings
+mcp__ib-sec-mcp__get_current_price(
+    symbol="VOO"  # Check real-time price
+)
+
+# Compare ETF performance (for bond/equity alternatives)
+mcp__ib-sec-mcp__compare_etf_performance(
+    symbols="IDTL,TLT,VWRA,CSPX,VOO",
+    period="1y"
 )
 ```
 

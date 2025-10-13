@@ -1,14 +1,14 @@
 ---
-description: Generate comprehensive tax report with optimization strategies
-allowed-tools: Read, Glob, Write, mcp__ib-sec-mcp__analyze_tax, mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__get_portfolio_summary
+description: Generate comprehensive tax report with optimization strategies and market timing
+allowed-tools: Task, Write
 argument-hint: [--year YYYY|--ytd|--save]
 ---
 
-Generate detailed tax analysis report including capital gains, phantom income, and optimization strategies.
+Generate detailed tax analysis report including capital gains, phantom income, and optimization strategies with market timing recommendations.
 
 ## Task
 
-Create comprehensive tax report for planning and filing. Delegate to **data-analyzer** subagent.
+Create comprehensive tax report combining tax analysis (data-analyzer) with market timing (market-analyst) for optimal tax-loss harvesting and holding period strategies.
 
 ### Report Scope
 
@@ -21,37 +21,52 @@ Create comprehensive tax report for planning and filing. Delegate to **data-anal
 - If $ARGUMENTS contains `--save`: Save to `data/processed/tax_report_YYYY.txt`
 - Otherwise: Display to console only
 
-### Analysis Components
+### Orchestration Process
 
-**1. Capital Gains/Losses**
-```python
-tax_result = mcp__ib-sec-mcp__analyze_tax(
-    start_date=f"{year}-01-01",
-    end_date=f"{year}-12-31"
-)
+```
+Use both data-analyzer and market-analyst subagents:
+
+1. Tax Analysis Phase (data-analyzer):
+   - Calculate capital gains/losses (short-term, long-term)
+   - Identify phantom income (OID) for bonds
+   - Check for wash sale violations
+   - Find tax-loss harvesting candidates
+   - Calculate current tax liability
+
+2. Market Timing Analysis (market-analyst):
+   - For loss harvesting candidates:
+     - Analyze technical outlook
+     - Recommend optimal exit timing
+     - Suggest re-entry strategy after 31 days
+     - Identify alternative securities (avoid wash sale)
+
+   - For positions approaching long-term:
+     - Analyze technical support levels
+     - Risk of holding until long-term qualification
+     - Recommend hold vs sell decision
+
+   - For positions with gains:
+     - Check technical levels for profit-taking
+     - Suggest covered call strategies to defer gains
+     - Identify rebalancing opportunities
+
+3. Integrated Tax Strategy:
+   - Combine tax savings with market timing
+   - Prioritize by tax savings × probability of success
+   - Consider technical risk of holding positions
+   - Suggest options strategies for tax deferral
+
+4. Action Plan:
+   - Urgent: Execute before year-end or wash sale period
+   - High Priority: Optimal tax timing with good technicals
+   - Monitor: Positions to watch for tax opportunities
+
+$ARGUMENTS
 ```
 
-Calculate:
-- Short-term capital gains (positions held < 1 year)
-- Long-term capital gains (positions held ≥ 1 year)
-- Total realized gains/losses
-- Net capital gain/loss
+### Analysis Components
 
-**2. Phantom Income (OID)**
-For zero-coupon bonds:
-- Calculate Original Issue Discount
-- Accrue phantom income for tax year
-- Identify bonds with significant OID impact
-
-**3. Wash Sale Analysis**
-- Identify potential wash sale violations
-- Calculate disallowed losses
-- Provide holding period guidance
-
-**4. Tax-Loss Harvesting Opportunities**
-- Identify positions with unrealized losses
-- Calculate potential tax savings
-- Suggest optimal timing for harvesting
+The integration of **data-analyzer** and **market-analyst** will provide:
 
 ### Expected Output
 

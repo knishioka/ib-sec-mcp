@@ -1,52 +1,58 @@
 ---
 description: Run comprehensive portfolio analysis and optimization recommendations
-allowed-tools: Read, Glob, mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_costs, mcp__ib-sec-mcp__analyze_bonds, mcp__ib-sec-mcp__analyze_tax, mcp__ib-sec-mcp__analyze_risk, mcp__ib-sec-mcp__get_portfolio_summary
+allowed-tools: Task
 argument-hint: [csv-file-path]
 ---
 
-Perform comprehensive portfolio analysis with all available analyzers and provide optimization recommendations.
+Perform comprehensive portfolio analysis combining portfolio metrics (from data-analyzer) with market analysis (from market-analyst) to provide optimization recommendations.
 
 ## Task
 
-Delegate to the **data-analyzer** subagent to perform deep portfolio analysis and generate actionable insights.
+Use **strategy-coordinator** to orchestrate portfolio optimization through data-analyzer and market-analyst collaboration.
 
-### Analysis Steps
+### Orchestration Process
 
-**1. Load Latest Data**
-- If $ARGUMENTS provides CSV path: Use specified file
-- Otherwise: Find most recent CSV in `data/raw/`
+```
+Use the strategy-coordinator subagent to optimize portfolio:
 
-**2. Run All Analyzers**
-Using MCP tools:
-```python
-# Performance analysis
-performance_result = mcp__ib-sec-mcp__analyze_performance(
-    start_date="auto-detect",
-    end_date="auto-detect",
-    use_cache=True
-)
+1. Portfolio Analysis Phase (via data-analyzer):
+   - Load latest CSV from $ARGUMENTS or data/raw/
+   - Run comprehensive analysis (performance, costs, bonds, tax, risk)
+   - Identify current holdings and their metrics
+   - Generate portfolio health assessment
 
-# Cost analysis
-cost_result = mcp__ib-sec-mcp__analyze_costs(...)
+2. Market Analysis Phase (via market-analyst):
+   - Analyze each current holding:
+     - Technical outlook and trends
+     - Support/resistance levels
+     - Entry/exit timing
+     - Options opportunities (covered calls, protective puts)
+   - Identify new position candidates
 
-# Bond analysis
-bond_result = mcp__ib-sec-mcp__analyze_bonds(...)
+3. Optimization Synthesis:
+   - For each holding:
+     - Combine portfolio metrics with market analysis
+     - Recommend: HOLD/SELL/TRIM/ADD
+     - Consider tax implications
+     - Suggest options strategies for income/protection
+   - Portfolio-level recommendations:
+     - Rebalancing needs
+     - Tax optimization opportunities
+     - Options income strategies
+     - Risk management improvements
 
-# Tax analysis
-tax_result = mcp__ib-sec-mcp__analyze_tax(...)
+4. Prioritized Action Plan:
+   - Urgent actions (this week)
+   - High priority (this month)
+   - Medium priority (this quarter)
+   - Monitoring points
 
-# Risk analysis
-risk_result = mcp__ib-sec-mcp__analyze_risk(
-    interest_rate_change=0.01  # +/- 1%
-)
-
-# Portfolio summary
-summary = mcp__ib-sec-mcp__get_portfolio_summary(csv_path="...")
+$ARGUMENTS
 ```
 
-**3. Generate Insights**
+### Analysis Components
 
-The **data-analyzer** subagent should provide:
+The **strategy-coordinator** will provide integrated insights combining:
 
 ### Performance Insights
 - Trading efficiency (win rate, profit factor)
