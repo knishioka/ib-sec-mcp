@@ -270,6 +270,79 @@ argument-hint: [expected-args]
 
 ---
 
+## Data Storage Guidelines
+
+**IMPORTANT**: Analysis results, planning documents, and working files must **NEVER** be committed to git.
+
+### Gitignored Locations
+
+| Directory | Purpose | Examples |
+|-----------|---------|----------|
+| `analysis/` | Analysis reports, comparative studies | ETF comparisons, portfolio reallocation plans |
+| `notes/` | Planning documents, research notes | Investment strategies, decision journals |
+| `data/raw/` | Raw CSV/XML from IB API | Account statements, trade history |
+| `data/processed/` | Processed analysis results | JSON reports, computed metrics |
+
+### File Naming Conventions
+
+**Analysis Files** (in `analysis/`):
+```
+{symbol}_{analysis_type}_{date}.md
+- PG_stock_analysis_2025-10-13.md
+- ETF_comparison_IDTL_vs_TLT_2025-10-13.md
+- portfolio_reallocation_plan_2025-10-13.md
+```
+
+**Notes** (in `notes/`):
+```
+{topic}_{date}.md
+- investment_thesis_PG_2025-10-13.md
+- market_outlook_tech_sector_2025-10.md
+- trading_journal_2025-10-13.md
+```
+
+### What to Save Where
+
+| Content Type | Location | Commit to Git? |
+|--------------|----------|----------------|
+| Code, analyzers | `ib_sec_mcp/` | ✅ Yes |
+| Tests | `tests/` | ✅ Yes |
+| Documentation | `README.md`, `CLAUDE.md` | ✅ Yes |
+| **Analysis reports** | `analysis/` | ❌ No (gitignored) |
+| **Planning documents** | `notes/` | ❌ No (gitignored) |
+| **Account data** | `data/raw/` | ❌ No (gitignored) |
+| **Processed results** | `data/processed/` | ❌ No (gitignored) |
+
+### Security Best Practices
+
+❌ **NEVER commit**:
+- Account numbers (even obfuscated)
+- Personal financial data
+- Analysis containing real positions/amounts
+- Planning documents with account IDs
+
+✅ **Always use gitignored locations**:
+- Save all analysis to `analysis/`
+- Save all planning to `notes/`
+- Let Claude Code/Desktop save files there automatically
+
+### Example Workflow
+
+```bash
+# Claude Code analysis session
+User: "Analyze P&G stock and create a buy/sell plan"
+
+# Claude saves to gitignored location
+→ analysis/PG_stock_analysis_2025-10-13.md
+→ analysis/PG_entry_strategy_2025-10-13.md
+
+# Files are automatically ignored by git
+$ git status
+# No new files shown
+```
+
+---
+
 ## Common Pitfalls
 
 ### Financial Code

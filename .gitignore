@@ -49,6 +49,13 @@ data/processed/*.json
 *.csv
 *.xml
 
+# Analysis and notes (working documents, reports)
+analysis/
+notes/
+PORTFOLIO_REALLOCATION_PLAN.md
+*_PLAN.md
+*_ANALYSIS.md
+
 # Test and coverage
 .coverage
 .coverage.*
