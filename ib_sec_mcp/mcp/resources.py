@@ -32,7 +32,7 @@ def register_resources(mcp: FastMCP) -> None:
             return json.dumps({"files": [], "message": "No data directory found"})
 
         files = []
-        for csv_file in data_dir.glob("*.csv"):
+        for csv_file in data_dir.glob("*.xml"):
             files.append(
                 {
                     "filename": csv_file.name,
@@ -57,9 +57,9 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.csv"))
+        csv_files = list(data_dir.glob("*.xml"))
         if not csv_files:
-            return json.dumps({"error": "No CSV files found"})
+            return json.dumps({"error": "No XML files found"})
 
         # Get most recent file
         latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
@@ -101,7 +101,7 @@ def register_resources(mcp: FastMCP) -> None:
             return json.dumps({"error": "No data directory found"})
 
         # Find file matching account ID
-        matching_files = [f for f in data_dir.glob("*.csv") if account_id in f.name]
+        matching_files = [f for f in data_dir.glob("*.xml") if account_id in f.name]
 
         if not matching_files:
             return json.dumps({"error": f"No files found for account {account_id}"})
@@ -141,9 +141,9 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.csv"))
+        csv_files = list(data_dir.glob("*.xml"))
         if not csv_files:
-            return json.dumps({"error": "No CSV files found"})
+            return json.dumps({"error": "No XML files found"})
 
         latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
 
@@ -185,9 +185,9 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.csv"))
+        csv_files = list(data_dir.glob("*.xml"))
         if not csv_files:
-            return json.dumps({"error": "No CSV files found"})
+            return json.dumps({"error": "No XML files found"})
 
         latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
 
@@ -227,9 +227,9 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.csv"))
+        csv_files = list(data_dir.glob("*.xml"))
         if not csv_files:
-            return json.dumps({"error": "No CSV files found"})
+            return json.dumps({"error": "No XML files found"})
 
         latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
 
@@ -354,9 +354,9 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.csv"))
+        csv_files = list(data_dir.glob("*.xml"))
         if not csv_files:
-            return json.dumps({"error": "No CSV files found"})
+            return json.dumps({"error": "No XML files found"})
 
         latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
 
@@ -563,9 +563,9 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.csv"))
+        csv_files = list(data_dir.glob("*.xml"))
         if not csv_files:
-            return json.dumps({"error": "No CSV files found"})
+            return json.dumps({"error": "No XML files found"})
 
         latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
 

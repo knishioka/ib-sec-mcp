@@ -108,7 +108,7 @@ async def _get_or_fetch_data(
         try:
             data_dir = Path("data/raw")
             # We don't know exact account_id yet, so try pattern matching
-            pattern = f"*_{from_date}_{to_date}.csv"
+            pattern = f"*_{from_date}_{to_date}.xml"
             logger.debug(f"Cache search pattern: {pattern} in {data_dir}")
 
             cached_files = list(data_dir.glob(pattern))
@@ -201,7 +201,7 @@ async def _get_or_fetch_data(
     try:
         data_dir = Path("data/raw")
         data_dir.mkdir(parents=True, exist_ok=True)
-        filename = f"{statement.account_id}_{from_date}_{to_date}.csv"
+        filename = f"{statement.account_id}_{from_date}_{to_date}.xml"
         filepath = data_dir / filename
 
         logger.debug(f"Saving data to cache: {filepath}")
@@ -340,7 +340,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             try:
                 data_dir = Path("data/raw")
                 data_dir.mkdir(parents=True, exist_ok=True)
-                filename = f"{statement.account_id}_{from_date}_{to_date}.csv"
+                filename = f"{statement.account_id}_{from_date}_{to_date}.xml"
                 filepath = data_dir / filename
 
                 async def save_file():

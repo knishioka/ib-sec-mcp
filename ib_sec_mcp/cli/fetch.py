@@ -98,7 +98,7 @@ def fetch(
 
                 # Save separate files for each account
                 for account_id, _account in accounts.items():
-                    filename = f"{account_id}_{from_date}_{to_date}.csv"
+                    filename = f"{account_id}_{from_date}_{to_date}.xml"
                     filepath = out_dir / filename
 
                     # Filter CSV data for this account only
@@ -114,7 +114,7 @@ def fetch(
             else:
                 # Only one account, save normally
                 account_id = list(accounts.keys())[0]
-                filename = f"{account_id}_{from_date}_{to_date}.csv"
+                filename = f"{account_id}_{from_date}_{to_date}.xml"
                 filepath = out_dir / filename
 
                 with open(filepath, "w") as f:
@@ -124,7 +124,7 @@ def fetch(
         else:
             # Save single CSV file
             account_id = statement.account_id
-            filename = f"{account_id}_{from_date}_{to_date}.csv"
+            filename = f"{account_id}_{from_date}_{to_date}.xml"
             filepath = out_dir / filename
 
             with open(filepath, "w") as f:
