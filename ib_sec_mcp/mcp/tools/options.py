@@ -223,7 +223,26 @@ def register_options_tools(mcp: FastMCP) -> None:
             if not expirations:
                 return json.dumps({"error": f"No options data available for {symbol}"})
 
-            exp_date = expiration_date if expiration_date in expirations else expirations[0]
+            # Find valid future expiration date
+            today = datetime.now()
+            if expiration_date:
+                if expiration_date not in expirations:
+                    return json.dumps(
+                        {"error": f"Invalid expiration date. Available: {list(expirations)[:5]}..."}
+                    )
+                exp_date = expiration_date
+            else:
+                # Find first future expiration
+                exp_date = None
+                for exp in expirations:
+                    exp_dt = datetime.strptime(exp, "%Y-%m-%d")
+                    if (exp_dt - today).days > 0:
+                        exp_date = exp
+                        break
+
+                if not exp_date:
+                    return json.dumps({"error": "No future expiration dates available"})
+
             opt = ticker.option_chain(exp_date)
 
             # Get current price
@@ -235,11 +254,10 @@ def register_options_tools(mcp: FastMCP) -> None:
 
             # Calculate time to expiration (in years)
             exp_datetime = datetime.strptime(exp_date, "%Y-%m-%d")
-            today = datetime.now()
             T = (exp_datetime - today).days / 365.0  # noqa: N806
 
             if T <= 0:
-                return json.dumps({"error": "Expiration date is in the past"})
+                return json.dumps({"error": f"Expiration date {exp_date} is in the past"})
 
             # Calculate Greeks for calls and puts
             def calculate_option_greeks(row, option_type):
@@ -493,7 +511,26 @@ def register_options_tools(mcp: FastMCP) -> None:
             if not expirations:
                 return json.dumps({"error": f"No options data available for {symbol}"})
 
-            exp_date = expiration_date if expiration_date in expirations else expirations[0]
+            # Find valid future expiration date
+            today = datetime.now()
+            if expiration_date:
+                if expiration_date not in expirations:
+                    return json.dumps(
+                        {"error": f"Invalid expiration date. Available: {list(expirations)[:5]}..."}
+                    )
+                exp_date = expiration_date
+            else:
+                # Find first future expiration
+                exp_date = None
+                for exp in expirations:
+                    exp_dt = datetime.strptime(exp, "%Y-%m-%d")
+                    if (exp_dt - today).days > 0:
+                        exp_date = exp
+                        break
+
+                if not exp_date:
+                    return json.dumps({"error": "No future expiration dates available"})
+
             opt = ticker.option_chain(exp_date)
 
             # Get current price
