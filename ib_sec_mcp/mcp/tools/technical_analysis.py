@@ -22,8 +22,7 @@ DEFAULT_TIMEOUT = 30
 def register_technical_analysis_tools(mcp: FastMCP) -> None:
     """Register advanced technical analysis tools"""
 
-    @mcp.tool
-    async def get_stock_analysis(
+    async def _perform_stock_analysis(
         symbol: str,
         timeframe: str = "1d",
         lookback_days: int = 252,
@@ -167,6 +166,43 @@ def register_technical_analysis_tools(mcp: FastMCP) -> None:
             raise YahooFinanceError(f"Unexpected error while analyzing {symbol}: {str(e)}") from e
 
     @mcp.tool
+    async def get_stock_analysis(
+        symbol: str,
+        timeframe: str = "1d",
+        lookback_days: int = 252,
+        ctx: Context | None = None,
+    ) -> str:
+        """
+        Get comprehensive technical analysis with actionable signals
+
+        Provides pre-computed analysis including support/resistance levels, trend analysis,
+        volume profile, and entry/exit signals. Optimized for token efficiency by returning
+        computed insights rather than raw data.
+
+        Args:
+            symbol: Stock ticker symbol (e.g., "PG", "AAPL")
+            timeframe: Analysis timeframe - "1d" (daily), "1wk" (weekly), "1mo" (monthly)
+            lookback_days: Historical data period for analysis (default: 252 trading days ≈ 1 year)
+            ctx: MCP context for logging
+
+        Returns:
+            JSON string with comprehensive analysis:
+            - Support/Resistance levels with strength scores
+            - Trend analysis (short/medium/long term)
+            - Volume analysis and profile
+            - Technical indicators (RSI, MACD, ADX, ATR)
+            - Pivot points (classic, Fibonacci, Camarilla)
+            - Entry/exit signals with confidence scores
+            - Risk/reward calculations
+
+        Raises:
+            ValidationError: If input validation fails
+            YahooFinanceError: If Yahoo Finance API call fails
+            IBTimeoutError: If operation times out
+        """
+        return await _perform_stock_analysis(symbol, timeframe, lookback_days, ctx)
+
+    @mcp.tool
     async def get_multi_timeframe_analysis(
         symbol: str,
         ctx: Context | None = None,
@@ -200,9 +236,9 @@ def register_technical_analysis_tools(mcp: FastMCP) -> None:
                 await ctx.info(f"Running multi-timeframe analysis for {symbol}")
 
             # Run analyses in parallel
-            daily_task = get_stock_analysis(symbol, "1d", 252, ctx)
-            weekly_task = get_stock_analysis(symbol, "1wk", 252, ctx)
-            monthly_task = get_stock_analysis(symbol, "1mo", 252, ctx)
+            daily_task = _perform_stock_analysis(symbol, "1d", 252, ctx)
+            weekly_task = _perform_stock_analysis(symbol, "1wk", 252, ctx)
+            monthly_task = _perform_stock_analysis(symbol, "1mo", 252, ctx)
 
             daily_json, weekly_json, monthly_json = await asyncio.gather(
                 daily_task, weekly_task, monthly_task
