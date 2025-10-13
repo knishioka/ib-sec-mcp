@@ -80,6 +80,7 @@ regexes = [
     # Use U followed by 7 digits for examples (e.g., U1234567)
     '''U1234567''',
     '''U7654321''',
+    '''U1111111''',
 
     # Code placeholders
     '''\.\.\.$''', # Ellipsis placeholders
