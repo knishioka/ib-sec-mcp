@@ -10,7 +10,7 @@ from ib_sec_mcp.analyzers import (
     RiskAnalyzer,
     TaxAnalyzer,
 )
-from ib_sec_mcp.core.parsers import CSVParser
+from ib_sec_mcp.core.parsers import XMLParser, detect_format
 from ib_sec_mcp.reports.console import ConsoleReport
 from ib_sec_mcp.utils.config import Config
 
@@ -20,7 +20,7 @@ console = Console()
 
 @app.command()
 def analyze(
-    data_file: str = typer.Argument(..., help="Path to CSV data file"),
+    data_file: str = typer.Argument(..., help="Path to XML data file"),
     analyzers: list[str] | None = typer.Option(  # noqa: B008
         None,
         "--analyzer",
@@ -50,13 +50,13 @@ def analyze(
 
     Examples:
         # Run all analyzers
-        ib-analyze data.csv --all
+        ib-analyze data.xml --all
 
         # Run specific analyzer
-        ib-analyze data.csv --analyzer performance
+        ib-analyze data.xml --analyzer performance
 
         # Run multiple analyzers
-        ib-analyze data.csv -a performance -a cost -a bond
+        ib-analyze data.xml -a performance -a cost -a bond
     """
     # Load config
     Config.load()
@@ -66,13 +66,13 @@ def analyze(
 
     try:
         with open(data_file) as f:
-            csv_data = f.read()
+            xml_data = f.read()
     except FileNotFoundError as e:
         console.print(f"✗ File not found: {data_file}", style="bold red")
         raise typer.Exit(code=1) from e
 
     # Parse data
-    console.print("📊 Parsing data...\n", style="bold blue")
+    console.print("📊 Parsing XML data...\n", style="bold blue")
 
     # Extract dates from filename or use defaults
     from datetime import date
@@ -81,7 +81,15 @@ def analyze(
     to_date = date.today()
 
     try:
-        account = CSVParser.to_account(csv_data, from_date, to_date)
+        # Validate XML format
+        detect_format(xml_data)  # Raises ValueError if not XML
+
+        # Parse XML data
+        accounts = XMLParser.to_accounts(xml_data, from_date, to_date)
+        if not accounts:
+            raise ValueError("No accounts found in XML file")
+
+        account = list(accounts.values())[0]  # Use first account
         console.print(f"✓ Loaded account {account.account_id}\n", style="green")
     except Exception as e:
         console.print(f"✗ Error parsing data: {e}", style="bold red")

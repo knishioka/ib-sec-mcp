@@ -31,7 +31,7 @@ def fetch(
         False,
         "--split-accounts",
         "-s",
-        help="Split CSV into separate files by account (if multiple accounts in query)",
+        help="Split into separate XML files by account (if multiple accounts in query)",
     ),
     output_dir: str | None = typer.Option(
         None,
@@ -50,7 +50,7 @@ def fetch(
         # Fetch data for specific date range
         ib-sec-fetch --start-date 2025-01-01 --end-date 2025-10-05
 
-        # Split CSV by account (if query contains multiple accounts)
+        # Split into separate XML files by account (if query contains multiple accounts)
         ib-sec-fetch --split-accounts
     """
     # Load config
@@ -88,10 +88,10 @@ def fetch(
         statement = client.fetch_statement(from_date, to_date)
 
         if split_accounts:
-            # Check if CSV contains multiple accounts
-            from ib_sec_mcp.core.parsers import CSVParser
+            # Check if XML contains multiple accounts
+            from ib_sec_mcp.core.parsers import XMLParser
 
-            accounts = CSVParser.to_accounts(statement.raw_data, from_date, to_date)
+            accounts = XMLParser.to_accounts(statement.raw_data, from_date, to_date)
 
             if len(accounts) > 1:
                 console.print(f"Found {len(accounts)} accounts in query result\n")
@@ -101,8 +101,7 @@ def fetch(
                     filename = f"{account_id}_{from_date}_{to_date}.xml"
                     filepath = out_dir / filename
 
-                    # Filter CSV data for this account only
-                    # (For now, save the original CSV - can be enhanced later)
+                    # Save XML data for this account
                     with open(filepath, "w") as f:
                         f.write(statement.raw_data)
 
@@ -122,7 +121,7 @@ def fetch(
 
                 console.print(f"✓ Saved to {filepath}", style="bold green")
         else:
-            # Save single CSV file
+            # Save single XML file
             account_id = statement.account_id
             filename = f"{account_id}_{from_date}_{to_date}.xml"
             filepath = out_dir / filename
