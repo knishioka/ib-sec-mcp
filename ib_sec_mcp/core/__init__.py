@@ -2,6 +2,6 @@
 
 from ib_sec_mcp.core.aggregator import MultiAccountAggregator
 from ib_sec_mcp.core.calculator import PerformanceCalculator
-from ib_sec_mcp.core.parsers import CSVParser, XMLParser
+from ib_sec_mcp.core.parsers import XMLParser
 
-__all__ = ["CSVParser", "XMLParser", "PerformanceCalculator", "MultiAccountAggregator"]
+__all__ = ["XMLParser", "PerformanceCalculator", "MultiAccountAggregator"]

@@ -12,8 +12,52 @@ from fastmcp import FastMCP
 
 from ib_sec_mcp.analyzers.risk import RiskAnalyzer
 from ib_sec_mcp.analyzers.tax import TaxAnalyzer
-from ib_sec_mcp.core.parsers import CSVParser
+from ib_sec_mcp.core.parsers import XMLParser, detect_format
 from ib_sec_mcp.models.trade import AssetClass, BuySell
+
+
+def _parse_xml_file(file_path: Path):
+    """
+    Parse XML file and return first account with date range
+
+    Args:
+        file_path: Path to XML file
+
+    Returns:
+        Account object from first account in file
+    """
+    from datetime import datetime
+
+    # Extract dates from filename (format: {account_id}_{from_date}_{to_date}.xml)
+    filename = file_path.stem
+    parts = filename.split("_")
+
+    if len(parts) >= 3:
+        try:
+            from_date = datetime.strptime(parts[-2], "%Y-%m-%d").date()
+            to_date = datetime.strptime(parts[-1], "%Y-%m-%d").date()
+        except ValueError:
+            # Fallback to current year
+            from_date = date(date.today().year, 1, 1)
+            to_date = date.today()
+    else:
+        # Fallback to current year
+        from_date = date(date.today().year, 1, 1)
+        to_date = date.today()
+
+    # Read and parse XML
+    with open(file_path) as f:
+        xml_data = f.read()
+
+    # Validate XML format
+    detect_format(xml_data)  # Raises ValueError if not XML
+
+    # Parse all accounts and return first one
+    accounts = XMLParser.to_accounts(xml_data, from_date, to_date)
+    if not accounts:
+        raise ValueError(f"No accounts found in {file_path}")
+
+    return list(accounts.values())[0]
 
 
 def register_resources(mcp: FastMCP) -> None:
@@ -22,7 +66,7 @@ def register_resources(mcp: FastMCP) -> None:
     @mcp.resource("ib://portfolio/list")
     def list_portfolio_files() -> str:
         """
-        List all available portfolio CSV files
+        List all available portfolio XML files
 
         Returns:
             JSON string with list of available files
@@ -32,13 +76,13 @@ def register_resources(mcp: FastMCP) -> None:
             return json.dumps({"files": [], "message": "No data directory found"})
 
         files = []
-        for csv_file in data_dir.glob("*.xml"):
+        for xml_file in data_dir.glob("*.xml"):
             files.append(
                 {
-                    "filename": csv_file.name,
-                    "path": str(csv_file),
-                    "size_bytes": csv_file.stat().st_size,
-                    "modified": csv_file.stat().st_mtime,
+                    "filename": xml_file.name,
+                    "path": str(xml_file),
+                    "size_bytes": xml_file.stat().st_size,
+                    "modified": xml_file.stat().st_mtime,
                 }
             )
 
@@ -57,17 +101,15 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.xml"))
-        if not csv_files:
+        xml_files = list(data_dir.glob("*.xml"))
+        if not xml_files:
             return json.dumps({"error": "No XML files found"})
 
         # Get most recent file
-        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+        latest_file = max(xml_files, key=lambda f: f.stat().st_mtime)
 
-        with open(latest_file) as f:
-            csv_data = f.read()
-
-        account = CSVParser.to_account(csv_data)
+        # Parse XML file
+        account = _parse_xml_file(latest_file)
 
         summary = {
             "file": latest_file.name,
@@ -109,10 +151,8 @@ def register_resources(mcp: FastMCP) -> None:
         # Use most recent file
         latest_file = max(matching_files, key=lambda f: f.stat().st_mtime)
 
-        with open(latest_file) as f:
-            csv_data = f.read()
-
-        account = CSVParser.to_account(csv_data)
+        # Parse XML file
+        account = _parse_xml_file(latest_file)
 
         # Basic account info
         account_data = {
@@ -141,16 +181,14 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.xml"))
-        if not csv_files:
+        xml_files = list(data_dir.glob("*.xml"))
+        if not xml_files:
             return json.dumps({"error": "No XML files found"})
 
-        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+        latest_file = max(xml_files, key=lambda f: f.stat().st_mtime)
 
-        with open(latest_file) as f:
-            csv_data = f.read()
-
-        account = CSVParser.to_account(csv_data)
+        # Parse XML file
+        account = _parse_xml_file(latest_file)
 
         # Sort trades by date descending
         sorted_trades = sorted(account.trades, key=lambda t: t.trade_date, reverse=True)
@@ -185,16 +223,14 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.xml"))
-        if not csv_files:
+        xml_files = list(data_dir.glob("*.xml"))
+        if not xml_files:
             return json.dumps({"error": "No XML files found"})
 
-        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+        latest_file = max(xml_files, key=lambda f: f.stat().st_mtime)
 
-        with open(latest_file) as f:
-            csv_data = f.read()
-
-        account = CSVParser.to_account(csv_data)
+        # Parse XML file
+        account = _parse_xml_file(latest_file)
 
         positions_data = [
             {
@@ -227,16 +263,14 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.xml"))
-        if not csv_files:
+        xml_files = list(data_dir.glob("*.xml"))
+        if not xml_files:
             return json.dumps({"error": "No XML files found"})
 
-        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+        latest_file = max(xml_files, key=lambda f: f.stat().st_mtime)
 
-        with open(latest_file) as f:
-            csv_data = f.read()
-
-        account = CSVParser.to_account(csv_data)
+        # Parse XML file
+        account = _parse_xml_file(latest_file)
 
         # Run tax analysis
         analyzer = TaxAnalyzer(account=account)
@@ -354,16 +388,14 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.xml"))
-        if not csv_files:
+        xml_files = list(data_dir.glob("*.xml"))
+        if not xml_files:
             return json.dumps({"error": "No XML files found"})
 
-        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+        latest_file = max(xml_files, key=lambda f: f.stat().st_mtime)
 
-        with open(latest_file) as f:
-            csv_data = f.read()
-
-        account = CSVParser.to_account(csv_data)
+        # Parse XML file
+        account = _parse_xml_file(latest_file)
 
         # Calculate current allocation
         total_value = account.total_value
@@ -563,16 +595,14 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"error": "No data directory found"})
 
-        csv_files = list(data_dir.glob("*.xml"))
-        if not csv_files:
+        xml_files = list(data_dir.glob("*.xml"))
+        if not xml_files:
             return json.dumps({"error": "No XML files found"})
 
-        latest_file = max(csv_files, key=lambda f: f.stat().st_mtime)
+        latest_file = max(xml_files, key=lambda f: f.stat().st_mtime)
 
-        with open(latest_file) as f:
-            csv_data = f.read()
-
-        account = CSVParser.to_account(csv_data)
+        # Parse XML file
+        account = _parse_xml_file(latest_file)
 
         # Portfolio risk metrics
         total_value = account.total_value
