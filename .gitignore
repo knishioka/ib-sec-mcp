@@ -46,8 +46,10 @@ data/raw/*.csv
 data/raw/*.xml
 data/processed/*.csv
 data/processed/*.json
+data/processed/*.db
 *.csv
 *.xml
+*.db
 
 # Analysis and notes (working documents, reports)
 analysis/
