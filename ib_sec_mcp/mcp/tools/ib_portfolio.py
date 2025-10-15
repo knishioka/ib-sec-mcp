@@ -16,7 +16,7 @@ from ib_sec_mcp.analyzers.performance import PerformanceAnalyzer
 from ib_sec_mcp.analyzers.risk import RiskAnalyzer
 from ib_sec_mcp.analyzers.tax import TaxAnalyzer
 from ib_sec_mcp.api.client import FlexQueryAPIError, FlexQueryClient
-from ib_sec_mcp.core.parsers import CSVParser, XMLParser, detect_format
+from ib_sec_mcp.core.parsers import XMLParser, detect_format
 from ib_sec_mcp.mcp.exceptions import (
     APIError,
     ConfigurationError,
@@ -39,14 +39,14 @@ API_FETCH_TIMEOUT = 60
 FILE_OPERATION_TIMEOUT = 10
 
 
-def _extract_dates_from_filename(csv_path: str) -> tuple[date, date]:
+def _extract_dates_from_filename(file_path: str) -> tuple[date, date]:
     """
-    Extract from_date and to_date from CSV filename
+    Extract from_date and to_date from XML filename
 
-    Expected format: {account_id}_{from_date}_{to_date}.csv
-    Example: UXXXXXXXX_2025-01-01_2025-10-07.csv
+    Expected format: {account_id}_{from_date}_{to_date}.xml
+    Example: UXXXXXXXX_2025-01-01_2025-10-07.xml
     """
-    filename = Path(csv_path).stem  # Remove .csv extension
+    filename = Path(file_path).stem  # Remove .xml extension
     parts = filename.split("_")
 
     if len(parts) >= 3:
@@ -435,12 +435,21 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        # Auto-detect format and parse
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Validate XML format and parse all accounts
+        detect_format(data)  # Raises ValueError if not XML
+        accounts = XMLParser.to_accounts(data, from_date, to_date)
+
+        # Select account by index
+        if not accounts:
+            raise ValidationError("No accounts found in data")
+
+        account_list = list(accounts.values())
+        if account_index >= len(account_list):
+            raise ValidationError(
+                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+            )
+
+        account = account_list[account_index]
 
         # Run analysis
         analyzer = PerformanceAnalyzer(account=account)
@@ -478,11 +487,21 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Validate XML format and parse all accounts
+        detect_format(data)  # Raises ValueError if not XML
+        accounts = XMLParser.to_accounts(data, from_date, to_date)
+
+        # Select account by index
+        if not accounts:
+            raise ValidationError("No accounts found in data")
+
+        account_list = list(accounts.values())
+        if account_index >= len(account_list):
+            raise ValidationError(
+                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+            )
+
+        account = account_list[account_index]
 
         analyzer = CostAnalyzer(account=account)
         result = analyzer.analyze()
@@ -519,11 +538,21 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Validate XML format and parse all accounts
+        detect_format(data)  # Raises ValueError if not XML
+        accounts = XMLParser.to_accounts(data, from_date, to_date)
+
+        # Select account by index
+        if not accounts:
+            raise ValidationError("No accounts found in data")
+
+        account_list = list(accounts.values())
+        if account_index >= len(account_list):
+            raise ValidationError(
+                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+            )
+
+        account = account_list[account_index]
 
         analyzer = BondAnalyzer(account=account)
         result = analyzer.analyze()
@@ -560,11 +589,21 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Validate XML format and parse all accounts
+        detect_format(data)  # Raises ValueError if not XML
+        accounts = XMLParser.to_accounts(data, from_date, to_date)
+
+        # Select account by index
+        if not accounts:
+            raise ValidationError("No accounts found in data")
+
+        account_list = list(accounts.values())
+        if account_index >= len(account_list):
+            raise ValidationError(
+                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+            )
+
+        account = account_list[account_index]
 
         analyzer = TaxAnalyzer(account=account)
         result = analyzer.analyze()
@@ -605,11 +644,21 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Validate XML format and parse all accounts
+        detect_format(data)  # Raises ValueError if not XML
+        accounts = XMLParser.to_accounts(data, from_date, to_date)
+
+        # Select account by index
+        if not accounts:
+            raise ValidationError("No accounts found in data")
+
+        account_list = list(accounts.values())
+        if account_index >= len(account_list):
+            raise ValidationError(
+                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+            )
+
+        account = account_list[account_index]
 
         analyzer = RiskAnalyzer(account=account)
         result = analyzer.analyze()
@@ -664,12 +713,9 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index=0, use_cache=use_cache, ctx=ctx
         )
 
-        # Auto-detect format and parse all accounts
-        format_type = detect_format(data)
-        if format_type == "xml":
-            accounts = XMLParser.to_accounts(data, from_date, to_date)
-        else:
-            accounts = CSVParser.to_accounts(data, from_date, to_date)
+        # Validate XML format and parse all accounts
+        detect_format(data)  # Raises ValueError if not XML
+        accounts = XMLParser.to_accounts(data, from_date, to_date)
 
         if ctx:
             await ctx.info(f"Found {len(accounts)} account(s) to analyze")
@@ -679,7 +725,11 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         total_value = Decimal("0")
         total_trades = 0
         consolidated_positions_by_symbol = defaultdict(
-            lambda: {"total_quantity": Decimal("0"), "total_value": Decimal("0"), "accounts": []}
+            lambda: {
+                "total_quantity": Decimal("0"),
+                "total_value": Decimal("0"),
+                "accounts": [],
+            }
         )
         account_summaries = []
 
@@ -708,7 +758,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                     "value": str(account.total_value),
                     "percentage_of_total": str(
                         round(
-                            (account.total_value / total_value * 100) if total_value > 0 else 0, 2
+                            ((account.total_value / total_value * 100) if total_value > 0 else 0),
+                            2,
                         )
                     ),
                     "num_positions": len(account.positions),
@@ -766,9 +817,9 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             "total_portfolio_value": str(total_value),
             "total_cash": str(total_cash),
             "total_invested": str(total_value - total_cash),
-            "cash_percentage": str(round((total_cash / total_value * 100), 2))
-            if total_value > 0
-            else "0.0",
+            "cash_percentage": (
+                str(round((total_cash / total_value * 100), 2)) if total_value > 0 else "0.0"
+            ),
             "accounts": account_summaries,
             "consolidated_holdings": {
                 "num_unique_symbols": len(consolidated_positions_by_symbol),
@@ -778,34 +829,42 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             "asset_allocation": {
                 "stocks": {
                     "value": str(stocks_value),
-                    "percentage": str(round((stocks_value / total_value * 100), 2))
-                    if total_value > 0
-                    else "0.0",
+                    "percentage": (
+                        str(round((stocks_value / total_value * 100), 2))
+                        if total_value > 0
+                        else "0.0"
+                    ),
                 },
                 "bonds": {
                     "value": str(bonds_value),
-                    "percentage": str(round((bonds_value / total_value * 100), 2))
-                    if total_value > 0
-                    else "0.0",
+                    "percentage": (
+                        str(round((bonds_value / total_value * 100), 2))
+                        if total_value > 0
+                        else "0.0"
+                    ),
                 },
                 "cash": {
                     "value": str(total_cash),
-                    "percentage": str(round((total_cash / total_value * 100), 2))
-                    if total_value > 0
-                    else "0.0",
+                    "percentage": (
+                        str(round((total_cash / total_value * 100), 2))
+                        if total_value > 0
+                        else "0.0"
+                    ),
                 },
             },
             "concentration_risk": {
                 "largest_position_percentage": str(largest_position_pct),
-                "largest_position_symbol": holdings_by_symbol[0]["symbol"]
-                if holdings_by_symbol
-                else None,
+                "largest_position_symbol": (
+                    holdings_by_symbol[0]["symbol"] if holdings_by_symbol else None
+                ),
                 "top_3_positions_percentage": str(top_3_pct),
-                "assessment": "HIGH"
-                if largest_position_pct > 15
-                else "MEDIUM"
-                if largest_position_pct > 10
-                else "LOW",
+                "assessment": (
+                    "HIGH"
+                    if largest_position_pct > 15
+                    else "MEDIUM"
+                    if largest_position_pct > 10
+                    else "LOW"
+                ),
             },
             "trading_activity": {
                 "total_trades": total_trades,
@@ -825,31 +884,28 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         return json.dumps(result, indent=2, default=str)
 
     @mcp.tool
-    async def get_portfolio_summary(csv_path: str, ctx: Context | None = None) -> str:
+    async def get_portfolio_summary(file_path: str, ctx: Context | None = None) -> str:
         """
         Get comprehensive portfolio summary
 
         Args:
-            csv_path: Path to IB Flex Query CSV/XML file
+            file_path: Path to IB Flex Query XML file
             ctx: MCP context for logging
 
         Returns:
             JSON string with portfolio summary (includes all accounts if multiple)
         """
         if ctx:
-            await ctx.info(f"Getting portfolio summary from {csv_path}")
+            await ctx.info(f"Getting portfolio summary from {file_path}")
 
-        with open(csv_path) as f:
+        with open(file_path) as f:
             data = f.read()
 
-        from_date, to_date = _extract_dates_from_filename(csv_path)
+        from_date, to_date = _extract_dates_from_filename(file_path)
 
-        # Auto-detect format and parse all accounts
-        format_type = detect_format(data)
-        if format_type == "xml":
-            accounts = XMLParser.to_accounts(data, from_date, to_date)
-        else:
-            accounts = CSVParser.to_accounts(data, from_date, to_date)
+        # Validate XML format and parse all accounts
+        detect_format(data)  # Raises ValueError if not XML
+        accounts = XMLParser.to_accounts(data, from_date, to_date)
 
         # If multiple accounts, return aggregated summary
         if len(accounts) > 1:

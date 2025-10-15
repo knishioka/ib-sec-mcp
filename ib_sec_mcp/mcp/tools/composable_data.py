@@ -11,7 +11,7 @@ from typing import Literal
 from fastmcp import Context, FastMCP
 
 from ib_sec_mcp.core.calculator import PerformanceCalculator
-from ib_sec_mcp.core.parsers import CSVParser, XMLParser, detect_format
+from ib_sec_mcp.core.parsers import XMLParser, detect_format
 from ib_sec_mcp.mcp.exceptions import ValidationError
 from ib_sec_mcp.mcp.tools.ib_portfolio import _get_or_fetch_data
 from ib_sec_mcp.models.account import Account
@@ -19,6 +19,39 @@ from ib_sec_mcp.models.trade import AssetClass
 from ib_sec_mcp.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _parse_account_by_index(data: str, from_date, to_date, account_index: int) -> Account:
+    """
+    Parse data and extract account by index
+
+    Args:
+        data: Raw XML data string
+        from_date: Start date
+        to_date: End date
+        account_index: Account index (0 for first, 1 for second, etc.)
+
+    Returns:
+        Account instance for the specified index
+
+    Raises:
+        ValidationError: If account_index is out of range or data is not XML
+    """
+    # Validate XML format and parse all accounts
+    detect_format(data)  # Raises ValueError if not XML
+    accounts = XMLParser.to_accounts(data, from_date, to_date)
+
+    # Select account by index
+    if not accounts:
+        raise ValidationError("No accounts found in data")
+
+    account_list = list(accounts.values())
+    if account_index >= len(account_list):
+        raise ValidationError(
+            f"account_index {account_index} out of range (0-{len(account_list)-1})"
+        )
+
+    return account_list[account_index]
 
 
 def register_composable_data_tools(mcp: FastMCP) -> None:
@@ -69,12 +102,8 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        # Parse
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Parse account by index
+        account = _parse_account_by_index(data, from_date, to_date, account_index)
 
         # Filter trades
         trades = account.trades
@@ -150,12 +179,8 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        # Parse
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Parse account by index
+        account = _parse_account_by_index(data, from_date, to_date, account_index)
 
         # Filter positions
         positions = account.positions
@@ -229,12 +254,8 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        # Parse
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Parse account by index
+        account = _parse_account_by_index(data, from_date, to_date, account_index)
 
         # Build summary
         result = {
@@ -343,12 +364,8 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             start_date, end_date, account_index, use_cache, ctx
         )
 
-        # Parse
-        format_type = detect_format(data)
-        if format_type == "xml":
-            account = XMLParser.to_account(data, from_date, to_date)
-        else:
-            account = CSVParser.to_account(data, from_date, to_date)
+        # Parse account by index
+        account = _parse_account_by_index(data, from_date, to_date, account_index)
 
         # Filter by symbol if specified
         if symbol:
@@ -594,18 +611,9 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             period2_start, period2_end, account_index, use_cache, ctx
         )
 
-        # Parse both periods
-        format_type1 = detect_format(data1)
-        if format_type1 == "xml":
-            account1 = XMLParser.to_account(data1, from_date1, to_date1)
-        else:
-            account1 = CSVParser.to_account(data1, from_date1, to_date1)
-
-        format_type2 = detect_format(data2)
-        if format_type2 == "xml":
-            account2 = XMLParser.to_account(data2, from_date2, to_date2)
-        else:
-            account2 = CSVParser.to_account(data2, from_date2, to_date2)
+        # Parse both periods by account index
+        account1 = _parse_account_by_index(data1, from_date1, to_date1, account_index)
+        account2 = _parse_account_by_index(data2, from_date2, to_date2, account_index)
 
         # Calculate metrics for both periods
         def calculate_metrics(account: Account) -> dict:
