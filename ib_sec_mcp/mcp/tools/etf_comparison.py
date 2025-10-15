@@ -189,26 +189,29 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
                             "calmar_ratio": round(calmar_ratio, 3),
                         },
                         "dividends": {
-                            "yield_pct": info.get("dividendYield", 0) * 100
-                            if info.get("dividendYield")
-                            else 0,
+                            "yield_pct": (
+                                info.get("dividendYield", 0) * 100
+                                if info.get("dividendYield")
+                                else 0
+                            ),
                             "annual_dividend": info.get("dividendRate", 0),
-                            "trailing_annual_dividend_yield": info.get(
-                                "trailingAnnualDividendYield", 0
-                            )
-                            * 100
-                            if info.get("trailingAnnualDividendYield")
-                            else 0,
+                            "trailing_annual_dividend_yield": (
+                                info.get("trailingAnnualDividendYield", 0) * 100
+                                if info.get("trailingAnnualDividendYield")
+                                else 0
+                            ),
                         },
                         "costs": {
-                            "expense_ratio_pct": info.get("annualReportExpenseRatio", 0) * 100
-                            if info.get("annualReportExpenseRatio")
-                            else 0,
-                            "estimated_annual_cost_per_10k": round(
-                                info.get("annualReportExpenseRatio", 0) * 10000, 2
-                            )
-                            if info.get("annualReportExpenseRatio")
-                            else 0,
+                            "expense_ratio_pct": (
+                                info.get("annualReportExpenseRatio", 0) * 100
+                                if info.get("annualReportExpenseRatio")
+                                else 0
+                            ),
+                            "estimated_annual_cost_per_10k": (
+                                round(info.get("annualReportExpenseRatio", 0) * 10000, 2)
+                                if info.get("annualReportExpenseRatio")
+                                else 0
+                            ),
                         },
                         "market_metrics": {
                             "beta_vs_spy": round(beta, 3),
@@ -383,11 +386,13 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
                     f"({lowest_volatility[1]['risk']['volatility_pct']:.2f}%)",
                     "highest_dividend": f"{highest_dividend[0]} "
                     f"({highest_dividend[1]['dividends']['yield_pct']:.2f}%)",
-                    "recommendations": recommendations
-                    if recommendations
-                    else [
-                        "All ETFs show similar characteristics - consider diversification strategy"
-                    ],
+                    "recommendations": (
+                        recommendations
+                        if recommendations
+                        else [
+                            "All ETFs show similar characteristics - consider diversification strategy"
+                        ]
+                    ),
                 },
             }
 

@@ -546,6 +546,166 @@ See [.claude/README.md](.claude/README.md) for complete sub-agent and slash comm
 
 ---
 
+## Position History & Time-Series Analysis
+
+IB Analytics automatically stores daily position snapshots in SQLite for historical analysis and time-series tracking.
+
+### Features
+
+- **Automatic Sync**: Positions are automatically saved to SQLite when fetching data via `fetch_ib_data`
+- **Historical Tracking**: Query position history over any date range
+- **Portfolio Evolution**: Compare portfolio snapshots between two dates
+- **Statistical Analysis**: Calculate min/max/average metrics for positions over time
+- **Multi-Account Support**: Store and query positions from multiple IB accounts
+
+### Storage Location
+
+Position data is stored in `data/processed/positions.db` (SQLite database).
+
+### Usage
+
+#### Automatic Sync (Recommended)
+
+Position snapshots are automatically saved when fetching data:
+
+```python
+# Via MCP tool
+await fetch_ib_data(start_date="2025-01-01", end_date="2025-10-15")
+# → Automatically syncs positions to SQLite
+```
+
+#### Manual Sync
+
+Sync existing XML files to SQLite:
+
+```bash
+# Sync single file
+python -m ib_sec_mcp.cli.sync_positions --xml-file data/raw/U16231259_2025-01-01_2025-10-15.xml
+
+# Sync all files in directory
+python -m ib_sec_mcp.cli.sync_positions --directory data/raw/
+
+# Custom database path
+python -m ib_sec_mcp.cli.sync_positions --xml-file data/raw/latest.xml --db-path data/custom.db
+```
+
+### Historical Queries (MCP Tools)
+
+#### `get_position_history` - Time Series for a Symbol
+
+Get position history for a specific symbol over a date range:
+
+```python
+# In Claude Desktop or Claude Code
+"Show me the position history for PG from January to October 2025"
+
+# Programmatic usage
+history = await get_position_history(
+    account_id="U17955070",
+    symbol="PG",
+    start_date="2025-01-01",
+    end_date="2025-10-15"
+)
+```
+
+**Returns**: Daily snapshots including quantity, price, value, and P&L for each date.
+
+#### `get_portfolio_snapshot` - Single-Day Portfolio
+
+Get all positions for an account on a specific date:
+
+```python
+"What did my portfolio look like on September 1st, 2025?"
+
+# Programmatic usage
+snapshot = await get_portfolio_snapshot(
+    account_id="U17955070",
+    snapshot_date="2025-09-01"
+)
+```
+
+**Returns**: All positions on that date with values, quantities, and P&L.
+
+#### `compare_portfolio_snapshots` - Portfolio Changes
+
+Compare portfolio composition between two dates:
+
+```python
+"Compare my portfolio between September 1st and October 15th, 2025"
+
+# Programmatic usage
+comparison = await compare_portfolio_snapshots(
+    account_id="U17955070",
+    date1="2025-09-01",
+    date2="2025-10-15"
+)
+```
+
+**Returns**:
+- Positions added/removed
+- Value changes for continuing positions
+- Total portfolio value change
+- Percentage changes
+
+#### `get_position_statistics` - Statistical Summary
+
+Get min/max/average statistics for a position over time:
+
+```python
+"What are the statistics for my PG position over the last 6 months?"
+
+# Programmatic usage
+stats = await get_position_statistics(
+    account_id="U17955070",
+    symbol="PG",
+    start_date="2025-04-01",
+    end_date="2025-10-15"
+)
+```
+
+**Returns**: Min/max/average for price, value, and unrealized P&L.
+
+#### `get_available_snapshot_dates` - Available Dates
+
+List all dates with position snapshots for an account:
+
+```python
+"What dates do I have position data for?"
+
+# Programmatic usage
+dates = await get_available_snapshot_dates(account_id="U17955070")
+```
+
+### Use Cases
+
+1. **Performance Tracking**: Monitor how positions perform over time
+2. **Rebalancing Analysis**: Identify portfolio drift from target allocations
+3. **Tax Planning**: Analyze holding periods and gain/loss trends
+4. **Portfolio Evolution**: Visualize how your portfolio composition changes
+5. **Risk Management**: Track concentration risk and diversification over time
+6. **Historical Analysis**: Backtest strategies against actual position history
+
+### Database Schema
+
+**position_snapshots**: Daily position data per account
+- Composite key: (account_id, snapshot_date, symbol)
+- Fields: quantity, price, value, cost basis, P&L, bond-specific fields
+- Indexes: account+date, symbol+date, date, asset_class
+
+**snapshot_metadata**: Snapshot-level statistics
+- Tracks total positions, portfolio value, cash balance per snapshot
+- Links to source XML files for audit trail
+
+### Data Integrity
+
+- **Deduplication**: Automatic deduplication via UNIQUE constraints
+- **Decimal Precision**: TEXT storage preserves financial calculation precision
+- **Transaction Safety**: ACID compliance for data consistency
+- **Indexed Queries**: Fast queries via strategic indexes
+- **Audit Trail**: Source XML file tracking for each snapshot
+
+---
+
 ## MCP Server Integration
 
 IB Analytics provides a **Model Context Protocol (MCP)** server for integration with Claude Desktop and other MCP clients.
@@ -562,8 +722,9 @@ ib-sec-mcp
 
 ### Features
 
-- **16 Tools**:
+- **21 Tools**:
   - IB Portfolio: Fetch data, performance/cost/bond/tax/risk analysis, portfolio summary
+  - Position History: Position history, portfolio snapshots, snapshot comparison, statistics, available dates
   - Stock Analysis: Stock info, current price, historical data, options chain, put/call ratio, news
   - Investment Analysis: Benchmark comparison, portfolio metrics, correlation analysis, analyst consensus
 - **6 Resources**: Access portfolio data, account info, trades, and positions via URI patterns

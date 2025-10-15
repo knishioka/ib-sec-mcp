@@ -262,7 +262,7 @@ def register_options_tools(mcp: FastMCP) -> None:
             # Calculate Greeks for calls and puts
             def calculate_option_greeks(row, option_type):
                 K = row["strike"]  # noqa: N806
-                IV = row.get("impliedVolatility", 0.3)  # Default to 30% if missing  # noqa: N806
+                IV = row.get("impliedVolatility", 0.3)  # noqa: N806  # Default to 30% if missing
 
                 if IV == 0 or pd.isna(IV):
                     IV = 0.3  # noqa: N806
@@ -603,7 +603,7 @@ def register_options_tools(mcp: FastMCP) -> None:
                 "max_pain_value": float(max_pain_value),
                 "distance_to_max_pain": round(float(distance_to_max_pain), 2),
                 "percent_to_max_pain": round(float(percent_to_max_pain), 2),
-                "expected_move": round(float(expected_move), 2) if expected_move else None,
+                "expected_move": (round(float(expected_move), 2) if expected_move else None),
                 "interpretation": interpretation,
                 "pain_by_strike": {str(k): float(v) for k, v in sorted(pain_by_strike.items())},
                 "top_pain_strikes": [

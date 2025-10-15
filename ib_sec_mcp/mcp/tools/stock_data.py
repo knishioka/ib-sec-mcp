@@ -269,7 +269,7 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
                     "start_date": str(hist.index[0]),
                     "end_date": str(hist.index[-1]),
                     "num_records": len(hist),
-                    "num_records_returned": len(hist_limited) if not summary_only else 0,
+                    "num_records_returned": (len(hist_limited) if not summary_only else 0),
                     "latest_close": float(hist["Close"].iloc[-1]),
                     "period_high": float(hist["High"].max()),
                     "period_low": float(hist["Low"].min()),

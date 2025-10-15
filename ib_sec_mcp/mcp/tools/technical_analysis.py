@@ -383,7 +383,7 @@ def _analyze_trends(close: pd.Series) -> dict:
         "long_term": long_trend,
         "trend_strength": trend_strength,
         "sma_20": round(float(sma_20.iloc[-1]), 2),
-        "sma_50": round(float(sma_50.iloc[-1]), 2) if not pd.isna(sma_50.iloc[-1]) else None,
+        "sma_50": (round(float(sma_50.iloc[-1]), 2) if not pd.isna(sma_50.iloc[-1]) else None),
         "sma_200": (round(float(sma_200.iloc[-1]), 2) if not pd.isna(sma_200.iloc[-1]) else None),
     }
 

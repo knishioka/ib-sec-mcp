@@ -372,6 +372,46 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                     await ctx.error(f"File operation failed: {str(e)}")
                 raise FileOperationError(f"Failed to save data to {filepath}: {str(e)}") from e
 
+            # Auto-sync to SQLite storage
+            try:
+                if ctx:
+                    await ctx.info("Auto-syncing positions to SQLite database")
+
+                # Import storage here to avoid circular dependency
+                from ib_sec_mcp.storage import PositionStore
+
+                # Parse accounts from XML
+                accounts = XMLParser.to_accounts(statement.raw_data, from_date, to_date)
+
+                # Save each account to SQLite
+                store = PositionStore()
+                total_positions_saved = 0
+                for _account_id, account in accounts.items():
+                    positions_saved = store.save_snapshot(
+                        account=account, snapshot_date=to_date, xml_file_path=str(filepath)
+                    )
+                    total_positions_saved += positions_saved
+
+                store.close()
+
+                if ctx:
+                    await ctx.info(
+                        f"Auto-sync complete: {total_positions_saved} positions saved to SQLite",
+                        extra={
+                            "positions_saved": total_positions_saved,
+                            "num_accounts": len(accounts),
+                        },
+                    )
+
+            except Exception as e:
+                # Log error but don't fail the entire operation
+                # The XML file has been saved successfully
+                logger.warning(f"Auto-sync to SQLite failed: {str(e)}", exc_info=True)
+                if ctx:
+                    await ctx.warning(
+                        f"Auto-sync to SQLite failed: {str(e)}. XML file saved successfully."
+                    )
+
             return {
                 "account_id": statement.account_id,
                 "date_range": {"from": str(from_date), "to": str(to_date)},
