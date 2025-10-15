@@ -20,7 +20,7 @@ class IBAnalyticsError(ToolError):
 class ValidationError(IBAnalyticsError):
     """Exception raised when input validation fails"""
 
-    def __init__(self, message: str, field: str = None):
+    def __init__(self, message: str, field: str | None = None):
         self.field = field
         if field:
             super().__init__(f"Validation error for '{field}': {message}")
@@ -31,7 +31,7 @@ class ValidationError(IBAnalyticsError):
 class APIError(IBAnalyticsError):
     """Exception raised when IB API calls fail"""
 
-    def __init__(self, message: str, status_code: int = None):
+    def __init__(self, message: str, status_code: int | None = None):
         self.status_code = status_code
         if status_code:
             super().__init__(f"IB API error ({status_code}): {message}")
@@ -60,7 +60,7 @@ class ConfigurationError(IBAnalyticsError):
 class IBTimeoutError(IBAnalyticsError):
     """Exception raised when operation times out"""
 
-    def __init__(self, message: str, operation: str = None):
+    def __init__(self, message: str, operation: str | None = None):
         self.operation = operation
         if operation:
             super().__init__(f"Timeout during '{operation}': {message}")

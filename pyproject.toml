@@ -96,6 +96,9 @@ disallow_subclassing_any = true
 check_untyped_defs = true
 no_implicit_reexport = true
 plugins = ["pydantic.mypy"]
+# Exclude MCP server code (FastMCP integration layer)
+# TODO: Gradually add type hints to mcp/ directory
+exclude = ["ib_sec_mcp/mcp/"]
 
 # Ignore missing imports for third-party libraries without stubs
 [[tool.mypy.overrides]]
