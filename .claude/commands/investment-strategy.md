@@ -1,14 +1,16 @@
 ---
-description: Comprehensive investment strategy combining portfolio analysis and market analysis for actionable recommendations
+description: Comprehensive investment strategy combining portfolio and market analysis with actionable plans
 allowed-tools: Task
 argument-hint: [--save]
 ---
 
 Generate comprehensive investment strategy by integrating portfolio analysis (from data-analyzer) with market analysis (from market-analyst) to create unified, actionable recommendations.
 
+**Performance Optimization**: Uses **parallel sub-agent execution** for market analysis. Each stock/bond is analyzed by a separate market-analyst instance simultaneously, achieving **80-90% time reduction** compared to sequential analysis.
+
 ## Task
 
-Delegate to the **strategy-coordinator** subagent to orchestrate comprehensive investment strategy development.
+Delegate to the **strategy-coordinator** subagent to orchestrate comprehensive investment strategy development with parallel market analysis.
 
 ### Command Usage
 
@@ -62,23 +64,53 @@ Please orchestrate the following:
    - Provide per-account breakdown for rebalancing
    - Identify portfolio strengths and concerns at consolidated level
 
-2. Market Analysis Phase:
-   - Delegate to market-analyst subagent
-   - Analyze each current holding (technical, options)
-   - Identify new position candidates
-   - Assess market opportunities and risks
+2. Market Analysis Phase (PARALLEL EXECUTION):
+   - **USE Task TOOL FOR PARALLEL PROCESSING**
+   - For EACH symbol (current holdings + new candidates):
+     * Launch SEPARATE market-analyst subagent instance
+     * Each instance analyzes ONE symbol only:
+       - 2-year chart data with technical indicators
+       - Multi-timeframe analysis (daily/weekly/monthly)
+       - Options strategies (Greeks, IV metrics)
+       - Entry/exit timing with scenarios
+       - Support/resistance levels
+       - News and catalysts
 
-3. Strategy Synthesis:
+   **Parallel Delegation Pattern**:
+   ```python
+   # Launch all analyses in parallel (single message, multiple Task calls)
+   Task(market-analyst) → Analyze SYMBOL1 (current holding)
+   Task(market-analyst) → Analyze SYMBOL2 (current holding)
+   Task(market-analyst) → Analyze SYMBOL3 (current holding)
+   Task(market-analyst) → Analyze SYMBOL4 (new candidate)
+   Task(market-analyst) → Analyze SYMBOL5 (new candidate)
+   # All execute simultaneously, results aggregated
+   ```
+
+   **Performance Benefit**:
+   - Sequential: N symbols × 2 min = 10-20 min
+   - Parallel: max(2 min) = 2 min
+   - **80-90% time reduction**
+
+3. Strategy Synthesis (INTEGRATE ALL RESULTS):
+   - **Aggregate all market-analyst results** from parallel execution
+   - For each symbol, combine:
+     * Portfolio metrics (from data-analyzer)
+     * Market analysis (from market-analyst subagent)
+     * Tax implications (per account)
+     * Risk/reward assessment
+
    - For each current holding:
-     - Combine portfolio metrics with market outlook
      - Recommend: HOLD/SELL/TRIM/ADD with rationale
-     - Consider tax implications
-     - Suggest options strategies
+     - 2-year chart context + entry/exit levels
+     - Options strategies with specific strikes/premiums
+     - Tax-optimized execution plan (which account)
 
    - For new positions:
-     - Identify candidates based on portfolio gaps
-     - Analyze technical setups and entry points
-     - Define position sizing and risk management
+     - Prioritize by conviction and portfolio fit
+     - Entry scenarios: immediate vs pullback
+     - Specific price targets and stop losses
+     - Position sizing and risk management
 
    - Portfolio-level recommendations (CONSOLIDATED):
      - Rebalancing needs across ALL accounts
@@ -237,6 +269,59 @@ Expected Impact:
 **A. [SYMBOL] - Proposed New Position**
    Opportunity: [Why this fills portfolio gap or represents opportunity]
 
+   📊 2-Year Chart Analysis (REQUIRED):
+   ```
+   Price History (2 years):
+   - Start: $XXX.XX (2 years ago)
+   - Current: $XXX.XX
+   - Period High: $XXX.XX (date)
+   - Period Low: $XXX.XX (date)
+   - 2-Year Return: +XX.X%
+
+   Technical Position:
+   Current: $XXX.XX
+   ─────────────────────────────────────────
+   SMA-200: $XXX.XX [✅/❌ Above/Below]
+   SMA-50:  $XXX.XX [✅/❌ Above/Below]
+   SMA-20:  $XXX.XX [✅/❌ Above/Below]
+
+   RSI (14):     XX.XX [Overbought/Neutral/Oversold]
+   MACD:         [Bullish/Bearish] crossover
+
+   Support:      $XXX.XX (-X.X%)
+   Resistance:   $XXX.XX (+X.X%)
+   ```
+
+   🎯 BUY TIMING ANALYSIS:
+
+   **Scenario 1: Immediate Entry (XX%)**
+   - Price: $XXX.XX - $XXX.XX (current levels)
+   - Timing: This week
+   - Capital: $X,XXX
+   - Rationale:
+     * [Technical reason: e.g., Sitting on SMA-200 support]
+     * [Momentum reason: e.g., RSI oversold at 32]
+     * [Fundamental reason: e.g., Dividend yield X.X%]
+
+   **Scenario 2: Wait for Pullback (XX%)**
+   - Price: $XXX.XX - $XXX.XX (support zone)
+   - Timing: Wait 1-4 weeks
+   - Capital: $X,XXX
+   - Rationale:
+     * [Why wait: e.g., Overbought RSI 72, expect -5% pullback]
+     * [Target zone: e.g., SMA-50 at $XXX offers better entry]
+
+   **Optimal Entry Signals**:
+   ✅ RSI < XX (currently XX.X)
+   ✅ Price touches $XXX support
+   ✅ MACD reversal confirmed
+   ✅ Volume increase on bounce
+
+   **Avoid If**:
+   ❌ Breaks below $XXX (trend reversal)
+   ❌ RSI < 30 (severe weakness = bigger problem)
+   ❌ [Market condition: e.g., VIX > 35]
+
    📈 Market Analysis:
    - Technical Setup: [Description of entry opportunity]
    - Trend: [Daily/Weekly/Monthly alignment]
@@ -260,20 +345,20 @@ Expected Impact:
    Position Size: $XX,XXX (XXX shares)
 
    Entry Strategy:
-   Phase 1 (50%): Enter at $XXX.XX - $XXX.XX
-   Phase 2 (50%): Add on pullback to $XXX.XX or breakout above $XXX.XX
+   Phase 1 (50%): Enter at $XXX.XX - $XXX.XX [Immediate/Pullback]
+   Phase 2 (50%): Add at $XXX.XX [condition]
 
-   Or: All at once at current levels if [condition]
+   Alternative: Cash-Secured Put @ $XXX strike for premium entry
 
    Risk Management:
    - Initial Stop: $XXX.XX (X% risk per share)
    - Position Risk: X.X% of portfolio
    - Trail stop to breakeven after +X%
 
-   Expected Outcome:
-   - Target Return: +XX% ($X,XXX)
-   - Time Horizon: X-X months
-   - Probability: XX%
+   Expected Outcome (12-month):
+   - Best Case: +XX% if reaches $XXX
+   - Base Case: +XX% with dividend/income
+   - Worst Case: -XX% if stop hit
 
 **B. [SYMBOL] - Proposed New Position**
    [Same format for other candidates]

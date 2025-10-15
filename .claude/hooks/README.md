@@ -152,11 +152,38 @@ Edit `.claude/settings.local.json` to change the hook timeout:
 
 ## Troubleshooting
 
+### "PreToolUse:Bash hook error" message
+
+If you see this error message repeatedly, it means the hook script is failing with a non-zero exit code. Common causes:
+
+1. **`CLAUDE_TOOL_INPUT` environment variable not set**: The hook expects this variable to contain the command JSON.
+   - **Fixed in v2**: Hook now handles unset `CLAUDE_TOOL_INPUT` gracefully using `${CLAUDE_TOOL_INPUT:-}`
+
+2. **`jq` not installed**: The hook uses `jq` to parse JSON.
+   ```bash
+   # Install jq on macOS
+   brew install jq
+
+   # Verify installation
+   jq --version
+   ```
+
+3. **Strict error handling**: The hook uses `set -eo pipefail` (removed `u` flag in v2 to handle unset variables).
+
+**Solution**: The error should be resolved with the updated hook script (v2). If it persists:
+```bash
+# Test the hook manually
+unset CLAUDE_TOOL_INPUT
+./.claude/hooks/pre-tool-use.sh
+# Should exit 0 (success) without error
+```
+
 ### Hook not running
 
 1. Verify script is executable: `ls -la .claude/hooks/pre-tool-use.sh`
 2. Check for `x` permission: `-rwxr-xr-x`
 3. Restart Claude Code after making changes
+4. Ensure hook is configured in `.claude/settings.local.json`
 
 ### Hook blocking legitimate commands
 
@@ -204,5 +231,10 @@ This hook should be reviewed periodically to ensure it:
 3. Provides helpful error messages that guide users to solutions
 4. Aligns with team quality standards and workflows
 
-**Last Updated**: 2025-10-14
+**Version**: v2 (2025-10-16)
+- Fixed: Handle unset `CLAUDE_TOOL_INPUT` gracefully
+- Fixed: Removed `set -u` flag to prevent errors with unset variables
+- Improved: Added error suppression for `jq` command
+
+**Last Updated**: 2025-10-16
 **Maintainer**: Kenichiro Nishioka

@@ -81,6 +81,18 @@ repos:
         args: ['-c', 'pyproject.toml']
         additional_dependencies: ["bandit[toml]"]
 
+  # Claude Code configuration validation
+  - repo: local
+    hooks:
+      - id: validate-claude-config
+        name: Validate Claude Code Configuration
+        description: Validate sub-agents and slash commands configuration
+        entry: python3 .claude/scripts/validate_claude_config.py --changed-only
+        language: system
+        pass_filenames: false
+        files: '^\.claude/(agents|commands)/.*\.md$'
+        verbose: true
+
 # Configuration for specific hooks
 default_language_version:
   python: python3.12
@@ -96,7 +108,9 @@ exclude: |
       \.venv/.*|
       venv/.*|
       build/.*|
-      dist/.*
+      dist/.*|
+      \.claude/scripts/.*|
+      \.claude/hooks/.*
   )$
 
 # Fail fast on first error

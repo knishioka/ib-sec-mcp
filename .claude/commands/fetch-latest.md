@@ -1,3 +1,9 @@
+---
+description: Fetch latest trading data from IB Flex Query API
+allowed-tools: Read, Bash(python:*), mcp__ib-sec-mcp__fetch_ib_data
+argument-hint: [--multi-account|--start-date|--end-date]
+---
+
 # Fetch Latest Data
 
 Fetch the most recent trading data from Interactive Brokers Flex Query API.
