@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 from fastmcp import Context, FastMCP
 
-from ib_sec_mcp.core.parsers import CSVParser, XMLParser, detect_format
+from ib_sec_mcp.core.parsers import XMLParser, detect_format
 from ib_sec_mcp.mcp.exceptions import (
     FileOperationError,
     IBTimeoutError,
@@ -32,7 +32,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
 
     @mcp.tool
     async def calculate_portfolio_metrics(
-        csv_path: str,
+        file_path: str,
         benchmark: str = "SPY",
         risk_free_rate: float = 0.05,
         period: str = "1y",
@@ -42,7 +42,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
         Calculate advanced portfolio performance metrics
 
         Args:
-            csv_path: Path to IB Flex Query CSV file
+            file_path: Path to IB Flex Query XML file
             benchmark: Benchmark symbol for comparison (default: SPY)
             risk_free_rate: Risk-free rate as decimal (default: 0.05 for 5%)
             period: Time period for analysis (1mo, 3mo, 6mo, 1y, 2y, 5y)
@@ -58,21 +58,21 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
         """
         try:
             # Validate inputs
-            csv_path_validated = validate_file_path(csv_path)
+            file_path_validated = validate_file_path(file_path)
             benchmark = validate_benchmark_symbol(benchmark)
             risk_free_rate = validate_risk_free_rate(risk_free_rate)
             period = validate_period(period)
 
             if ctx:
-                await ctx.info(f"Calculating portfolio metrics for {csv_path}")
+                await ctx.info(f"Calculating portfolio metrics for {file_path}")
 
             # Read file content
-            with open(csv_path_validated) as f:
+            with open(file_path_validated) as f:
                 file_content = f.read()
 
-            # Detect format and extract dates from filename
-            format_type = detect_format(file_content)
-            filename = Path(csv_path_validated).stem
+            # Validate XML format and extract dates from filename
+            detect_format(file_content)  # Raises ValueError if not XML
+            filename = Path(file_path_validated).stem
             parts = filename.split("_")
             if len(parts) >= 3:
                 try:
@@ -85,15 +85,13 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
                 from_date = date(date.today().year, 1, 1)
                 to_date = date.today()
 
-            # Parse using static methods
-            if format_type == "csv":
-                account = await asyncio.to_thread(
-                    CSVParser.to_account, file_content, from_date, to_date
-                )
-            else:
-                account = await asyncio.to_thread(
-                    XMLParser.to_account, file_content, from_date, to_date
-                )
+            # Parse XML data
+            accounts = await asyncio.to_thread(
+                XMLParser.to_accounts, file_content, from_date, to_date
+            )
+            if not accounts:
+                raise ValidationError("No accounts found in XML file")
+            account = list(accounts.values())[0]  # Use first account
 
             # Get portfolio value history (simplified - use current positions)
             positions = account.positions
@@ -237,7 +235,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
 
     @mcp.tool
     async def analyze_portfolio_correlation(
-        csv_path: str,
+        file_path: str,
         period: str = "1y",
         ctx: Context | None = None,
     ) -> str:
@@ -245,7 +243,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
         Analyze correlation between portfolio positions
 
         Args:
-            csv_path: Path to IB Flex Query CSV file
+            file_path: Path to IB Flex Query XML file
             period: Time period for correlation analysis (1mo, 3mo, 6mo, 1y, 2y, 5y)
             ctx: MCP context for logging
 
@@ -259,19 +257,19 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
         """
         try:
             # Validate inputs
-            csv_path_validated = validate_file_path(csv_path)
+            file_path_validated = validate_file_path(file_path)
             period = validate_period(period)
 
             if ctx:
                 await ctx.info(f"Analyzing portfolio correlation for {period}")
 
             # Read file content
-            with open(csv_path_validated) as f:
+            with open(file_path_validated) as f:
                 file_content = f.read()
 
-            # Detect format and extract dates from filename
-            format_type = detect_format(file_content)
-            filename = Path(csv_path_validated).stem
+            # Validate XML format and extract dates from filename
+            detect_format(file_content)  # Raises ValueError if not XML
+            filename = Path(file_path_validated).stem
             parts = filename.split("_")
             if len(parts) >= 3:
                 try:
@@ -284,15 +282,13 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
                 from_date = date(date.today().year, 1, 1)
                 to_date = date.today()
 
-            # Parse using static methods
-            if format_type == "csv":
-                account = await asyncio.to_thread(
-                    CSVParser.to_account, file_content, from_date, to_date
-                )
-            else:
-                account = await asyncio.to_thread(
-                    XMLParser.to_account, file_content, from_date, to_date
-                )
+            # Parse XML data
+            accounts = await asyncio.to_thread(
+                XMLParser.to_accounts, file_content, from_date, to_date
+            )
+            if not accounts:
+                raise ValidationError("No accounts found in XML file")
+            account = list(accounts.values())[0]  # Use first account
 
             # Get positions
             positions = account.positions
