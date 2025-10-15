@@ -1,3 +1,9 @@
+---
+description: Troubleshoot IB Flex Query API connection and data issues
+allowed-tools: Read, Bash(python:*), Bash(curl:*), mcp__ib-sec-mcp__fetch_ib_data
+argument-hint: [--verbose|--test-credentials]
+---
+
 # Debug API Issues
 
 Troubleshoot IB Flex Query API connection and data fetching issues.

@@ -1,5 +1,5 @@
 ---
-description: Automate GitHub Issue resolution with complete development workflow (TDD, quality checks, PR creation)
+description: Automate GitHub Issue resolution with TDD, quality checks, and PR creation workflow
 allowed-tools: Bash(gh:*), Task, TodoWrite, Bash(git:*), Bash(pytest:*), Bash(black:*), Bash(ruff:*), Bash(mypy:*), Edit, MultiEdit, Write, Read, Grep, Glob
 argument-hint: <issue-number> [--skip-checks] [--skip-tests] [--dry-run]
 ---

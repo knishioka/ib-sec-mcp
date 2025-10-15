@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Claude Code PreToolUse Hook - Quality Gates Enforcement
+# Version: v2 (2025-10-16)
 #
 # This hook prevents Claude Code from bypassing quality checks using:
 # - git commit --no-verify (bypasses pre-commit hooks)
@@ -11,11 +12,20 @@
 # - 0: Allow the command
 # - 2: Block the command (PreToolUse only, message to stderr for Claude)
 # - Other non-zero: Non-blocking error shown to user
+#
+# Changelog:
+# v2 (2025-10-16):
+#   - Fixed: Handle unset CLAUDE_TOOL_INPUT gracefully using ${CLAUDE_TOOL_INPUT:-}
+#   - Fixed: Removed 'u' flag from 'set -euo pipefail' to prevent errors with unset variables
+#   - Improved: Added error suppression (2>/dev/null) for jq command
+# v1 (2025-10-14):
+#   - Initial version with git --no-verify and SKIP= detection
 
-set -euo pipefail
+set -eo pipefail  # Removed 'u' flag to handle unset CLAUDE_TOOL_INPUT
 
 # Parse the command from CLAUDE_TOOL_INPUT JSON
-COMMAND=$(echo "$CLAUDE_TOOL_INPUT" | jq -r '.command // empty')
+# Use default empty string if CLAUDE_TOOL_INPUT is not set
+COMMAND=$(echo "${CLAUDE_TOOL_INPUT:-}" | jq -r '.command // empty' 2>/dev/null || echo "")
 
 # If no command found, allow (not a Bash tool)
 if [ -z "$COMMAND" ]; then
