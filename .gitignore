@@ -47,6 +47,7 @@ data/raw/*.xml
 data/processed/*.csv
 data/processed/*.json
 data/processed/*.db
+data/processed/*.txt
 *.csv
 *.xml
 *.db
