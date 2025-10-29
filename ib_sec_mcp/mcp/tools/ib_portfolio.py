@@ -769,6 +769,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 "total_quantity": Decimal("0"),
                 "total_value": Decimal("0"),
                 "accounts": [],
+                "position_metadata": None,  # Store first position's metadata
             }
         )
         account_summaries = []
@@ -783,11 +784,29 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             for position in account.positions:
                 symbol = position.symbol
                 consolidated_positions_by_symbol[symbol]["total_quantity"] += position.quantity
-                consolidated_positions_by_symbol[symbol]["total_value"] += (
-                    position.cost_basis * abs(position.quantity)
-                )
+                # Use position_value (market value) instead of cost_basis * quantity
+                # This correctly handles bonds where quantity represents face value
+                consolidated_positions_by_symbol[symbol]["total_value"] += position.position_value
                 if acc_id not in consolidated_positions_by_symbol[symbol]["accounts"]:
                     consolidated_positions_by_symbol[symbol]["accounts"].append(acc_id)
+
+                # Store metadata from first position (for identification purposes)
+                if consolidated_positions_by_symbol[symbol]["position_metadata"] is None:
+                    # Extract issuer country from ISIN (first 2 characters)
+                    issuer_country = (
+                        position.isin[:2] if position.isin and len(position.isin) >= 2 else None
+                    )
+
+                    consolidated_positions_by_symbol[symbol]["position_metadata"] = {
+                        "asset_class": position.asset_class.value,
+                        "description": position.description,
+                        "isin": position.isin,
+                        "cusip": position.cusip,
+                        "issuer_country": issuer_country,
+                        "maturity_date": str(position.maturity_date)
+                        if position.maturity_date
+                        else None,
+                    }
 
             # Per-account summary
             account_summaries.append(
@@ -817,31 +836,81 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             percentage = (
                 round((data["total_value"] / total_value * 100), 2) if total_value > 0 else 0
             )
-            holdings_by_symbol.append(
-                {
-                    "symbol": symbol,
-                    "total_quantity": str(data["total_quantity"]),
-                    "total_value": str(data["total_value"]),
-                    "percentage_of_portfolio": str(percentage),
-                    "num_accounts": len(data["accounts"]),
-                    "accounts": data["accounts"],
-                }
-            )
+
+            # Build holding entry with metadata
+            holding_entry = {
+                "symbol": symbol,
+                "total_quantity": str(data["total_quantity"]),
+                "total_value": str(data["total_value"]),
+                "percentage_of_portfolio": str(percentage),
+                "num_accounts": len(data["accounts"]),
+                "accounts": data["accounts"],
+            }
+
+            # Add metadata if available
+            if data["position_metadata"]:
+                metadata = data["position_metadata"]
+                holding_entry["asset_class"] = metadata["asset_class"]
+
+                # Generate enhanced description for bonds
+                if metadata["asset_class"] == "BOND":
+                    issuer_country = metadata.get("issuer_country", "")
+                    maturity_date = metadata.get("maturity_date", "")
+
+                    # US Treasury STRIPS: "US Treasury STRIPS 0% MM/DD/YYYY"
+                    if issuer_country == "US" and "STRIP" in symbol.upper():
+                        if maturity_date:
+                            # Format: 2040-11-15 → 11/15/2040
+                            try:
+                                from datetime import datetime
+
+                                mat_date = datetime.strptime(maturity_date, "%Y-%m-%d")
+                                formatted_date = mat_date.strftime("%m/%d/%Y")
+                                enhanced_desc = f"US Treasury STRIPS 0% {formatted_date}"
+                            except (ValueError, TypeError):
+                                enhanced_desc = f"US Treasury STRIPS 0% {maturity_date}"
+                        else:
+                            enhanced_desc = "US Treasury STRIPS 0%"
+                    # Other bonds: "{Country} Bond - {original description}"
+                    else:
+                        country_name = issuer_country if issuer_country else "Unknown"
+                        enhanced_desc = f"{country_name} Bond - {metadata['description']}"
+
+                    holding_entry["description"] = enhanced_desc
+                    holding_entry["original_description"] = metadata["description"]
+                else:
+                    holding_entry["description"] = metadata["description"]
+
+                if metadata["isin"]:
+                    holding_entry["isin"] = metadata["isin"]
+                if metadata["cusip"]:
+                    holding_entry["cusip"] = metadata["cusip"]
+                if metadata["issuer_country"]:
+                    holding_entry["issuer_country"] = metadata["issuer_country"]
+                if metadata["maturity_date"]:
+                    holding_entry["maturity_date"] = metadata["maturity_date"]
+
+            holdings_by_symbol.append(holding_entry)
 
         # Calculate asset allocation
         stocks_value = Decimal("0")
         bonds_value = Decimal("0")
-        for symbol, data in consolidated_positions_by_symbol.items():
-            # Simple heuristic: bonds have numbers in symbol (e.g., US TREASURY STRIPS)
-            # or contain "STRIP" in description
-            if any(char.isdigit() for char in symbol) or "STRIP" in symbol.upper():
+        bonds_by_country = defaultdict(Decimal)  # Track bonds by country
+
+        for _symbol, data in consolidated_positions_by_symbol.items():
+            # Use metadata for accurate classification
+            metadata = data.get("position_metadata")
+            if metadata and metadata.get("asset_class") == "BOND":
                 bonds_value += data["total_value"]
+                # Track by country
+                issuer_country = metadata.get("issuer_country", "Unknown")
+                bonds_by_country[issuer_country] += data["total_value"]
             else:
                 stocks_value += data["total_value"]
 
         # Concentration risk
         largest_position_pct = (
-            round((holdings_by_symbol[0]["total_value"] / str(total_value) * 100), 2)
+            round((Decimal(holdings_by_symbol[0]["total_value"]) / total_value * 100), 2)
             if holdings_by_symbol and total_value > 0
             else 0
         )
@@ -882,6 +951,24 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                         if total_value > 0
                         else "0.0"
                     ),
+                    "by_country": {
+                        country: {
+                            "value": str(value),
+                            "percentage": (
+                                str(round((value / bonds_value * 100), 2))
+                                if bonds_value > 0
+                                else "0.0"
+                            ),
+                            "percentage_of_portfolio": (
+                                str(round((value / total_value * 100), 2))
+                                if total_value > 0
+                                else "0.0"
+                            ),
+                        }
+                        for country, value in sorted(
+                            bonds_by_country.items(), key=lambda x: x[1], reverse=True
+                        )
+                    },
                 },
                 "cash": {
                     "value": str(total_cash),
