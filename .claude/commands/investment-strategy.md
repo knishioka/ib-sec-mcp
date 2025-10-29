@@ -4,694 +4,101 @@ allowed-tools: Task
 argument-hint: [--save]
 ---
 
-Generate comprehensive investment strategy by integrating portfolio analysis (from data-analyzer) with market analysis (from market-analyst) to create unified, actionable recommendations.
+Generate comprehensive investment strategy by integrating portfolio analysis with market analysis to create unified, actionable recommendations.
 
-**Performance Optimization**: Uses **parallel sub-agent execution** for market analysis. Each stock/bond is analyzed by a separate market-analyst instance simultaneously, achieving **80-90% time reduction** compared to sequential analysis.
+**Performance Optimization**: Uses **batched sub-agent execution** with Top 5 holdings focus, achieving **7-10 minute completion** (safe for timeout).
 
 ## Task
 
-Delegate to the **strategy-coordinator** subagent to orchestrate comprehensive investment strategy development with parallel market analysis.
+Delegate to the **strategy-coordinator** subagent to orchestrate comprehensive investment strategy development.
 
 ### Command Usage
 
 ```bash
-/investment-strategy
-/investment-strategy --save
+/investment-strategy          # Generate strategy
+/investment-strategy --save   # Generate and save to file
 ```
 
-### Strategy Development Process
+### What This Command Does
 
 The **strategy-coordinator** subagent will:
 
-**1. Orchestrate Portfolio Analysis (via data-analyzer)**
-- Load latest portfolio data
-- **Perform CONSOLIDATED ANALYSIS across ALL accounts**
-- Analyze performance, costs, bonds, taxes, risks at portfolio level
-- Identify current holdings aggregated by symbol (not per-account)
-- Show which accounts hold each symbol
-- Assess portfolio strengths and weaknesses at consolidated level
+**1. Portfolio Analysis** (2 min)
+- Load latest portfolio data via MCP
+- Analyze CONSOLIDATED metrics across ALL accounts
+- Identify top 5 holdings by value
+- Assess asset allocation and concentration risks
 
-**2. Orchestrate Market Analysis (via market-analyst)**
-- Analyze each current holding:
-  - Technical outlook
-  - Entry/exit signals
-  - Options strategies
-  - News and catalysts
-- Analyze candidate positions:
-  - Market opportunities
-  - Technical setups
-  - Options strategies
+**2. Market Analysis** (3-5 min)
+- Analyze **TOP 5 HOLDINGS ONLY** for detailed technical analysis
+- Launch 5 market-analyst instances in parallel
+- Each provides: technical outlook, support/resistance, conviction score
+- Remaining holdings: brief portfolio-based recommendations
 
-**3. Synthesize Unified Strategy**
-- Integrate portfolio metrics with market outlook
-- Balance risk and return
-- Consider tax implications
-- Prioritize actions by urgency and impact
-- Create executable action plan
+**3. Strategy Synthesis** (2-3 min)
+- Integrate portfolio metrics with market analysis
+- Generate streamlined report (~4K tokens vs 15K+ old format):
+  * Executive summary (key findings only)
+  * Top 5 holdings with detailed recommendations
+  * Remaining holdings with brief notes
+  * Portfolio-level strategy (allocation, tax, risk)
+  * Prioritized action plan (urgent, high, medium priority)
+  * Expected outcomes
+
+**Total Time**: 7-10 minutes (within Claude Code timeout)
 
 ### Delegation Instructions
 
 ```
-Use the strategy-coordinator subagent to generate comprehensive investment strategy:
+Use the strategy-coordinator subagent to generate investment strategy:
 
 Please orchestrate the following:
 
-1. Portfolio Analysis Phase:
-   - Delegate to data-analyzer subagent
-   - **Use CONSOLIDATED portfolio analysis across ALL accounts**
-   - Get current holdings aggregated by symbol (show which accounts hold each)
-   - Analyze tax situation and risk profile at portfolio level
-   - Provide per-account breakdown for rebalancing
-   - Identify portfolio strengths and concerns at consolidated level
+1. Portfolio Analysis:
+   - Call analyze_consolidated_portfolio MCP tool directly
+   - Extract top 5 holdings by value for detailed analysis
+   - Note asset allocation and concentration risks
 
-2. Market Analysis Phase (PARALLEL EXECUTION):
-   - **USE Task TOOL FOR PARALLEL PROCESSING**
-   - For EACH symbol (current holdings + new candidates):
-     * Launch SEPARATE market-analyst subagent instance
-     * Each instance analyzes ONE symbol only:
-       - 2-year chart data with technical indicators
-       - Multi-timeframe analysis (daily/weekly/monthly)
-       - Options strategies (Greeks, IV metrics)
-       - Entry/exit timing with scenarios
-       - Support/resistance levels
-       - News and catalysts
+2. Market Analysis (Batched):
+   - Launch 5 market-analyst subagents in parallel (single message, multiple Task calls)
+   - Analyze TOP 5 HOLDINGS ONLY
+   - Request concise analysis (<500 tokens each):
+     * Technical outlook (BULLISH/NEUTRAL/BEARISH)
+     * Key support/resistance levels
+     * Entry/exit scenarios (2-3 bullets max)
+     * Options strategy (1 recommendation)
+     * Conviction score (1-10)
 
-   **Parallel Delegation Pattern**:
-   ```python
-   # Launch all analyses in parallel (single message, multiple Task calls)
-   Task(market-analyst) → Analyze SYMBOL1 (current holding)
-   Task(market-analyst) → Analyze SYMBOL2 (current holding)
-   Task(market-analyst) → Analyze SYMBOL3 (current holding)
-   Task(market-analyst) → Analyze SYMBOL4 (new candidate)
-   Task(market-analyst) → Analyze SYMBOL5 (new candidate)
-   # All execute simultaneously, results aggregated
-   ```
+3. Strategy Synthesis:
+   - Generate streamlined report following your defined format
+   - Top 5 holdings: detailed recommendations
+   - Remaining holdings: 1-line summaries
+   - Portfolio-level strategy: allocation, tax, risk management
+   - Action plan: prioritized by urgency
 
-   **Performance Benefit**:
-   - Sequential: N symbols × 2 min = 10-20 min
-   - Parallel: max(2 min) = 2 min
-   - **80-90% time reduction**
-
-3. Strategy Synthesis (INTEGRATE ALL RESULTS):
-   - **Aggregate all market-analyst results** from parallel execution
-   - For each symbol, combine:
-     * Portfolio metrics (from data-analyzer)
-     * Market analysis (from market-analyst subagent)
-     * Tax implications (per account)
-     * Risk/reward assessment
-
-   - For each current holding:
-     - Recommend: HOLD/SELL/TRIM/ADD with rationale
-     - 2-year chart context + entry/exit levels
-     - Options strategies with specific strikes/premiums
-     - Tax-optimized execution plan (which account)
-
-   - For new positions:
-     - Prioritize by conviction and portfolio fit
-     - Entry scenarios: immediate vs pullback
-     - Specific price targets and stop losses
-     - Position sizing and risk management
-
-   - Portfolio-level recommendations (CONSOLIDATED):
-     - Rebalancing needs across ALL accounts
-     - Cross-account tax optimization strategies
-     - Options for income/protection per account
-     - Risk management adjustments at portfolio level
-     - Asset location efficiency across accounts
-
-4. Action Prioritization:
-   - Urgent actions (this week)
-   - High priority (this month)
-   - Medium priority (this quarter)
-   - Monitoring points (ongoing)
-
-5. Expected Outcomes:
-   - Portfolio improvements
-   - Risk/return adjustments
-   - Tax savings
-   - Performance targets
-
-Generate comprehensive investment strategy report with specific, actionable recommendations.
+4. Expected Output:
+   - Executive summary (3-5 bullets for strengths/concerns)
+   - Position-by-position recommendations (detailed for top 5)
+   - Portfolio-level strategy (allocation, tax optimization, risk management)
+   - Prioritized action plan (urgent/high/medium priority)
+   - Expected outcomes (quantified improvements)
 
 $ARGUMENTS
 ```
 
-### Expected Output Format
-
-```
-=== COMPREHENSIVE INVESTMENT STRATEGY ===
-Generated: [DATE]
-Portfolio Value: $XXX,XXX (Consolidated across N accounts)
-Analysis Period: [START] to [END]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 EXECUTIVE SUMMARY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Portfolio Health: [EXCELLENT|GOOD|FAIR|NEEDS ATTENTION]
-
-**Multi-Account Overview**:
-- Account 1 (Family Sub): $XX,XXX (X.X%)
-- Account 2 (Private): $XX,XXX (XX.X%)
-- Account 3 (Family Main): $XXX,XXX (XX.X%)
-- **Total**: $XXX,XXX
-
-Performance Summary (Consolidated):
-- YTD Return: +X.X%
-- Total P&L: $X,XXX
-- Win Rate: XX%
-- Sharpe Ratio: X.XX
-
-Key Findings:
-✅ Strengths:
-   • [Strength 1: e.g., Strong YTD performance +18.5%]
-   • [Strength 2: e.g., Well-diversified bond ladder]
-   • [Strength 3: e.g., Low cost structure]
-
-⚠️ Concerns:
-   • [Concern 1: e.g., PORTFOLIO-LEVEL concentration (accurate across all accounts)]
-   • [Concern 2: e.g., Short-term capital gains tax exposure in Account 2]
-   • [Concern 3: e.g., Suboptimal asset location across accounts]
-   • [Concern 4: e.g., Negative technical signals on key holdings]
-
-💡 Strategic Direction:
-[2-3 paragraph summary of recommended strategic direction]
-
-Expected Impact:
-- Return Improvement: +X% to +Y%
-- Risk Reduction: -X% maximum drawdown
-- Tax Savings: $X,XXX
-- Income Generation: $XXX/month from options
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 POSITION-BY-POSITION RECOMMENDATIONS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-### Current Holdings
-
-**1. [SYMBOL] - CONSOLIDATED POSITION**
-   **Total Across All Accounts**: $XX,XXX (XX.X% of total portfolio)
-   **Holdings Breakdown**:
-   - Account 1 (Family Sub): XXX shares @ $XXX.XX (X.X%)
-   - Account 2 (Private): XXX shares @ $XXX.XX (XX.X%)
-   **Consolidated Metrics**: Cost Basis: $XXX.XX | P&L: +$XXX (+XX%)
-
-   📊 Portfolio Analysis (from data-analyzer):
-   - Performance: [Win rate, profit factor if traded]
-   - Position Size: XX.X% of TOTAL portfolio (not per-account)
-   - Tax Status: [Per account - may differ]
-     * Account 1: Long-term (held XX months)
-     * Account 2: Short-term (held X months)
-   - Risk Contribution: [PORTFOLIO-LEVEL concentration]
-   - Accounts Holding: [Which accounts, for rebalancing decisions]
-
-   📈 Market Analysis (from market-analyst):
-   - Technical Outlook: [BULLISH/NEUTRAL/BEARISH]
-   - Daily Trend: [Description]
-   - Weekly Trend: [Description]
-   - Monthly Trend: [Description]
-   - Timeframe Confluence: [HIGH/MEDIUM/LOW]
-
-   - Key Levels:
-     Support: $XXX.XX
-     Resistance: $XXX.XX
-     Stop Loss: $XXX.XX
-
-   - IV Environment: [HIGH/MEDIUM/LOW] (Rank: XX)
-   - Options Strategy: [Covered calls / Protective puts / etc.]
-
-   - Recent News: [Summary]
-   - Sentiment: [POSITIVE/NEUTRAL/NEGATIVE]
-
-   🎯 INTEGRATED RECOMMENDATION: [HOLD / SELL / TRIM / ADD]
-   Conviction: [HIGH/MEDIUM/LOW] (X/10)
-
-   Rationale:
-   [Synthesis of portfolio metrics and market outlook]
-   - Portfolio perspective: [How it fits current portfolio]
-   - Market perspective: [Technical and fundamental outlook]
-   - Tax consideration: [Hold for LT / Harvest loss / etc.]
-
-   Action Plan:
-   Primary Action:
-   - [Specific action: e.g., HOLD with covered call strategy]
-   - [Which account to execute in for tax efficiency]
-   - [Price targets and stop loss]
-   - [Position sizing: maintain / reduce to X% / add to X%]
-
-   Options Strategy (Account-Specific):
-   - Account 1: [If applicable: Covered call at $XXX strike, earn $XXX premium]
-   - Account 2: [Or: Protective put at $XXX strike for downside protection]
-
-   Tax Strategy (Multi-Account Optimization):
-   - Account 1: Hold until [DATE] for long-term treatment, saving $XXX
-   - Account 2: Sell if needed (already long-term) or harvest loss
-   - Cross-account wash sale avoidance: [Coordinate timing across accounts]
-
-   Risk Management:
-   - Stop Loss: $XXX.XX (XX% below current)
-   - Profit Target: $XXX.XX (XX% above current)
-   - Review triggers: [Specific conditions to reassess]
-
-   Expected Outcome:
-   - Best Case: +$X,XXX if reaches $XXX
-   - Base Case: +$XXX with covered calls
-   - Worst Case: -$XXX if stop loss hit
-
-**2. [SYMBOL] - [POSITION]**
-   [Same detailed format for each holding]
-
-**3. [SYMBOL] - [POSITION]**
-   [Continue for all holdings]
-
-### New Position Candidates
-
-**A. [SYMBOL] - Proposed New Position**
-   Opportunity: [Why this fills portfolio gap or represents opportunity]
-
-   📊 2-Year Chart Analysis (REQUIRED):
-   ```
-   Price History (2 years):
-   - Start: $XXX.XX (2 years ago)
-   - Current: $XXX.XX
-   - Period High: $XXX.XX (date)
-   - Period Low: $XXX.XX (date)
-   - 2-Year Return: +XX.X%
-
-   Technical Position:
-   Current: $XXX.XX
-   ─────────────────────────────────────────
-   SMA-200: $XXX.XX [✅/❌ Above/Below]
-   SMA-50:  $XXX.XX [✅/❌ Above/Below]
-   SMA-20:  $XXX.XX [✅/❌ Above/Below]
-
-   RSI (14):     XX.XX [Overbought/Neutral/Oversold]
-   MACD:         [Bullish/Bearish] crossover
-
-   Support:      $XXX.XX (-X.X%)
-   Resistance:   $XXX.XX (+X.X%)
-   ```
-
-   🎯 BUY TIMING ANALYSIS:
-
-   **Scenario 1: Immediate Entry (XX%)**
-   - Price: $XXX.XX - $XXX.XX (current levels)
-   - Timing: This week
-   - Capital: $X,XXX
-   - Rationale:
-     * [Technical reason: e.g., Sitting on SMA-200 support]
-     * [Momentum reason: e.g., RSI oversold at 32]
-     * [Fundamental reason: e.g., Dividend yield X.X%]
-
-   **Scenario 2: Wait for Pullback (XX%)**
-   - Price: $XXX.XX - $XXX.XX (support zone)
-   - Timing: Wait 1-4 weeks
-   - Capital: $X,XXX
-   - Rationale:
-     * [Why wait: e.g., Overbought RSI 72, expect -5% pullback]
-     * [Target zone: e.g., SMA-50 at $XXX offers better entry]
-
-   **Optimal Entry Signals**:
-   ✅ RSI < XX (currently XX.X)
-   ✅ Price touches $XXX support
-   ✅ MACD reversal confirmed
-   ✅ Volume increase on bounce
-
-   **Avoid If**:
-   ❌ Breaks below $XXX (trend reversal)
-   ❌ RSI < 30 (severe weakness = bigger problem)
-   ❌ [Market condition: e.g., VIX > 35]
-
-   📈 Market Analysis:
-   - Technical Setup: [Description of entry opportunity]
-   - Trend: [Daily/Weekly/Monthly alignment]
-   - Entry Zone: $XXX.XX - $XXX.XX
-   - Stop Loss: $XXX.XX
-   - Target 1: $XXX.XX
-   - Target 2: $XXX.XX
-   - Risk/Reward: 1:X.X
-
-   - IV Environment: [For options strategies]
-   - Options Setup: [Initial strategy if applicable]
-
-   📊 Portfolio Fit:
-   - Fills Gap: [Diversification need, sector exposure, etc.]
-   - Correlation: [With existing holdings]
-   - Allocation: X.X% of portfolio
-   - Risk Budget: $X,XXX available
-
-   🎯 RECOMMENDATION: INITIATE POSITION
-   Conviction: [HIGH/MEDIUM/LOW] (X/10)
-   Position Size: $XX,XXX (XXX shares)
-
-   Entry Strategy:
-   Phase 1 (50%): Enter at $XXX.XX - $XXX.XX [Immediate/Pullback]
-   Phase 2 (50%): Add at $XXX.XX [condition]
-
-   Alternative: Cash-Secured Put @ $XXX strike for premium entry
-
-   Risk Management:
-   - Initial Stop: $XXX.XX (X% risk per share)
-   - Position Risk: X.X% of portfolio
-   - Trail stop to breakeven after +X%
-
-   Expected Outcome (12-month):
-   - Best Case: +XX% if reaches $XXX
-   - Base Case: +XX% with dividend/income
-   - Worst Case: -XX% if stop hit
-
-**B. [SYMBOL] - Proposed New Position**
-   [Same format for other candidates]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📈 PORTFOLIO-LEVEL STRATEGY
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-### Asset Allocation
-
-Current vs Target:
-                Current    Target    Action
-Stocks:         XX.X%      XX.X%     [Rebalance +/-X%]
-Bonds:          XX.X%      XX.X%     [Rebalance +/-X%]
-Cash:           XX.X%      XX.X%     [Adjust]
-
-Rebalancing Trades:
-1. [Sell $X,XXX of SYMBOL to reduce to target]
-2. [Buy $X,XXX of SYMBOL to increase to target]
-3. [Deploy cash into new positions]
-
-Expected Impact:
-- Better diversification: Correlation X.XX → X.XX
-- Risk reduction: Max drawdown -X%
-- Return improvement: Expected +X% annually
-
-### Tax Optimization
-
-Current Tax Position:
-- Realized ST Gains: $X,XXX (Tax: $X,XXX at XX%)
-- Realized LT Gains: $X,XXX (Tax: $X,XXX at XX%)
-- Total Tax Liability: $X,XXX
-
-Available Opportunities:
-- Unrealized Losses: $X,XXX (in SYMBOL, SYMBOL)
-- Approaching LT: $X,XXX (SYMBOL on [DATE])
-
-Tax Harvesting Strategy:
-1. Harvest Loss on SYMBOL: -$X,XXX loss → $XXX tax savings
-   - Sell at $XXX.XX
-   - Reinvest after 31 days to avoid wash sale
-   - Alternative: Buy similar (but not substantially identical) security
-
-2. Hold SYMBOL until [DATE] for LT treatment:
-   - Current gain: $X,XXX
-   - Tax savings: $XXX (XX% → XX%)
-
-3. Offset with losses before year-end:
-   - Current gains: $X,XXX
-   - Can offset with: $X,XXX losses
-   - Net liability: $X,XXX
-
-Estimated Annual Tax Savings: $X,XXX
-
-### Options Strategies
-
-Income Generation:
-1. Covered Calls on SYMBOL:
-   - Strike: $XXX (X% OTM)
-   - Premium: $XXX per month
-   - Annual income: $X,XXX
-   - Yield boost: +X.X%
-
-2. Cash-Secured Puts on CANDIDATE:
-   - Strike: $XXX (X% below current)
-   - Premium: $XXX
-   - Effective entry: $XXX (X% discount)
-   - Annualized return if assigned: XX%
-
-3. [Additional strategies]
-
-Total Monthly Income Target: $XXX ($X,XXX annually)
-
-Portfolio Protection:
-1. Protective Puts on SYMBOL (if concerned):
-   - Strike: $XXX
-   - Cost: $XXX
-   - Protection: Against >X% decline
-
-2. Collar on SYMBOL (reduce cost):
-   - Buy $XXX put
-   - Sell $XXX call
-   - Net cost: $XXX (or credit)
-
-### Risk Management
-
-Current Risk Profile:
-- Portfolio Beta: X.XX (vs market)
-- Maximum Drawdown: -XX%
-- Volatility: XX% annualized
-- Sharpe Ratio: X.XX
-
-Risk Concentrations:
-- Largest Position: XX% (Target: <XX%)
-- Top 3 Positions: XX% (Target: <XX%)
-- Sector Concentration:
-  - Tech: XX% (vs XX% benchmark)
-  - [Other sectors]
-
-Risk Mitigation Plan:
-1. Trim SYMBOL from XX% to XX%
-   - Reason: [Overconcentration / Technical breakdown]
-   - Execute: [Timing and method]
-
-2. Add defensive positions:
-   - Bonds: Increase from XX% to XX%
-   - Defensive stocks: Add SYMBOL (utilities/consumer staples)
-
-3. Diversification:
-   - Add international exposure: SYMBOL
-   - Add alternative assets: [If applicable]
-
-Expected Impact:
-- Reduce maximum drawdown from -XX% to -XX%
-- Lower volatility from XX% to XX%
-- Improve Sharpe ratio from X.XX to X.XX
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ PRIORITIZED ACTION PLAN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-🚨 URGENT - Execute This Week (Within 7 Days):
-
-1. [Action with specific execution details]
-   Symbol: [SYMBOL]
-   Action: [Specific trade]
-   Why Urgent: [Time-sensitive reason]
-   Tax Impact: $XXX savings if executed by [DATE]
-   Expected Outcome: [Result]
-
-   Execution Steps:
-   - [ ] Step 1
-   - [ ] Step 2
-   - [ ] Step 3
-
-2. [Next urgent action]
-   [Same format]
-
-Total Urgent Actions: X
-Time Commitment: X hours
-Capital Requirement: $XX,XXX
-
-🎯 HIGH PRIORITY - Execute This Month:
-
-1. [Action]
-   [Brief description]
-   Impact: [Expected result]
-
-2. [Action]
-   [Brief description]
-   Impact: [Expected result]
-
-Total High Priority: X
-Expected Impact: $X,XXX or +X% return
-
-📈 MEDIUM PRIORITY - Execute This Quarter:
-
-1. [Action]
-2. [Action]
-3. [Action]
-
-Total Medium Priority: X
-Strategic Value: [Long-term benefits]
-
-👀 MONITORING - Watch For Opportunities:
-
-1. [Event/Condition] → [Planned Response]
-   - Watch: [Specific trigger]
-   - When: [Condition met]
-   - Action: [Predetermined response]
-
-2. [Event/Condition] → [Planned Response]
-
-3. Periodic Reviews:
-   - Weekly: [Quick checks]
-   - Monthly: [Performance review]
-   - Quarterly: [Strategic review]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 EXPECTED OUTCOMES
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-If Strategy Fully Executed:
-
-Portfolio Metrics:
-- Current Value: $XXX,XXX
-- Expected 12-Month Value: $XXX,XXX (+XX%)
-- Expected 12-Month Return: +XX% (vs +XX% market)
-
-Performance Improvements:
-- Return Enhancement: +X.X% from options income
-- Tax Savings: $X,XXX (reduces after-tax cost)
-- Cost Reduction: $XXX from optimization
-- Total Benefit: +X.X% net return improvement
-
-Risk Improvements:
-- Maximum Drawdown: -XX% → -XX% (improvement of X%)
-- Portfolio Volatility: XX% → XX%
-- Sharpe Ratio: X.XX → X.XX
-- Diversification Score: X/10 → X/10
-
-Tax Efficiency:
-- Current Tax Liability: $X,XXX
-- Post-Optimization: $X,XXX
-- Annual Tax Savings: $X,XXX
-
-Income Generation:
-- Current Dividend Income: $XXX/month
-- + Options Income: $XXX/month
-- Total Cash Flow: $XXX/month ($X,XXX/year)
-- Yield on Portfolio: X.X%
-
-Market Scenario Analysis:
-Bull Market (+20% SPY):
-  - Portfolio Expected: +XX%
-  - Outperformance: +X%
-
-Sideways Market (±5% SPY):
-  - Portfolio Expected: +X%
-  - Options Income: $X,XXX
-
-Bear Market (-20% SPY):
-  - Portfolio Expected: -XX%
-  - Protection: Better than -XX% (market)
-  - Defensive Positioning: Limits downside
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📅 IMPLEMENTATION SCHEDULE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Week 1:
-Day 1-2: Execute urgent tax harvesting and stop loss triggers
-Day 3-4: Place new position entries (limit orders)
-Day 5: Set up options strategies (covered calls, cash-secured puts)
-
-Week 2-4:
-- Monitor new positions and adjust stops
-- Phase in remaining new positions
-- Execute rebalancing trades
-- Set up monitoring alerts
-
-Month 2-3:
-- Medium priority actions
-- Gradual position building
-- Options expiration management
-- Performance review and adjustments
-
-Quarterly Review:
-- Full portfolio assessment
-- Strategy effectiveness evaluation
-- Adjust based on market conditions
-- Tax planning check
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 EXECUTION CHECKLIST
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Before Trading:
-☐ Review full strategy and understand rationale
-☐ Confirm available capital and margin requirements
-☐ Check for upcoming earnings/events on target stocks
-☐ Verify current market conditions align with strategy
-☐ Set up tracking spreadsheet or tool
-
-During Execution:
-☐ Use limit orders (avoid market orders)
-☐ Document actual entry prices and costs
-☐ Set up stop losses immediately
-☐ Set up profit target alerts
-☐ Save trade confirmations
-
-After Execution:
-☐ Update portfolio tracking
-☐ Set calendar reminders for reviews
-☐ Monitor daily for first week
-☐ Adjust stops to breakeven when appropriate
-☐ Keep trade journal with rationale
-
-Weekly Maintenance:
-☐ Check technical levels (support/resistance)
-☐ Review stop losses and adjust if needed
-☐ Monitor news and catalysts
-☐ Manage expiring options
-☐ Record observations and learnings
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ IMPORTANT DISCLAIMERS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-This strategy is based on current market conditions and portfolio analysis as of [DATE].
-Markets are dynamic - be prepared to adjust as conditions change.
-
-Risk Warnings:
-- Past performance doesn't guarantee future results
-- All investments carry risk of loss of principal
-- Options trading involves substantial risk
-- Leverage amplifies both gains and losses
-- Stop losses don't guarantee execution price
-- Diversification doesn't guarantee profit or prevent loss
-
-Professional Advice:
-- This is analytical guidance, not financial advice
-- Consult qualified financial advisor for personalized advice
-- Review tax strategies with qualified CPA
-- Understand your own risk tolerance and goals
-- Only execute what you understand and are comfortable with
-
-Monitoring and Adjustment:
-- Markets change - strategy must adapt
-- Set up regular review schedule
-- Don't be emotionally attached to positions
-- Follow predefined stop losses and exit rules
-- Document reasons for any deviations from plan
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📚 RELATED COMMANDS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Individual Stock Analysis:
-  /analyze-stock [SYMBOL] - Technical and fundamental analysis
-
-Options Strategy Analysis:
-  /options-strategy [SYMBOL] - Detailed options strategy
-
-Portfolio Optimization:
-  /optimize-portfolio - Portfolio-level optimization
-
-Tax Planning:
-  /tax-report - Comprehensive tax analysis and strategies
-
-Performance Tracking:
-  /compare-periods [dates] - Period comparison analysis
-```
+### Output Format
+
+See `.claude/agents/strategy-coordinator.md` for complete streamlined output format.
+
+**Key Sections**:
+- Executive Summary (~500 tokens)
+- Top 5 Holdings - Detailed Recommendations (~1,500 tokens)
+- Remaining Holdings - Brief Notes (~500 tokens)
+- Portfolio-Level Strategy (~800 tokens)
+- Prioritized Action Plan (~400 tokens)
+- Expected Outcomes (~300 tokens)
+
+**Total**: ~4,000 tokens (70% reduction from old format)
 
 ### Output Saving
 
@@ -706,13 +113,13 @@ data/processed/investment_strategy_YYYY-MM-DD.txt
 ```bash
 /investment-strategy
 ```
-Get comprehensive strategy update.
+Get comprehensive strategy update with top holdings focus.
 
 **After Major Market Move**:
 ```bash
 /investment-strategy
 ```
-Reassess positions and adjust strategy.
+Reassess top positions and adjust strategy.
 
 **Tax Planning Season**:
 ```bash
@@ -724,20 +131,54 @@ Generate and save strategy with tax optimization.
 ```bash
 /investment-strategy
 ```
-Identify best opportunities for new capital.
+Identify best opportunities for allocation.
+
+### Performance Benefits
+
+**Old Design** (Before Optimization):
+- Analyzed all 15 holdings in detail
+- 15+ minutes runtime → timeout
+- 15K+ token output
+- ❌ Failed to complete
+
+**New Design** (Optimized):
+- Analyzes top 5 holdings in detail
+- 7-10 minutes runtime ✓
+- ~4K token output
+- ✅ Reliable completion
 
 ### Integration
 
 This is the **master strategy command** that:
-1. Coordinates **data-analyzer** and **market-analyst** via **strategy-coordinator**
-2. Synthesizes both portfolio and market perspectives
-3. Provides actionable, prioritized recommendations
-4. Considers all factors: performance, taxes, risks, market conditions
+1. Coordinates portfolio and market perspectives
+2. Provides actionable, prioritized recommendations
+3. Considers performance, taxes, risks, market conditions
+4. Completes reliably within timeout constraints
 
-For focused analysis, use:
+### Related Commands
+
+For focused analysis:
 - `/analyze-stock SYMBOL` - Individual stock deep dive
 - `/options-strategy SYMBOL` - Options-focused analysis
 - `/optimize-portfolio` - Portfolio optimization only
 - `/tax-report` - Tax-focused analysis only
 
-The **strategy-coordinator** subagent orchestrates the entire process, ensuring coherent, actionable investment strategy.
+### Troubleshooting
+
+**If command times out**:
+- Try individual commands instead:
+  ```bash
+  /optimize-portfolio           # Portfolio analysis
+  /analyze-stock 9433.T         # Top holding
+  /analyze-stock INDA           # Second holding
+  ```
+
+**If output is too long**:
+- strategy-coordinator will automatically prioritize top 3 holdings
+- Remaining holdings get 1-line summaries
+
+**If market analysis fails**:
+- strategy-coordinator falls back to portfolio data only
+- Will note "[Analysis unavailable - using portfolio data]"
+
+The **strategy-coordinator** subagent orchestrates the entire process, ensuring efficient, actionable investment strategy generation.
