@@ -11,6 +11,9 @@ def register_all_tools(mcp: FastMCP) -> None:
 
     # Import and register tools from each module
     from ib_sec_mcp.mcp.tools.composable_data import register_composable_data_tools
+    from ib_sec_mcp.mcp.tools.etf_calculator_tools import (
+        register_etf_calculator_tools,
+    )
     from ib_sec_mcp.mcp.tools.etf_comparison import register_etf_comparison_tools
     from ib_sec_mcp.mcp.tools.ib_portfolio import register_ib_portfolio_tools
     from ib_sec_mcp.mcp.tools.market_comparison import register_market_comparison_tools
@@ -36,6 +39,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     register_etf_comparison_tools(mcp)  # Add ETF comparison tools
     register_technical_analysis_tools(mcp)  # Add technical analysis tools
     register_position_history_tools(mcp)  # Add position history tools
+    register_etf_calculator_tools(mcp)  # Add ETF calculator tools
 
 
 __all__ = ["register_all_tools"]
