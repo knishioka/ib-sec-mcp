@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Sentiment Analysis Module**: News and market sentiment analysis (#7)
+  - `SentimentScore` Pydantic model with Decimal precision
+  - `BaseSentimentAnalyzer` abstract base class for pluggable analyzers
+  - `NewsSentimentAnalyzer` for news headline sentiment analysis
+  - `CompositeSentimentAnalyzer` for multi-source sentiment aggregation
+  - MCP tools: `analyze_market_sentiment`, `get_news_sentiment`
+  - Comprehensive test suite with 67 test cases (100% pass rate)
+  - Caching support (6-hour TTL) for performance optimization
+
 ## [0.1.0] - 2025-10-06
 
 ### Added

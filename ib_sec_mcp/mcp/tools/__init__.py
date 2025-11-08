@@ -22,6 +22,9 @@ def register_all_tools(mcp: FastMCP) -> None:
         register_portfolio_analytics_tools,
     )
     from ib_sec_mcp.mcp.tools.position_history import register_position_history_tools
+    from ib_sec_mcp.mcp.tools.sentiment_analysis import (
+        register_sentiment_analysis_tools,
+    )
     from ib_sec_mcp.mcp.tools.stock_data import register_stock_data_tools
     from ib_sec_mcp.mcp.tools.stock_news import register_stock_news_tools
     from ib_sec_mcp.mcp.tools.technical_analysis import (
@@ -40,6 +43,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     register_technical_analysis_tools(mcp)  # Add technical analysis tools
     register_position_history_tools(mcp)  # Add position history tools
     register_etf_calculator_tools(mcp)  # Add ETF calculator tools
+    register_sentiment_analysis_tools(mcp)  # Add sentiment analysis tools
 
 
 __all__ = ["register_all_tools"]
