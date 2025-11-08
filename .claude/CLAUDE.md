@@ -246,6 +246,45 @@ pytest --cov=ib_sec_mcp
 }
 ```
 
+
+## Timeout Configuration
+
+**Critical**: Claude Code has a 10-minute hard timeout. Configure appropriate timeouts to ensure operations complete reliably.
+
+**Recommended settings** for `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "BASH_DEFAULT_TIMEOUT_MS": "1800000",  // 30 minutes (for long operations)
+    "BASH_MAX_TIMEOUT_MS": "7200000",      // 120 minutes (absolute max)
+    "MCP_TIMEOUT": "300000"                 // 5 minutes (MCP server startup)
+  }
+}
+```
+
+**Why these values**:
+- **Investment strategy**: 6-8 min target with 2+ min safety margin
+- **MCP server startup**: IB Flex Query API can be slow initially
+- **Development workflows**: Complex operations need headroom
+- **Batch processing**: Multiple parallel agents need buffer time
+
+**Operation Time Targets**:
+| Operation | Target Time | Max Time | Safety Margin |
+|-----------|-------------|----------|---------------|
+| `/investment-strategy` | 6-8 min | 10 min | 2+ min |
+| `/analyze-stock` | 30-60s | 2 min | 1 min |
+| `/options-strategy` | 45-90s | 3 min | 1.5 min |
+| `/optimize-portfolio` | 2-3 min | 5 min | 2 min |
+| `/resolve-gh-issue` | 5-8 min | 10 min | 2 min |
+
+**Monitoring Best Practices**:
+1. Check elapsed time at major checkpoints
+2. Abort non-critical operations if approaching timeout
+3. Generate partial results rather than failing completely
+4. Log timeout warnings for debugging
+
+---
 ---
 
 ## Resources
