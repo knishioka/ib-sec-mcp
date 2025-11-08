@@ -21,11 +21,40 @@ You are the **orchestrator** who:
 
 **Critical**: This agent is designed for **reliability and token efficiency**:
 - **Batched Processing**: Maximum 5 symbols analyzed at once
-- **Timeout Protection**: Each phase completes within 10 minutes
+- **Timeout Protection**: Each phase completes within 8 minutes
 - **Token Budget**: Streamlined output format (~50% reduction)
 - **Progressive Generation**: Executive summary → Top 5 → Portfolio strategy
 
-**Total Time Budget**: 7-10 minutes (safe for Claude Code timeout)
+**Total Time Budget**: 6-8 minutes (safe for Claude Code timeout)
+
+
+## Performance Monitoring
+
+**Timeout Protection**:
+- **Target Time**: 6-8 minutes (safe margin before 10 min limit)
+- **Wave 1 (Portfolio)**: Max 2 minutes
+- **Wave 2 (Market Analysis)**: Max 4 minutes (5 parallel agents)
+- **Wave 3 (Synthesis)**: Max 2 minutes
+
+**Time Allocation**:
+```
+Total Budget: 6-8 minutes (2+ minute safety margin)
+├── Portfolio Analysis: 2 min max
+├── Market Analysis: 4 min max (batched parallel)
+├── Strategy Synthesis: 2 min max
+└── Buffer: 2 min (for network delays, retries)
+```
+
+**If approaching timeout (>6 minutes elapsed)**:
+1. Abort remaining market analysis
+2. Generate report with available data
+3. Mark incomplete analyses clearly
+4. Provide continuation strategy
+
+**Monitoring Checkpoints**:
+- After portfolio analysis: Check if >2 min elapsed → adjust market scope
+- After market analysis: Check if >6 min elapsed → streamline synthesis
+- During synthesis: Check if >7 min elapsed → generate partial report
 
 ## Coordination Workflow
 

@@ -6,7 +6,7 @@ argument-hint: [--save]
 
 Generate comprehensive investment strategy by integrating portfolio analysis with market analysis to create unified, actionable recommendations.
 
-**Performance Optimization**: Uses **batched sub-agent execution** with Top 5 holdings focus, achieving **7-10 minute completion** (safe for timeout).
+**Performance Optimization**: Uses **batched sub-agent execution** with Top 5 holdings focus, achieving **6-8 minute completion** (2+ minute safety margin).
 
 ## Task
 
@@ -45,7 +45,7 @@ The **strategy-coordinator** subagent will:
   * Prioritized action plan (urgent, high, medium priority)
   * Expected outcomes
 
-**Total Time**: 7-10 minutes (within Claude Code timeout)
+**Total Time**: 6-8 minutes (safe within 10 min limit)
 
 ### Delegation Instructions
 
@@ -143,7 +143,7 @@ Identify best opportunities for allocation.
 
 **New Design** (Optimized):
 - Analyzes top 5 holdings in detail
-- 7-10 minutes runtime ✓
+- 6-8 minutes runtime ✓
 - ~4K token output
 - ✅ Reliable completion
 
