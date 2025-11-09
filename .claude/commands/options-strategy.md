@@ -365,8 +365,8 @@ Not financial advice. Trade at your own risk.
 📚 ADDITIONAL RESOURCES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-For deeper stock analysis:
-  /analyze-stock [SYMBOL]
+For deeper symbol analysis:
+  /analyze-symbol [SYMBOL]
 
 For portfolio-level strategy:
   /investment-strategy
@@ -425,7 +425,7 @@ This stock may not have listed options.
 ### Integration
 
 This command focuses on options strategies. Combine with:
-- `/analyze-stock SYMBOL` - For underlying stock technical analysis
+- `/analyze-symbol SYMBOL` - For underlying symbol technical analysis
 - `/investment-strategy` - For portfolio-level context
 - `/optimize-portfolio` - For income generation opportunities across portfolio
 

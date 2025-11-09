@@ -273,7 +273,7 @@ This is analytical guidance, not financial advice. Markets change - adjust as co
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Detailed Analysis:
-  /analyze-stock [SYMBOL] - Full technical analysis
+  /analyze-symbol [SYMBOL] - Full technical analysis
   /options-strategy [SYMBOL] - Options deep dive
   /tax-report - Tax planning
 ```

@@ -79,15 +79,15 @@ Once the MCP server is configured in Claude Desktop, you can use natural languag
    "Is the media bullish or bearish on NVDA?"
    "Analyze recent news sentiment for AAPL"
 
-5. Integrated with Stock Analysis:
-   Use the /analyze-stock command for comprehensive analysis including sentiment:
+5. Integrated with Symbol Analysis:
+   Use the /analyze-symbol command for comprehensive analysis including sentiment:
 
-   /analyze-stock AAPL
+   /analyze-symbol AAPL
 
    This automatically includes:
    - Multi-timeframe technical analysis
    - Current price and fundamentals
-   - Options market analysis
+   - Options market analysis (when available)
    - Composite sentiment analysis (news + options + technical)
    - Trading recommendation with sentiment-based conviction
 
@@ -139,7 +139,7 @@ Confidence Level | Reliability
 === Integration ===
 
 The sentiment analysis is automatically integrated into:
-- /analyze-stock command (Mode 3)
+- /analyze-symbol command (Mode 3)
 - Claude Desktop natural language queries (Mode 1)
 - Direct MCP tool calls (Mode 2)
 """
