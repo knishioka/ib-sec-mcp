@@ -5,10 +5,10 @@ Derives market sentiment from options market data including Put/Call ratios,
 IV metrics, and Max Pain analysis.
 """
 
-import asyncio
-import json
 from datetime import datetime
 from decimal import Decimal
+
+import yfinance as yf
 
 from ib_sec_mcp.analyzers.sentiment.base import BaseSentimentAnalyzer, SentimentScore
 
@@ -48,67 +48,52 @@ class OptionsSentimentAnalyzer(BaseSentimentAnalyzer):
             Exception: If options data is unavailable
         """
         try:
-            # Import MCP tools dynamically to avoid circular imports
-            from ib_sec_mcp.mcp.tools.options import (  # type: ignore[attr-defined]
-                calculate_iv_metrics,
-                calculate_max_pain,
-                calculate_put_call_ratio,
-                get_options_chain,
+            # Fetch options data directly from Yahoo Finance
+            ticker = yf.Ticker(symbol)
+
+            # Get nearest expiration options
+            expirations = ticker.options
+            if not expirations:
+                raise ValueError(f"No options available for {symbol}")
+
+            nearest_exp = expirations[0]
+            opt_chain = ticker.option_chain(nearest_exp)
+
+            calls = opt_chain.calls
+            puts = opt_chain.puts
+
+            if calls.empty or puts.empty:
+                raise ValueError(f"No options data available for {symbol}")
+
+            # Calculate Put/Call ratio based on open interest
+            total_call_oi = calls["openInterest"].sum()
+            total_put_oi = puts["openInterest"].sum()
+
+            # Use ternary for cleaner code (ruff SIM108)
+            put_call_ratio = 2.0 if total_call_oi == 0 else total_put_oi / total_call_oi
+
+            put_call_data: dict[str, object] = {"put_call_ratio": put_call_ratio}
+
+            # Get average implied volatility
+            call_iv_avg = (
+                calls["impliedVolatility"].mean()
+                if "impliedVolatility" in calls.columns
+                and not calls["impliedVolatility"].isna().all()
+                else 0.3
             )
-
-            # Fetch options data in parallel
-            async def fetch_put_call() -> dict[str, object]:
-                result = await calculate_put_call_ratio(symbol, expiration_date=None)
-                data: dict[str, object] = json.loads(result)
-                return data
-
-            async def fetch_iv_metrics() -> dict[str, object]:
-                result = await calculate_iv_metrics(symbol, lookback_days=252)
-                data: dict[str, object] = json.loads(result)
-                return data
-
-            async def fetch_max_pain() -> dict[str, object]:
-                # First get options chain to check if options exist
-                try:
-                    chain_result = await get_options_chain(symbol, expiration_date=None)
-                    chain_data: dict[str, object] = json.loads(chain_result)
-                    if not chain_data.get("calls") and not chain_data.get("puts"):
-                        return {}
-                    result = await calculate_max_pain(symbol, expiration_date=None)
-                    max_pain_result: dict[str, object] = json.loads(result)
-                    return max_pain_result
-                except Exception:
-                    return {}
-
-            # Fetch all data in parallel
-            results = await asyncio.gather(
-                fetch_put_call(),
-                fetch_iv_metrics(),
-                fetch_max_pain(),
-                return_exceptions=True,
+            put_iv_avg = (
+                puts["impliedVolatility"].mean()
+                if "impliedVolatility" in puts.columns
+                and not puts["impliedVolatility"].isna().all()
+                else 0.3
             )
+            current_iv = (call_iv_avg + put_iv_avg) / 2
 
-            # Handle errors and assign results
-            put_call_data: dict[str, object]
-            iv_data: dict[str, object]
-            max_pain_data: dict[str, object]
+            # Simplified IV data (no historical rank/percentile)
+            iv_data: dict[str, object] = {"current_iv": current_iv}
 
-            # ruff: noqa: SIM108
-            # Note: Ternary operator causes mypy type inference issues with asyncio.gather
-            if isinstance(results[0], Exception):
-                put_call_data = {}
-            else:
-                put_call_data = results[0]  # type: ignore[assignment]
-
-            if isinstance(results[1], Exception):
-                iv_data = {}
-            else:
-                iv_data = results[1]  # type: ignore[assignment]
-
-            if isinstance(results[2], Exception):
-                max_pain_data = {}
-            else:
-                max_pain_data = results[2]  # type: ignore[assignment]
+            # Skip max pain calculation for simplicity
+            max_pain_data: dict[str, object] = {}
 
             # Calculate sentiment components
             scores = []
