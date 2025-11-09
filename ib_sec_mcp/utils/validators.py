@@ -169,6 +169,12 @@ def validate_symbol(symbol: str) -> bool:
     """
     Validate trading symbol format
 
+    Supports:
+    - US stocks: AAPL, TSLA, VOO
+    - Cryptocurrencies: BTC-USD, ETH-USD
+    - Forex pairs: USDJPY=X, EURUSD=X
+    - ETFs and other securities
+
     Args:
         symbol: Symbol string
 
@@ -178,6 +184,7 @@ def validate_symbol(symbol: str) -> bool:
     if not symbol or not symbol.strip():
         return False
 
-    # Basic validation: 1-10 alphanumeric characters, may include dots
-    pattern = r"^[A-Z0-9.]{1,10}$"
+    # Extended validation: 1-12 characters, allow dots, hyphens, equals
+    # Supports forex (=X suffix) and crypto (-USD suffix)
+    pattern = r"^[A-Z0-9.\-=]{1,12}$"
     return bool(re.match(pattern, symbol.upper()))
