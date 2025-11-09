@@ -5,9 +5,11 @@ Derives market sentiment from technical indicators including RSI, MACD,
 trend analysis, and support/resistance levels.
 """
 
-import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
+
+import pandas as pd
+import yfinance as yf
 
 from ib_sec_mcp.analyzers.sentiment.base import BaseSentimentAnalyzer, SentimentScore
 
@@ -28,10 +30,31 @@ class TechnicalSentimentAnalyzer(BaseSentimentAnalyzer):
     - RSI 50-70: Bullish momentum
     - RSI > 70: Overbought (bearish reversal signal)
 
-    - MACD: Bullish cross = positive, Bearish cross = negative
-    - Trend: Uptrend = positive, Downtrend = negative
-    - Near Support: Bullish, Near Resistance: Bearish
+    - MACD > Signal: Bullish momentum
+    - MACD < Signal: Bearish momentum
     """
+
+    def calculate_rsi(self, prices: "pd.Series[float]", period: int = 14) -> float:
+        """Calculate RSI indicator"""
+        delta = prices.diff()
+        gain = delta.where(delta > 0, 0.0).rolling(window=period).mean()
+        loss = (-delta).where(delta < 0, 0.0).rolling(window=period).mean()
+
+        rs = gain / loss
+        rsi = 100 - (100 / (1 + rs))
+        return float(rsi.iloc[-1])
+
+    def calculate_macd(
+        self, prices: "pd.Series[float]", fast: int = 12, slow: int = 26, signal: int = 9
+    ) -> tuple[float, float]:
+        """Calculate MACD and signal line"""
+        ema_fast = prices.ewm(span=fast, adjust=False).mean()
+        ema_slow = prices.ewm(span=slow, adjust=False).mean()
+
+        macd = ema_fast - ema_slow
+        macd_signal = macd.ewm(span=signal, adjust=False).mean()
+
+        return float(macd.iloc[-1]), float(macd_signal.iloc[-1])
 
     async def analyze_sentiment(self, symbol: str) -> SentimentScore:
         """
@@ -47,14 +70,17 @@ class TechnicalSentimentAnalyzer(BaseSentimentAnalyzer):
             Exception: If technical data is unavailable
         """
         try:
-            # Import MCP tools dynamically to avoid circular imports
-            from ib_sec_mcp.mcp.tools.technical_analysis import (  # type: ignore[attr-defined]
-                get_stock_analysis,
-            )
+            # Fetch historical price data
+            ticker = yf.Ticker(symbol)
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=365)  # 1 year of data
 
-            # Fetch technical analysis
-            result = await get_stock_analysis(symbol=symbol, timeframe="1d", lookback_days=252)
-            data = json.loads(result)
+            hist = ticker.history(start=start_date, end=end_date, interval="1d")
+
+            if hist.empty or len(hist) < 50:
+                raise ValueError(f"Insufficient price data for {symbol}")
+
+            prices = hist["Close"]
 
             scores = []
             themes = []
@@ -62,17 +88,16 @@ class TechnicalSentimentAnalyzer(BaseSentimentAnalyzer):
             data_points = 0
 
             # 1. RSI Sentiment
-            indicators = data.get("technical_indicators", {})
-            if "rsi" in indicators:
-                rsi = Decimal(str(indicators["rsi"]))
+            try:
+                rsi = self.calculate_rsi(prices)
                 data_points += 1
 
-                if rsi < Decimal("30"):
+                if rsi < 30:
                     rsi_score = Decimal("0.5")  # Oversold (bullish)
                     themes.append("oversold_rsi")
-                elif rsi < Decimal("50"):
+                elif rsi < 50:
                     rsi_score = Decimal("-0.2")  # Bearish momentum
-                elif rsi < Decimal("70"):
+                elif rsi < 70:
                     rsi_score = Decimal("0.2")  # Bullish momentum
                     themes.append("bullish_momentum")
                 else:
@@ -80,11 +105,13 @@ class TechnicalSentimentAnalyzer(BaseSentimentAnalyzer):
                     risk_factors.append("overbought_rsi")
 
                 scores.append(rsi_score)
+            except (ValueError, ZeroDivisionError, IndexError):
+                # Skip RSI if calculation fails (insufficient data or divide by zero)
+                data_points -= 1 if data_points > 0 else 0
 
             # 2. MACD Sentiment
-            if "macd" in indicators and "macd_signal" in indicators:
-                macd = Decimal(str(indicators["macd"]))
-                macd_signal = Decimal(str(indicators["macd_signal"]))
+            try:
+                macd, macd_signal = self.calculate_macd(prices)
                 data_points += 1
 
                 # MACD above signal = bullish
@@ -98,66 +125,39 @@ class TechnicalSentimentAnalyzer(BaseSentimentAnalyzer):
                     macd_score = Decimal("0.0")
 
                 scores.append(macd_score)
+            except (ValueError, IndexError):
+                # Skip MACD if calculation fails (insufficient data)
+                data_points -= 1 if data_points > 0 else 0
 
-            # 3. Trend Sentiment
-            trend_analysis = data.get("trend_analysis", {})
-            if "short_term" in trend_analysis:
+            # 3. Trend Sentiment (Simple moving averages)
+            try:
+                sma_20 = prices.rolling(window=20).mean().iloc[-1]
+                sma_50 = prices.rolling(window=50).mean().iloc[-1]
+                current_price = prices.iloc[-1]
+
                 data_points += 1
-                short_trend = trend_analysis["short_term"].lower()
-                medium_trend = trend_analysis.get("medium_term", "").lower()
-                long_trend = trend_analysis.get("long_term", "").lower()
 
-                trend_scores = []
-                if "up" in short_trend:
-                    trend_scores.append(Decimal("0.3"))
-                    themes.append("short_term_uptrend")
-                elif "down" in short_trend:
-                    trend_scores.append(Decimal("-0.3"))
-                    risk_factors.append("short_term_downtrend")
-
-                if "up" in medium_trend:
-                    trend_scores.append(Decimal("0.2"))
-                elif "down" in medium_trend:
-                    trend_scores.append(Decimal("-0.2"))
-
-                if "up" in long_trend:
-                    trend_scores.append(Decimal("0.1"))
-                elif "down" in long_trend:
-                    trend_scores.append(Decimal("-0.1"))
-
-                if trend_scores:
-                    trend_score = Decimal(sum(trend_scores) / len(trend_scores))
-                    scores.append(trend_score)
-
-            # 4. Support/Resistance Sentiment
-            support_resistance = data.get("support_resistance", {})
-            current_price = Decimal(str(data.get("current_price", 0)))
-            if current_price > 0:
-                supports = support_resistance.get("support_levels", [])
-                resistances = support_resistance.get("resistance_levels", [])
-
-                if supports and resistances:
-                    data_points += 1
-                    nearest_support = Decimal(str(supports[0]["price"]))
-                    nearest_resistance = Decimal(str(resistances[0]["price"]))
-
-                    # Calculate distance to support/resistance
-                    support_dist = abs(current_price - nearest_support) / current_price
-                    resistance_dist = abs(nearest_resistance - current_price) / current_price
-
-                    # Near support (within 2%) = bullish
-                    # Near resistance (within 2%) = bearish
-                    if support_dist < Decimal("0.02"):
-                        sr_score = Decimal("0.3")
-                        themes.append("near_support")
-                    elif resistance_dist < Decimal("0.02"):
-                        sr_score = Decimal("-0.3")
-                        risk_factors.append("near_resistance")
+                # Price above both SMAs = bullish
+                if current_price > sma_20 and current_price > sma_50:
+                    if sma_20 > sma_50:
+                        trend_score = Decimal("0.4")  # Strong uptrend
+                        themes.append("strong_uptrend")
                     else:
-                        # Between levels - neutral
-                        sr_score = Decimal("0.0")
+                        trend_score = Decimal("0.2")  # Moderate uptrend
+                # Price below both SMAs = bearish
+                elif current_price < sma_20 and current_price < sma_50:
+                    if sma_20 < sma_50:
+                        trend_score = Decimal("-0.4")  # Strong downtrend
+                        risk_factors.append("strong_downtrend")
+                    else:
+                        trend_score = Decimal("-0.2")  # Moderate downtrend
+                else:
+                    trend_score = Decimal("0.0")  # Mixed/choppy
 
-                    scores.append(sr_score)
+                scores.append(trend_score)
+            except (ValueError, IndexError):
+                # Skip trend if calculation fails (insufficient data)
+                data_points -= 1 if data_points > 0 else 0
 
             # Calculate composite score
             if not scores:
@@ -168,33 +168,19 @@ class TechnicalSentimentAnalyzer(BaseSentimentAnalyzer):
                     timestamp=datetime.now(),
                     key_themes=["no_technical_data"],
                     risk_factors=[],
-                    reasoning=f"No technical analysis data available for {symbol}",
+                    reasoning=f"No technical data available for {symbol}",
                 )
 
             # Average all scores
             avg_score = sum(scores) / len(scores)
 
-            # Confidence based on data point count and agreement
+            # Confidence based on data point count
             # More data points = higher confidence
-            base_confidence = min(Decimal(str(data_points)) / Decimal("4"), Decimal("1.0"))
-
-            # Check agreement between indicators
-            if len(scores) > 1:
-                # All scores same sign = high agreement
-                all_positive = all(s > 0 for s in scores)
-                all_negative = all(s < 0 for s in scores)
-
-                agreement_bonus = Decimal("0.2") if all_positive or all_negative else Decimal("0.0")
-
-                confidence = min(base_confidence + agreement_bonus, Decimal("1.0"))
-            else:
-                confidence = base_confidence
+            confidence = min(Decimal(str(data_points)) / Decimal("3"), Decimal("1.0"))
 
             reasoning = (
                 f"Analyzed {data_points} technical indicators for {symbol}. "
-                f"RSI: {indicators.get('rsi', 'N/A')}, "
-                f"MACD: {indicators.get('macd', 'N/A')}, "
-                f"Trend: {trend_analysis.get('short_term', 'N/A')}"
+                f"Sentiment based on RSI, MACD, and trend analysis."
             )
 
             return SentimentScore(
