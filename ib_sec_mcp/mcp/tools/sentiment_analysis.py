@@ -12,6 +12,8 @@ from fastmcp import Context, FastMCP
 from ib_sec_mcp.analyzers.sentiment.base import BaseSentimentAnalyzer, SentimentScore
 from ib_sec_mcp.analyzers.sentiment.composite import CompositeSentimentAnalyzer
 from ib_sec_mcp.analyzers.sentiment.news import NewsSentimentAnalyzer
+from ib_sec_mcp.analyzers.sentiment.options import OptionsSentimentAnalyzer
+from ib_sec_mcp.analyzers.sentiment.technical import TechnicalSentimentAnalyzer
 from ib_sec_mcp.mcp.exceptions import IBTimeoutError, ValidationError
 from ib_sec_mcp.mcp.validators import validate_symbol
 
@@ -40,7 +42,7 @@ def register_sentiment_analysis_tools(mcp: FastMCP) -> None:
             lookback_days: Historical period for analysis (default: 7 days)
             sources: Comma-separated list of sources (default: "news")
                      Available: news, options, technical, composite
-                     Example: "news,options,technical" or "composite" for all
+                     Example: "news,options" or "composite" for all sources
 
         Returns:
             JSON string with sentiment analysis including:
@@ -85,13 +87,36 @@ def register_sentiment_analysis_tools(mcp: FastMCP) -> None:
             analyzer: BaseSentimentAnalyzer
             if "composite" in source_list or len(source_list) > 1:
                 # Use composite analyzer for multiple sources
-                analyzer = CompositeSentimentAnalyzer()
+                source_analyzers: dict[str, BaseSentimentAnalyzer] = {}
+                source_weights: dict[str, Decimal] = {}
+
+                if "news" in source_list or "composite" in source_list:
+                    source_analyzers["news"] = NewsSentimentAnalyzer()
+                    source_weights["news"] = Decimal("0.4")
+
+                if "options" in source_list or "composite" in source_list:
+                    source_analyzers["options"] = OptionsSentimentAnalyzer()
+                    source_weights["options"] = Decimal("0.3")
+
+                if "technical" in source_list or "composite" in source_list:
+                    source_analyzers["technical"] = TechnicalSentimentAnalyzer()
+                    source_weights["technical"] = Decimal("0.3")
+
+                analyzer = CompositeSentimentAnalyzer(
+                    sources=source_analyzers, weights=source_weights
+                )
             elif "news" in source_list:
                 # Use news analyzer for single news source
                 analyzer = NewsSentimentAnalyzer()
+            elif "options" in source_list:
+                # Use options analyzer for single options source
+                analyzer = OptionsSentimentAnalyzer()
+            elif "technical" in source_list:
+                # Use technical analyzer for single technical source
+                analyzer = TechnicalSentimentAnalyzer()
             else:
                 raise ValidationError(
-                    f"Invalid source: {sources}. Available: news, composite",
+                    f"Invalid source: {sources}. Available: news, options, technical, composite",
                     field="sources",
                 )
 
