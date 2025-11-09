@@ -439,6 +439,153 @@ Get the latest news articles for any stock symbol from Yahoo Finance.
 "Show me news for all my tech holdings: AAPL, MSFT, GOOGL"
 ```
 
+### Market Sentiment Analysis
+
+#### `analyze_market_sentiment` - Multi-Source Sentiment Analysis
+
+Get comprehensive market sentiment from multiple sources: news articles, options market, and technical indicators.
+
+**Features**:
+- **News Sentiment**: Sentiment analysis from recent news articles and headlines
+- **Options Market Sentiment**: Derived from Put/Call ratios, IV Rank, and Max Pain
+- **Technical Sentiment**: Based on RSI, MACD, trend analysis, and support/resistance
+- **Composite Sentiment**: Weighted aggregation of all sources with configurable weights
+- **Confidence Scoring**: Each sentiment source provides confidence level
+- **Key Themes**: Identified sentiment drivers (e.g., "bullish_momentum", "oversold_rsi")
+- **Risk Factors**: Highlighted concerns (e.g., "overbought_rsi", "near_resistance")
+
+**Parameters**:
+- `symbol`: Stock ticker symbol (e.g., "AAPL", "SPY", "QQQ")
+- `sources`: Comma-separated sentiment sources (default: "composite")
+  - `"news"`: News article sentiment only
+  - `"options"`: Options market sentiment only
+  - `"technical"`: Technical indicator sentiment only
+  - `"composite"`: All sources combined (recommended)
+
+**Sentiment Score Range**: -1.0 (very bearish) to +1.0 (very bullish)
+
+**Example Usage**:
+```python
+# Get composite sentiment from all sources
+"Analyze market sentiment for AAPL using all sources"
+
+# Get only technical sentiment
+"What's the technical sentiment for SPY?"
+
+# Get options market sentiment
+"Analyze options market sentiment for QQQ"
+
+# News sentiment only
+"What's the news sentiment around Tesla?"
+```
+
+**Composite Sentiment Weights** (default):
+- News Sentiment: 40%
+- Options Market Sentiment: 30%
+- Technical Sentiment: 30%
+
+**Response Includes**:
+- **Overall Score**: Composite sentiment score (-1.0 to +1.0)
+- **Confidence**: Aggregated confidence level (0.0 to 1.0)
+- **Individual Sources**: Breakdown by news, options, technical with individual scores
+- **Key Themes**: Positive sentiment drivers identified across sources
+- **Risk Factors**: Warning signs and bearish indicators
+- **Reasoning**: Detailed explanation of sentiment calculation
+- **Recommendation**: Suggested action (bullish/neutral/bearish stance)
+
+**Sentiment Interpretation Guide**:
+
+| Score Range | Sentiment | Interpretation | Trading Bias |
+|-------------|-----------|----------------|--------------|
+| 0.5 to 1.0 | Very Bullish | Strong positive signals across sources | Strong Buy bias |
+| 0.2 to 0.5 | Bullish | Positive sentiment with good conviction | Buy bias |
+| -0.2 to 0.2 | Neutral | Mixed signals, no clear direction | Hold, wait for clarity |
+| -0.5 to -0.2 | Bearish | Negative sentiment with moderate conviction | Sell bias |
+| -1.0 to -0.5 | Very Bearish | Strong negative signals across sources | Strong Sell bias |
+
+**Confidence Interpretation**:
+- **High (0.7-1.0)**: Multiple sources agree, strong signal reliability
+- **Medium (0.4-0.7)**: Some agreement, moderate signal reliability
+- **Low (0.0-0.4)**: Sources disagree, weak signal reliability
+
+**Key Themes Examples**:
+- `bullish_momentum`: Strong upward price movement
+- `oversold_rsi`: RSI below 30, potential reversal
+- `bullish_options_flow`: Low Put/Call ratio, bullish positioning
+- `positive_news_sentiment`: Positive news coverage
+- `high_iv_environment`: Elevated volatility, favorable for option sellers
+
+**Risk Factors Examples**:
+- `overbought_rsi`: RSI above 70, potential pullback
+- `near_resistance`: Price approaching resistance level
+- `bearish_macd_cross`: MACD bearish crossover
+- `high_put_call_ratio`: Bearish options positioning
+- `negative_news_sentiment`: Negative news coverage
+
+**Use Cases**:
+- **Entry Timing**: Identify optimal entry points with sentiment confirmation
+- **Exit Strategy**: Detect sentiment shifts for position management
+- **Risk Assessment**: Gauge market mood before major positions
+- **Contrarian Signals**: Identify extreme sentiment for reversal trades
+- **Confirmation**: Validate technical/fundamental analysis with sentiment
+- **Options Strategy**: Choose premium-selling vs premium-buying based on IV environment
+
+**Example Natural Language Queries**:
+```
+"What's the overall market sentiment for Apple right now?"
+"Analyze sentiment for SPY - should I buy or wait?"
+"Is sentiment bullish or bearish for QQQ?"
+"Give me composite sentiment analysis for NVDA"
+"What are the key sentiment themes for Tesla?"
+```
+
+**Integration with Stock Analysis**:
+
+The sentiment analysis is automatically included when using `/analyze-stock` command:
+```bash
+/analyze-stock AAPL
+```
+This provides:
+- Multi-timeframe technical analysis
+- Current price and fundamentals
+- Options market analysis
+- **Comprehensive sentiment analysis** (news + options + technical)
+- Trading recommendation with sentiment-based conviction
+
+**Sentiment Components Breakdown**:
+
+1. **News Sentiment** (40% weight):
+   - Analyzes recent news articles and headlines
+   - Natural language processing for sentiment extraction
+   - Publisher credibility weighting
+   - Time decay for article recency
+
+2. **Options Market Sentiment** (30% weight):
+   - **Put/Call Ratio**: <0.7 bullish, 0.7-1.3 neutral, >1.3 bearish
+   - **IV Rank**: Low IV (buy premium), High IV (sell premium)
+   - **Max Pain**: Price gravitation toward max pain strike
+
+3. **Technical Sentiment** (30% weight):
+   - **RSI**: <30 oversold (bullish), >70 overbought (bearish)
+   - **MACD**: Bullish/bearish crossovers and divergences
+   - **Trend Analysis**: Short/medium/long term trend alignment
+   - **Support/Resistance**: Price proximity to key levels
+
+**Performance Notes**:
+- Composite sentiment calculation: ~2-3 seconds
+- Individual source queries: ~1-2 seconds each
+- Cached results valid for 5 minutes (real-time market data)
+- Concurrent analysis supported for multiple symbols
+
+**Code Examples**:
+
+See [examples/sentiment_analysis_example.py](examples/sentiment_analysis_example.py) for complete programmatic usage examples including:
+- Composite sentiment analysis
+- Individual source queries (technical, options, news)
+- Natural language query examples
+- Integration with `/analyze-stock` command
+- Sentiment interpretation guidelines
+
 ### Usage Examples in Claude Desktop
 
 Once you've set up the MCP server in Claude Desktop, you can use natural language:
@@ -455,6 +602,12 @@ Once you've set up the MCP server in Claude Desktop, you can use natural languag
 "What do analysts think about TSLA? Show me the consensus and target prices"
 
 "How does VOO compare to SPY over the last 2 years?"
+
+"Analyze market sentiment for NVDA - should I buy now or wait?"
+
+"What's the composite sentiment for SPY across news, options, and technicals?"
+
+"Is the technical sentiment bullish or bearish for QQQ?"
 ```
 
 ### Technical Notes
@@ -867,10 +1020,10 @@ ib-sec-mcp
 
 ### Features
 
-- **21 Tools**:
+- **22 Tools**:
   - IB Portfolio: Fetch data, performance/cost/bond/tax/risk analysis, portfolio summary
   - Position History: Position history, portfolio snapshots, snapshot comparison, statistics, available dates
-  - Stock Analysis: Stock info, current price, historical data, options chain, put/call ratio, news
+  - Stock Analysis: Stock info, current price, historical data, options chain, put/call ratio, news, **market sentiment**
   - Investment Analysis: Benchmark comparison, portfolio metrics, correlation analysis, analyst consensus
 - **6 Resources**: Access portfolio data, account info, trades, and positions via URI patterns
 - **5 Prompts**: Pre-configured analysis templates for common workflows
