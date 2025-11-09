@@ -8,10 +8,14 @@ social media, and analyst ratings.
 from ib_sec_mcp.analyzers.sentiment.base import BaseSentimentAnalyzer, SentimentScore
 from ib_sec_mcp.analyzers.sentiment.composite import CompositeSentimentAnalyzer
 from ib_sec_mcp.analyzers.sentiment.news import NewsSentimentAnalyzer
+from ib_sec_mcp.analyzers.sentiment.options import OptionsSentimentAnalyzer
+from ib_sec_mcp.analyzers.sentiment.technical import TechnicalSentimentAnalyzer
 
 __all__ = [
     "BaseSentimentAnalyzer",
     "SentimentScore",
     "NewsSentimentAnalyzer",
+    "OptionsSentimentAnalyzer",
+    "TechnicalSentimentAnalyzer",
     "CompositeSentimentAnalyzer",
 ]
