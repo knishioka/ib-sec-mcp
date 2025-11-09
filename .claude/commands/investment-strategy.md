@@ -169,8 +169,8 @@ For focused analysis:
 - Try individual commands instead:
   ```bash
   /optimize-portfolio           # Portfolio analysis
-  /analyze-stock 9433.T         # Top holding
-  /analyze-stock INDA           # Second holding
+  /analyze-symbol 9433.T        # Top holding
+  /analyze-symbol INDA          # Second holding
   ```
 
 **If output is too long**:

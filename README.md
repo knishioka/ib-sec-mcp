@@ -539,11 +539,11 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 "What are the key sentiment themes for Tesla?"
 ```
 
-**Integration with Stock Analysis**:
+**Integration with Symbol Analysis**:
 
-The sentiment analysis is automatically included when using `/analyze-stock` command:
+The sentiment analysis is automatically included when using `/analyze-symbol` command:
 ```bash
-/analyze-stock AAPL
+/analyze-symbol AAPL
 ```
 This provides:
 - Multi-timeframe technical analysis
@@ -583,7 +583,7 @@ See [examples/sentiment_analysis_example.py](examples/sentiment_analysis_example
 - Composite sentiment analysis
 - Individual source queries (technical, options, news)
 - Natural language query examples
-- Integration with `/analyze-stock` command
+- Integration with `/analyze-symbol` command
 - Sentiment interpretation guidelines
 
 ### Usage Examples in Claude Desktop
@@ -729,10 +729,10 @@ comparison = compare_periods(
   - **Tax-optimized execution** plans per account
   - **Actionable priorities**: Urgent (this week) → High (this month) → Medium (this quarter)
 
-- `/analyze-stock SYMBOL` - Comprehensive stock analysis with multi-timeframe technicals
+- `/analyze-symbol SYMBOL` - Comprehensive symbol analysis (stocks, ETFs, crypto, forex) with multi-timeframe technicals
   - Daily/weekly/monthly trend analysis with confluence scoring
   - Support/resistance levels with entry/exit signals
-  - Options market analysis (IV Rank, Greeks, Max Pain)
+  - Options market analysis (IV Rank, Greeks, Max Pain) when applicable
   - News sentiment and catalysts
   - **Buy/Sell/Hold rating** with conviction level (1-10)
 

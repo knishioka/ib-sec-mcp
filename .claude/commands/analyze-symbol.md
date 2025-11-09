@@ -1,10 +1,12 @@
 ---
-description: Comprehensive stock analysis with technical, fundamental, and options market analysis
+description: Comprehensive symbol analysis (stocks, ETFs, crypto, forex) with technical, fundamental, and options market analysis
 allowed-tools: Task
 argument-hint: symbol
 ---
 
-Perform comprehensive analysis of a stock including technical analysis, fundamental data, options market analysis, and trading recommendations.
+Perform comprehensive analysis of any tradable symbol including technical analysis, fundamental data, options market analysis, and trading recommendations.
+
+Supports: Stocks, ETFs, Cryptocurrencies, Forex pairs
 
 ## Task
 
@@ -13,9 +15,10 @@ Delegate to the **market-analyst** subagent to provide deep stock analysis and a
 ### Command Usage
 
 ```bash
-/analyze-stock AAPL
-/analyze-stock VOO
-/analyze-stock SPY
+/analyze-symbol AAPL        # Stock
+/analyze-symbol VOO         # ETF
+/analyze-symbol BTC-USD     # Cryptocurrency
+/analyze-symbol USDJPY=X    # Forex
 ```
 
 ### Analysis Components
@@ -251,25 +254,25 @@ Alternative Strategy:
 
 **Before Buying a Stock**:
 ```bash
-/analyze-stock AAPL
+/analyze-symbol AAPL
 ```
 Get complete analysis to determine if this is a good entry point.
 
 **Evaluating Current Holdings**:
 ```bash
-/analyze-stock VOO
+/analyze-symbol VOO
 ```
 Check if you should hold, add to, or trim your position.
 
 **Finding Entry Points**:
 ```bash
-/analyze-stock MSFT
+/analyze-symbol MSFT
 ```
 Identify support levels and optimal entry zones.
 
 **Options Trading Setup**:
 ```bash
-/analyze-stock SPY
+/analyze-symbol SPY
 ```
 Analyze IV environment and options strategies.
 
@@ -277,12 +280,13 @@ Analyze IV environment and options strategies.
 
 **If symbol not provided**:
 ```
-Error: Please provide a stock symbol.
-Usage: /analyze-stock SYMBOL
+Error: Please provide a symbol.
+Usage: /analyze-symbol SYMBOL
 
 Examples:
-  /analyze-stock AAPL
-  /analyze-stock VOO
+  /analyze-symbol AAPL
+  /analyze-symbol BTC-USD
+  /analyze-symbol USDJPY=X
 ```
 
 **If invalid symbol**:

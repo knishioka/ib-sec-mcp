@@ -94,7 +94,7 @@ Integration
 -----------
 Sentiment analysis is integrated into:
     - MCP tools: `analyze_market_sentiment` function
-    - /analyze-stock command: Automatic sentiment inclusion
+    - /analyze-symbol command: Automatic sentiment inclusion
     - Claude Desktop: Natural language queries
 
 Examples
@@ -104,7 +104,7 @@ See examples/sentiment_analysis_example.py for comprehensive usage examples.
 See Also
 --------
 - README.md section "Market Sentiment Analysis" for complete documentation
-- .claude/commands/analyze-stock.md for integration with stock analysis
+- .claude/commands/analyze-symbol.md for integration with symbol analysis
 """
 
 from ib_sec_mcp.analyzers.sentiment.base import BaseSentimentAnalyzer, SentimentScore
