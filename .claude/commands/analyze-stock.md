@@ -72,8 +72,10 @@ Please provide comprehensive stock analysis including:
 1. Multi-timeframe technical analysis (daily, weekly, monthly)
 2. Current price and fundamental overview
 3. Options market analysis with IV metrics and Greeks
-4. Recent news and market sentiment
-5. Specific trading recommendation with:
+4. Market sentiment analysis (news, options, technical composite)
+   - Use `analyze_market_sentiment` with sources="composite" for multi-source sentiment
+5. Recent news and catalysts
+6. Specific trading recommendation with:
    - Buy/Sell/Hold rating
    - Entry price zone
    - Stop loss level
