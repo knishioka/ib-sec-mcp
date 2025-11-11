@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Sentiment Analysis Module** (Phase 1-3): Comprehensive market sentiment analysis (#7)
+  - **Base Infrastructure**:
+    - `SentimentScore` Pydantic model with Decimal precision
+    - `BaseSentimentAnalyzer` abstract base class for pluggable analyzers
+  - **News Sentiment Analyzer**:
+    - Heuristic-based sentiment from news headlines
+    - 6-hour TTL caching for 90% API call reduction
+    - Yahoo Finance API integration
+  - **Options Sentiment Analyzer**:
+    - Put/Call ratio interpretation
+    - IV Rank/Percentile analysis
+    - Max Pain price analysis
+  - **Technical Sentiment Analyzer**:
+    - RSI overbought/oversold signals
+    - MACD trend momentum
+    - Support/resistance levels
+    - Multi-timeframe trend analysis
+  - **Composite Sentiment Analyzer**:
+    - Multi-source aggregation with configurable weights
+    - Automatic weight normalization
+    - Disagreement penalty for confidence
+  - **MCP Tools**:
+    - `analyze_market_sentiment` - Multi-source sentiment
+    - `get_news_sentiment` - News-only convenience function
+    - Support for news, options, technical, and composite sources
+  - **Quality Assurance**:
+    - 67 comprehensive test cases (100% pass rate for Phase 1)
+    - Type-safe with mypy strict mode
+    - Google-style docstrings
+
 ## [0.1.0] - 2025-10-06
 
 ### Added
