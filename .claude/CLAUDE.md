@@ -273,7 +273,7 @@ pytest --cov=ib_sec_mcp
 | Operation | Target Time | Max Time | Safety Margin |
 |-----------|-------------|----------|---------------|
 | `/investment-strategy` | 6-8 min | 10 min | 2+ min |
-| `/analyze-stock` | 30-60s | 2 min | 1 min |
+| `/analyze-symbol` | 30-60s | 2 min | 1 min |
 | `/options-strategy` | 45-90s | 3 min | 1.5 min |
 | `/optimize-portfolio` | 2-3 min | 5 min | 2 min |
 | `/resolve-gh-issue` | 5-8 min | 10 min | 2 min |

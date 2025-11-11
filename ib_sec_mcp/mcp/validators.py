@@ -153,6 +153,12 @@ def validate_symbol(symbol: str) -> str:
     """
     Validate stock ticker symbol
 
+    Supports:
+    - US stocks: AAPL, TSLA, VOO
+    - Cryptocurrencies: BTC-USD, ETH-USD
+    - Forex pairs: USDJPY=X, EURUSD=X
+    - ETFs and other securities
+
     Args:
         symbol: Ticker symbol to validate
 
@@ -168,11 +174,13 @@ def validate_symbol(symbol: str) -> str:
     # Remove whitespace
     symbol = symbol.strip().upper()
 
-    # Check format (letters, numbers, dots, hyphens)
-    if not re.match(r"^[A-Z0-9.\-]{1,10}$", symbol):
+    # Check format (letters, numbers, dots, hyphens, equals)
+    # Allow = for forex symbols (e.g., USDJPY=X)
+    # Extended to 12 chars to accommodate forex symbols
+    if not re.match(r"^[A-Z0-9.\-=]{1,12}$", symbol):
         raise ValidationError(
             f"Invalid symbol format: '{symbol}'. "
-            "Must be 1-10 characters (letters, numbers, dots, hyphens)",
+            "Must be 1-12 characters (letters, numbers, dots, hyphens, equals)",
             field="symbol",
         )
 

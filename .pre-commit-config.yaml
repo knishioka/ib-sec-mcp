@@ -44,6 +44,7 @@ repos:
           - --python-version=3.12
           - --warn-unused-ignores
           - --no-error-summary
+          - --follow-imports=silent
         pass_filenames: true
         files: ^ib_sec_mcp/(api|core|models|analyzers|reports|utils|cli)/.*\.py$
         exclude: ^ib_sec_mcp/mcp/

@@ -63,12 +63,17 @@ Use the market-analyst subagent to analyze options strategy for $ARGUMENTS:
 
 Please provide comprehensive options strategy analysis including:
 
-1. IV Environment:
+1. Market Sentiment:
+   - Analyze composite sentiment (news + options + technical)
+   - Use `analyze_market_sentiment` with sources="composite"
+   - Identify key sentiment themes and risk factors
+
+2. IV Environment:
    - Calculate IV Rank and IV Percentile
    - Determine if we should buy or sell premium
    - Recommend strategy types based on IV
 
-2. Greeks Analysis:
+3. Greeks Analysis:
    - Calculate Greeks for ATM options
    - Assess risk from each Greek
    - Time decay and IV sensitivity
@@ -360,8 +365,8 @@ Not financial advice. Trade at your own risk.
 📚 ADDITIONAL RESOURCES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-For deeper stock analysis:
-  /analyze-stock [SYMBOL]
+For deeper symbol analysis:
+  /analyze-symbol [SYMBOL]
 
 For portfolio-level strategy:
   /investment-strategy
@@ -420,7 +425,7 @@ This stock may not have listed options.
 ### Integration
 
 This command focuses on options strategies. Combine with:
-- `/analyze-stock SYMBOL` - For underlying stock technical analysis
+- `/analyze-symbol SYMBOL` - For underlying symbol technical analysis
 - `/investment-strategy` - For portfolio-level context
 - `/optimize-portfolio` - For income generation opportunities across portfolio
 

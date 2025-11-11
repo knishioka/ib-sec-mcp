@@ -210,23 +210,24 @@ Delegates to: **strategy-coordinator** → **data-analyzer** + **market-analyst*
 /investment-strategy --save  # Save to data/processed/
 ```
 
-#### `/analyze-stock SYMBOL`
-Comprehensive stock analysis with technical, fundamental, and options
+#### `/analyze-symbol SYMBOL`
+Comprehensive symbol analysis with technical, fundamental, and options (stocks, ETFs, crypto, forex)
 Delegates to: **market-analyst** sub-agent
 
 **What it does**:
 - Multi-timeframe technical analysis (daily/weekly/monthly)
 - Support/resistance levels with entry/exit signals
-- Options market analysis (IV Rank, Greeks, Max Pain)
+- Options market analysis (IV Rank, Greeks, Max Pain) - when available
 - News sentiment and catalysts
 - **Buy/Sell/Hold rating** with conviction level (1-10)
 
 **Time Savings**: 1-2 hours research → **2-3 minutes** (97% reduction)
 
 ```bash
-/analyze-stock AAPL
-/analyze-stock VOO
-/analyze-stock SPY
+/analyze-symbol AAPL          # Stock
+/analyze-symbol VOO           # ETF
+/analyze-symbol BTC-USD       # Crypto
+/analyze-symbol USDJPY=X      # Forex
 ```
 
 #### `/options-strategy SYMBOL`
@@ -715,9 +716,9 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 # Manual equivalent: 6-8 hours of research
 ```
 
-**Individual Stock Analysis** (97% time savings):
+**Individual Symbol Analysis** (97% time savings):
 ```bash
-/analyze-stock PG
+/analyze-symbol PG
 # Multi-timeframe technicals + options + news → 2-3 minutes
 # Manual equivalent: 1-2 hours of research
 ```
@@ -754,7 +755,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 - ✨ **3 new investment agents**: strategy-coordinator, market-analyst, data-analyzer
 - 📊 **Parallel market analysis**: 80-90% time reduction for multi-stock analysis
 - 🎯 **Consolidated multi-account view**: True portfolio-level metrics
-- 📈 **3 new slash commands**: /investment-strategy, /analyze-stock, /options-strategy
+- 📈 **3 new slash commands**: /investment-strategy, /analyze-symbol, /options-strategy
 - 💰 **Professional options analysis**: Greeks, IV metrics, Max Pain, specific strategies
 - 📉 **Multi-timeframe technical analysis**: Daily/weekly/monthly confluence
 - 🔄 **2-year chart context**: For every position with entry/exit scenarios
