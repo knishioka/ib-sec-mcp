@@ -30,10 +30,14 @@ The **strategy-coordinator** subagent will:
 - Assess asset allocation and concentration risks
 
 **2. Market Analysis** (3-5 min)
-- Analyze **TOP 5 HOLDINGS ONLY** for detailed technical analysis
+- Analyze **TOP 5 HOLDINGS ONLY** with comprehensive market analysis
 - Launch 5 market-analyst instances in parallel
-- Each provides: technical outlook, support/resistance, conviction score
-- Remaining holdings: brief portfolio-based recommendations
+- Each holding receives:
+  * Technical analysis (RSI, MACD, trends, support/resistance)
+  * Market sentiment (news headlines, options market indicators)
+  * Trading recommendations (BUY/SELL/HOLD with specific prices)
+  * Risk assessment and conviction scoring
+- Remaining holdings: brief portfolio-based recommendations only
 
 **3. Strategy Synthesis** (2-3 min)
 - Integrate portfolio metrics with market analysis
@@ -46,6 +50,43 @@ The **strategy-coordinator** subagent will:
   * Expected outcomes
 
 **Total Time**: 6-8 minutes (safe within 10 min limit)
+
+## Data Integrity Protection
+
+**Pre-Execution Validation** (Automatic):
+The strategy-coordinator subagent will:
+1. Verify MCP server connectivity
+2. Confirm `analyze_consolidated_portfolio` tool is available
+3. Validate portfolio data has > 0 positions
+4. If ANY check fails → Return error, ABORT analysis
+
+**Abort Conditions** (Analysis will not proceed if):
+- MCP server unavailable
+- No XML files in `data/raw/` AND credentials not configured
+- Portfolio analysis returns 0 accounts or 0 positions
+- Any MCP tool returns critical error
+
+**Error Response Template**:
+```
+❌ INVESTMENT STRATEGY ABORTED
+
+Reason: [specific error from MCP or sub-agent]
+Tool Failed: [tool name if applicable]
+Data Source: [FAILED / UNAVAILABLE]
+
+Recovery Steps:
+1. Check MCP server status: /mcp-status
+2. Verify credentials: Ensure .env has QUERY_ID and TOKEN
+3. Fetch latest data: /fetch-latest
+4. Retry: /investment-strategy
+
+⚠️  CRITICAL: Investment recommendations require accurate, real-time data.
+Analysis cannot proceed with missing, stale, or synthetic data.
+
+Alternative: Try focused analysis commands
+- /optimize-portfolio (portfolio analysis only)
+- /analyze-symbol SYMBOL (individual stock analysis)
+```
 
 ### Delegation Instructions
 
@@ -62,12 +103,12 @@ Please orchestrate the following:
 2. Market Analysis (Batched):
    - Launch 5 market-analyst subagents in parallel (single message, multiple Task calls)
    - Analyze TOP 5 HOLDINGS ONLY
-   - Request concise analysis (<500 tokens each):
-     * Technical outlook (BULLISH/NEUTRAL/BEARISH)
-     * Key support/resistance levels
-     * Entry/exit scenarios (2-3 bullets max)
-     * Options strategy (1 recommendation)
-     * Conviction score (1-10)
+   - Request focused analysis (target ~800 tokens each, max 1,200):
+     * Technical analysis (RSI, MACD, trends, support/resistance)
+     * Market sentiment (news headlines, options market indicators)
+     * Trading recommendations (BUY/SELL/HOLD with specific prices)
+     * Options strategy (if applicable)
+     * Risk assessment and conviction score (1-10)
 
 3. Strategy Synthesis:
    - Generate streamlined report following your defined format
@@ -155,10 +196,52 @@ This is the **master strategy command** that:
 3. Considers performance, taxes, risks, market conditions
 4. Completes reliably within timeout constraints
 
+### Feature Scope
+
+**✅ What This Command Analyzes**:
+- **Top 5 Holdings**: Full technical + sentiment + news + options analysis
+- **Remaining Holdings**: Brief recommendations based on portfolio data
+- **Portfolio-Level**: Asset allocation, tax optimization, risk management
+- **Action Plan**: Prioritized by urgency (urgent/high/medium)
+
+**❌ What This Command Does NOT Analyze**:
+- Holdings outside Top 5 (no detailed technical/sentiment analysis)
+- Symbols not in your portfolio (use `/analyze-symbol` instead)
+- Comparison of alternative investments (use `/compare-etf` instead)
+
+**📊 Analysis Depth by Position**:
+| Position | Technical | Sentiment | News | Options | Recommendation |
+|----------|-----------|-----------|------|---------|----------------|
+| Top 1-5  | ✅ Full   | ✅ Full   | ✅ Yes | ✅ Yes  | ✅ Detailed    |
+| Top 6+   | ❌ None   | ❌ None   | ❌ No  | ❌ No   | ⚠️ Brief only  |
+
+### Important Limitations
+
+**Limit Order Recommendations**:
+- This command provides **general direction** (e.g., "consider adding CSPX")
+- It does **NOT** provide specific limit prices or order quantities
+- For precise entry/exit prices, use `/analyze-symbol SYMBOL` on the specific stock
+
+**Example Workflow**:
+```bash
+# Step 1: Get overall strategy
+/investment-strategy
+# Output: "Consider adding S&P 500 exposure (CSPX)"
+
+# Step 2: Get specific entry prices for new investments
+/analyze-symbol SPY  # or CSPX
+# Output: "Entry: $713-716, Stop: $707, Target: $724-737"
+```
+
+**Why This Design**:
+- `/investment-strategy` focuses on portfolio-level decisions
+- `/analyze-symbol` focuses on precise trade execution
+- Combining both gives optimal results
+
 ### Related Commands
 
 For focused analysis:
-- `/analyze-stock SYMBOL` - Individual stock deep dive
+- `/analyze-symbol SYMBOL` - Individual stock deep dive with precise entry/exit prices
 - `/options-strategy SYMBOL` - Options-focused analysis
 - `/optimize-portfolio` - Portfolio optimization only
 - `/tax-report` - Tax-focused analysis only
