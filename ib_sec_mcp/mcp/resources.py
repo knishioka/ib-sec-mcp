@@ -4,6 +4,7 @@ Provides read-only access to portfolio data via URI patterns.
 """
 
 import json
+import yaml
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -818,3 +819,45 @@ def register_resources(mcp: FastMCP) -> None:
         }
 
         return json.dumps(risk_context, indent=2, default=str)
+
+    @mcp.resource("ib://user/profile")
+    def get_user_profile() -> str:
+        """
+        Get user investment profile and preferences
+
+        Returns:
+            JSON string with user profile including:
+            - Residency and tax implications
+            - Investment profile (growth/income/preservation/balanced)
+            - Investment horizon (short/medium/long)
+            - Allocation targets (stocks/bonds/cash percentages)
+            - ETF preferences (domicile, preferred symbols)
+            - External holdings (other accounts, total value)
+            - Personal notes on strategy
+
+        Example:
+            >>> profile = get_user_profile()
+            >>> data = json.loads(profile)
+            >>> print(data["residency"]["country"])
+            Malaysia
+        """
+        profile_path = Path("notes/investor-profile.yaml")
+
+        if not profile_path.exists():
+            return json.dumps({
+                "error": "Profile not found",
+                "path": str(profile_path),
+                "hint": "Create notes/investor-profile.yaml with your investment preferences"
+            }, indent=2)
+
+        try:
+            with open(profile_path) as f:
+                profile = yaml.safe_load(f)
+
+            return json.dumps(profile, indent=2, default=str)
+        except yaml.YAMLError as e:
+            return json.dumps({
+                "error": "Failed to parse YAML",
+                "path": str(profile_path),
+                "details": str(e)
+            }, indent=2)

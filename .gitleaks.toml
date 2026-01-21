@@ -49,6 +49,26 @@ keywords = [
     "API_KEY",
 ]
 
+[[rules]]
+id = "notion-database-id"
+description = "Notion Database or Data Source ID in environment variable"
+regex = '''(?i)(notion.*(?:db|database|data[_-]?source)[_-]?id|data[_-]?source[_-]?id)\s*[=:]\s*['"]?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})['"]?'''
+secretGroup = 2
+keywords = [
+    "NOTION_INVESTMENT_DECISIONS_DB_ID",
+    "NOTION_INVESTMENT_DECISIONS_DATA_SOURCE_ID",
+    "notion_db_id",
+    "notion_database_id",
+    "data_source_id",
+    "collection://",
+]
+
+[[rules]]
+id = "notion-page-id"
+description = "Notion Page ID in URL"
+regex = '''notion\.so/[a-zA-Z0-9-]+/([0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'''
+secretGroup = 1
+
 # Allowlist for false positives
 [allowlist]
 description = "Allowlisted files and patterns"
@@ -92,6 +112,12 @@ regexes = [
     '''sample''',
     '''test''',
     '''dummy''',
+
+    # Notion placeholders
+    '''your_database_id_here''',
+    '''your_data_source_id_here''',
+    '''xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx''', # UUID placeholder pattern
+    '''<FROM_ENV_VAR>''',
 
     # IMPORTANT: Real account IDs (U followed by 8-10 digits) will be detected
     # Note: DO NOT add real credentials here

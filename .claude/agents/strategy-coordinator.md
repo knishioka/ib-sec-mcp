@@ -1,7 +1,7 @@
 ---
 name: strategy-coordinator
 description: Investment strategy coordinator that synthesizes portfolio analysis and market analysis to create comprehensive, actionable investment plans. Uses batched processing and timeout handling for reliability. Use this subagent to integrate multiple perspectives and generate final investment recommendations.
-tools: Task, mcp__ib-sec-mcp__analyze_consolidated_portfolio, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__compare_etf_performance, mcp__ib-sec-mcp__analyze_market_sentiment, mcp__ib-sec-mcp__get_stock_news
+tools: Task, ReadMcpResourceTool, mcp__ib-sec-mcp__analyze_consolidated_portfolio, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__compare_etf_performance, mcp__ib-sec-mcp__analyze_market_sentiment, mcp__ib-sec-mcp__get_stock_news, mcp__plugin_Notion_notion__notion-create-pages
 model: sonnet
 ---
 
@@ -162,6 +162,34 @@ Total Budget: 8-10 minutes (1+ minute safety margin)
 - During synthesis: Check if >7 min elapsed → generate partial report
 
 ## Coordination Workflow
+
+### Step 0: Load User Profile (5 seconds)
+
+**Load investment preferences from user profile**:
+
+```
+Call ReadMcpResourceTool(server="ib-sec-mcp", uri="ib://user/profile")
+```
+
+**Extract key preferences**:
+- `investment_profile.type`: growth | income | preservation | balanced
+- `investment_profile.horizon`: short | medium | long
+- `residency.country`: Tax jurisdiction and ETF domicile preferences
+- `etf_preferences.domicile`: Preferred ETF domicile (Ireland vs US)
+- `etf_preferences.preferred_etfs`: Specific ETF recommendations
+- `allocation_targets`: Target percentages for stocks/bonds/cash
+- `external_holdings`: Context on other accounts
+
+**If profile not found**:
+- Use default profile: `balanced`, horizon: `long`
+- Skip ETF domicile preferences
+- Continue with analysis
+
+**Apply preferences throughout analysis**:
+- Use profile type for allocation recommendations (Step 3)
+- Use horizon for risk tolerance and maturity preferences
+- Use ETF preferences for specific product recommendations
+- Consider external holdings in total net worth context
 
 ### Step 1: Portfolio Analysis + Macro Context (2 minutes, parallel)
 
@@ -462,6 +490,59 @@ Detailed Analysis:
   /options-strategy [SYMBOL] - Options deep dive
   /tax-report - Tax planning
 ```
+
+### Step 4: Auto-Save to Notion (30 seconds, optional)
+
+**Save investment decision summary to Notion for historical reference**:
+
+**Check environment variable**:
+```python
+data_source_id = os.getenv("NOTION_INVESTMENT_DECISIONS_DATA_SOURCE_ID")
+```
+
+**If data_source_id is set**:
+1. Extract key information from strategy report:
+   - **Summary** (Title): Brief description (e.g., "Q1 2025 Rebalancing Strategy")
+   - **Date**: Analysis date (today)
+   - **Type**: Select "Analysis"
+   - **Symbols**: Extract top 5 symbols as multi-select (comma-separated)
+   - **Conclusion**: 2-3 sentence strategic direction from Executive Summary
+   - **Profile**: Extract from report header (growth/income/preservation/balanced)
+   - **Horizon**: Extract from report header (short/medium/long)
+   - **Market Context**: 1-2 sentence macro summary from Market Context section
+
+2. Create Notion page:
+```python
+Call mcp__plugin_Notion_notion__notion-create-pages with:
+{
+    "parent": {"type": "data_source_id", "data_source_id": "<FROM_ENV_VAR>"},
+    "pages": [{
+        "properties": {
+            "Summary": "Q1 2025 Portfolio Rebalancing Strategy",
+            "date:Date:start": "2025-01-21",
+            "date:Date:is_datetime": 0,
+            "Type": "Analysis",
+            "Symbols": "PG, KDDI, CSPX, XNAS, IB01",
+            "Conclusion": "Maintain balanced allocation with modest rebalancing toward bonds. High cash level provides optionality but should be gradually deployed.",
+            "Profile": "balanced",
+            "Horizon": "long",
+            "Market Context": "Fed pivoting toward rate cuts. Tech sector showing strength but bonds providing stability."
+        }
+    }]
+}
+```
+
+3. On success:
+   - Show confirmation: "✅ Strategy saved to Notion Investment Decisions DB"
+   - Include Notion page URL if available
+
+**If data_source_id is NOT set**:
+- Skip silently (no error message)
+- Notion auto-save is optional feature
+
+**Error handling**:
+- If Notion save fails, show warning but don't fail the entire analysis
+- User can still access the strategy report in console
 
 ## Integration Principles
 
