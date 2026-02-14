@@ -257,48 +257,53 @@ class TestConsolidatedPortfolioCurrency:
         monkeypatch.setenv("QUERY_ID", "test_query_id")
         monkeypatch.setenv("TOKEN", "test_token")
 
-    @pytest.mark.asyncio
-    async def test_currency_fields_present_in_output(self, mock_env):
-        """Test that currency and fx_rate_to_base are included in holdings output"""
-        with patch(
-            "ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data"
-        ) as mock_fetch:
-            mock_fetch.return_value = (
-                SAMPLE_XML_MULTI_CURRENCY,
-                date(2025, 1, 1),
-                date(2025, 1, 31),
-            )
+    @pytest.fixture
+    def tool_registry(self):
+        """Register tools with a capture MCP and return tool functions"""
+        from ib_sec_mcp.mcp.tools.ib_portfolio import register_ib_portfolio_tools
 
-            # Import and call the tool function directly
-            from ib_sec_mcp.mcp.tools.ib_portfolio import register_ib_portfolio_tools
+        tools = {}
 
-            mcp = MagicMock()
-            mcp.tool = lambda f: f  # Pass-through decorator
+        class CaptureMCP:
+            def tool(self, fn):
+                tools[fn.__name__] = fn
+                return fn
 
-            # Re-register to get the function
-            # Instead, call the internal logic directly
-            from ib_sec_mcp.core.parsers import XMLParser, detect_format
-
-            data = SAMPLE_XML_MULTI_CURRENCY
-            detect_format(data)
-            accounts = XMLParser.to_accounts(data, date(2025, 1, 1), date(2025, 1, 31))
-
-            # Verify positions have currency info
-            account = list(accounts.values())[0]
-            for pos in account.positions:
-                assert hasattr(pos, "currency")
-                assert hasattr(pos, "fx_rate_to_base")
-
-            # Verify specific currencies
-            positions_by_symbol = {p.symbol: p for p in account.positions}
-
-            assert positions_by_symbol["CSPX"].currency == "USD"
-            assert positions_by_symbol["9433.T"].currency == "JPY"
-            assert positions_by_symbol["IDTL"].currency == "GBP"
+        register_ib_portfolio_tools(CaptureMCP())
+        return tools
 
     @pytest.mark.asyncio
-    async def test_jpy_currency_and_fx_rate(self, mock_env):
-        """Test that JPY positions have correct currency and fx_rate_to_base"""
+    async def test_parser_extracts_currency_fields(self, mock_env):
+        """Test that the XML parser correctly extracts currency and fx_rate_to_base"""
+        from decimal import Decimal
+
+        from ib_sec_mcp.core.parsers import XMLParser, detect_format
+
+        data = SAMPLE_XML_MULTI_CURRENCY
+        detect_format(data)
+        accounts = XMLParser.to_accounts(data, date(2025, 1, 1), date(2025, 1, 31))
+        account = list(accounts.values())[0]
+
+        # Verify all positions have currency info
+        for pos in account.positions:
+            assert hasattr(pos, "currency")
+            assert hasattr(pos, "fx_rate_to_base")
+
+        positions_by_symbol = {p.symbol: p for p in account.positions}
+
+        # Verify currencies parsed correctly
+        assert positions_by_symbol["CSPX"].currency == "USD"
+        assert positions_by_symbol["9433.T"].currency == "JPY"
+        assert positions_by_symbol["IDTL"].currency == "GBP"
+
+        # Verify fx_rate precision (Decimal from string, no float artifacts)
+        assert positions_by_symbol["CSPX"].fx_rate_to_base == Decimal("1")
+        assert positions_by_symbol["9433.T"].fx_rate_to_base == Decimal("0.006547")
+        assert positions_by_symbol["IDTL"].fx_rate_to_base == Decimal("1.27")
+
+    @pytest.mark.asyncio
+    async def test_jpy_position_value_converted_to_usd(self, mock_env):
+        """Test that JPY position values are correctly converted to USD"""
         from decimal import Decimal
 
         from ib_sec_mcp.core.parsers import XMLParser, detect_format
@@ -310,104 +315,64 @@ class TestConsolidatedPortfolioCurrency:
 
         jpy_position = next(p for p in account.positions if p.symbol == "9433.T")
         assert jpy_position.currency == "JPY"
-        # parse_decimal_safe returns float, so fx_rate has float precision
-        assert abs(jpy_position.fx_rate_to_base - Decimal("0.006547")) < Decimal("1e-10")
+        assert jpy_position.fx_rate_to_base == Decimal("0.006547")
 
-        # Verify position_value is converted to USD (with float precision tolerance)
-        expected_usd = Decimal("500000") * jpy_position.fx_rate_to_base
-        assert abs(jpy_position.position_value - expected_usd) < Decimal("0.01")
+        # position_value should be local value * fx_rate (500000 * 0.006547 = 3273.5)
+        expected_usd = Decimal("500000") * Decimal("0.006547")
+        assert jpy_position.position_value == expected_usd
 
     @pytest.mark.asyncio
-    async def test_consolidated_output_includes_currency(self, mock_env):
+    async def test_consolidated_output_includes_currency(self, mock_env, tool_registry):
         """Test that analyze_consolidated_portfolio JSON output includes currency fields"""
-        from collections import defaultdict
-        from decimal import Decimal
+        with patch(
+            "ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data"
+        ) as mock_fetch:
+            mock_fetch.return_value = (
+                SAMPLE_XML_MULTI_CURRENCY,
+                date(2025, 1, 1),
+                date(2025, 1, 31),
+            )
 
-        from ib_sec_mcp.core.parsers import XMLParser, detect_format
+            result_json = await tool_registry["analyze_consolidated_portfolio"](
+                start_date="2025-01-01", end_date="2025-01-31", use_cache=True
+            )
+            result = json.loads(result_json)
 
-        data = SAMPLE_XML_MULTI_CURRENCY
-        detect_format(data)
-        accounts = XMLParser.to_accounts(data, date(2025, 1, 1), date(2025, 1, 31))
+            # Verify currency fields in consolidated holdings
+            holdings = result["consolidated_holdings"]["holdings_by_symbol"]
+            holdings_by_symbol = {h["symbol"]: h for h in holdings}
 
-        # Simulate the consolidation logic from analyze_consolidated_portfolio
-        total_value = Decimal("0")
-        consolidated = defaultdict(
-            lambda: {
-                "total_quantity": Decimal("0"),
-                "total_value": Decimal("0"),
-                "accounts": [],
-                "position_metadata": None,
-            }
-        )
+            assert holdings_by_symbol["CSPX"]["currency"] == "USD"
+            assert holdings_by_symbol["CSPX"]["fx_rate_to_base"] == "1"
 
-        for acc_id, account in accounts.items():
-            total_value += account.total_value
-            for position in account.positions:
-                symbol = position.symbol
-                consolidated[symbol]["total_quantity"] += position.quantity
-                consolidated[symbol]["total_value"] += position.position_value
-                if acc_id not in consolidated[symbol]["accounts"]:
-                    consolidated[symbol]["accounts"].append(acc_id)
-                if consolidated[symbol]["position_metadata"] is None:
-                    issuer_country = (
-                        position.isin[:2]
-                        if position.isin and len(position.isin) >= 2
-                        else None
-                    )
-                    consolidated[symbol]["position_metadata"] = {
-                        "asset_class": position.asset_class.value,
-                        "description": position.description,
-                        "isin": position.isin,
-                        "cusip": position.cusip,
-                        "issuer_country": issuer_country,
-                        "maturity_date": None,
-                        "currency": position.currency,
-                        "fx_rate_to_base": str(position.fx_rate_to_base),
-                    }
+            assert holdings_by_symbol["9433.T"]["currency"] == "JPY"
+            assert holdings_by_symbol["9433.T"]["fx_rate_to_base"] == "0.006547"
 
-        # Build output like the tool does
-        for symbol, sym_data in consolidated.items():
-            metadata = sym_data["position_metadata"]
-            assert "currency" in metadata
-            assert "fx_rate_to_base" in metadata
-
-        # Verify specific values
-        assert consolidated["CSPX"]["position_metadata"]["currency"] == "USD"
-        assert consolidated["CSPX"]["position_metadata"]["fx_rate_to_base"] == "1"
-
-        assert consolidated["9433.T"]["position_metadata"]["currency"] == "JPY"
-        # parse_decimal_safe returns float, so fx_rate has float precision artifacts
-        jpy_rate = float(consolidated["9433.T"]["position_metadata"]["fx_rate_to_base"])
-        assert abs(jpy_rate - 0.006547) < 1e-10
-
-        assert consolidated["IDTL"]["position_metadata"]["currency"] == "GBP"
-        gbp_rate = float(consolidated["IDTL"]["position_metadata"]["fx_rate_to_base"])
-        assert abs(gbp_rate - 1.27) < 1e-10
+            assert holdings_by_symbol["IDTL"]["currency"] == "GBP"
+            assert holdings_by_symbol["IDTL"]["fx_rate_to_base"] == "1.27"
 
     @pytest.mark.asyncio
-    async def test_holding_entry_includes_currency(self, mock_env):
-        """Test that the final holding_entry dict includes currency and fx_rate_to_base"""
-        from ib_sec_mcp.core.parsers import XMLParser, detect_format
+    async def test_holding_entry_includes_currency(self, mock_env, tool_registry):
+        """Test that every holding entry includes currency and fx_rate_to_base"""
+        with patch(
+            "ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data"
+        ) as mock_fetch:
+            mock_fetch.return_value = (
+                SAMPLE_XML_MULTI_CURRENCY,
+                date(2025, 1, 1),
+                date(2025, 1, 31),
+            )
 
-        data = SAMPLE_XML_MULTI_CURRENCY
-        detect_format(data)
-        accounts = XMLParser.to_accounts(data, date(2025, 1, 1), date(2025, 1, 31))
-        account = list(accounts.values())[0]
+            result_json = await tool_registry["analyze_consolidated_portfolio"](
+                start_date="2025-01-01", end_date="2025-01-31", use_cache=True
+            )
+            result = json.loads(result_json)
 
-        # Build holding entries like the tool does
-        for position in account.positions:
-            metadata = {
-                "currency": position.currency,
-                "fx_rate_to_base": str(position.fx_rate_to_base),
-            }
-            holding_entry = {}
-            if metadata.get("currency"):
-                holding_entry["currency"] = metadata["currency"]
-            if metadata.get("fx_rate_to_base"):
-                holding_entry["fx_rate_to_base"] = metadata["fx_rate_to_base"]
-
-            assert "currency" in holding_entry
-            assert "fx_rate_to_base" in holding_entry
+            for holding in result["consolidated_holdings"]["holdings_by_symbol"]:
+                assert "currency" in holding, f"{holding['symbol']} missing currency"
+                assert "fx_rate_to_base" in holding, (
+                    f"{holding['symbol']} missing fx_rate_to_base"
+                )
 
     @pytest.mark.asyncio
     async def test_usd_positions_have_fx_rate_1(self, mock_env):

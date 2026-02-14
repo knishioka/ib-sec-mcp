@@ -2,7 +2,7 @@
 
 import contextlib
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from ib_sec_mcp.models.account import Account, CashBalance
@@ -181,7 +181,12 @@ class XMLParser:
             cost_basis = Decimal(parse_decimal_safe(pos_elem.get("costBasisMoney", "0")))
 
             # Get FX rate to convert to base currency (USD)
-            fx_rate = Decimal(parse_decimal_safe(pos_elem.get("fxRateToBase", "1")))
+            # Create Decimal from string directly to avoid float precision artifacts
+            fx_rate_str = pos_elem.get("fxRateToBase", "1") or "1"
+            try:
+                fx_rate = Decimal(fx_rate_str.replace(",", "").strip())
+            except (InvalidOperation, ValueError, TypeError):
+                fx_rate = Decimal("1")
 
             # Apply FX rate to convert values to USD
             position_value_local = Decimal(parse_decimal_safe(pos_elem.get("positionValue", "0")))
