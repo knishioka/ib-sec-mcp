@@ -806,6 +806,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                         "maturity_date": str(position.maturity_date)
                         if position.maturity_date
                         else None,
+                        "currency": position.currency,
+                        "fx_rate_to_base": str(position.fx_rate_to_base),
                     }
 
             # Per-account summary
@@ -889,6 +891,10 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                     holding_entry["issuer_country"] = metadata["issuer_country"]
                 if metadata["maturity_date"]:
                     holding_entry["maturity_date"] = metadata["maturity_date"]
+                if metadata.get("currency"):
+                    holding_entry["currency"] = metadata["currency"]
+                if metadata.get("fx_rate_to_base"):
+                    holding_entry["fx_rate_to_base"] = metadata["fx_rate_to_base"]
 
             holdings_by_symbol.append(holding_entry)
 
