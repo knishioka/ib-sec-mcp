@@ -48,7 +48,7 @@ def _parse_account_by_index(data: str, from_date, to_date, account_index: int) -
     account_list = list(accounts.values())
     if account_index >= len(account_list):
         raise ValidationError(
-            f"account_index {account_index} out of range (0-{len(account_list)-1})"
+            f"account_index {account_index} out of range (0-{len(account_list) - 1})"
         )
 
     return account_list[account_index]

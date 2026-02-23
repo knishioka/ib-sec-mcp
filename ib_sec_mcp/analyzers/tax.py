@@ -40,6 +40,12 @@ class TaxAnalyzer(BaseAnalyzer):
 
         # Realized gains/losses (capital gains tax)
         total_realized_pnl: Decimal = sum((t.fifo_pnl_realized for t in trades), Decimal("0"))
+        # TODO: Holding period classification is inaccurate.
+        # Currently uses (settle_date - trade_date), which measures settlement delay
+        # (~2 days for stocks), NOT the actual holding period from original acquisition.
+        # This causes virtually all gains to be classified as short-term.
+        # Proper fix: Track acquisition dates per cost basis lot (FIFO) and calculate
+        # holding period from original purchase date to sale date.
         short_term_gains: Decimal = sum(
             (
                 t.fifo_pnl_realized

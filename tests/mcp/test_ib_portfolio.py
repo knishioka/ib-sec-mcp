@@ -190,7 +190,7 @@ class TestGetOrFetchData:
             mock_ctx.warning.assert_called_once()
             warning_call = mock_ctx.warning.call_args[0][0]
             assert "account_index 1 specified" in warning_call
-            assert "single account supported" in warning_call
+            assert "single Flex Query" in warning_call
 
     @pytest.mark.asyncio
     async def test_default_end_date_is_today(self, mock_env, sample_csv_data, clean_cache):
@@ -324,9 +324,7 @@ class TestConsolidatedPortfolioCurrency:
     @pytest.mark.asyncio
     async def test_consolidated_output_includes_currency(self, mock_env, tool_registry):
         """Test that analyze_consolidated_portfolio JSON output includes currency fields"""
-        with patch(
-            "ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data"
-        ) as mock_fetch:
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
             mock_fetch.return_value = (
                 SAMPLE_XML_MULTI_CURRENCY,
                 date(2025, 1, 1),
@@ -354,9 +352,7 @@ class TestConsolidatedPortfolioCurrency:
     @pytest.mark.asyncio
     async def test_holding_entry_includes_currency(self, mock_env, tool_registry):
         """Test that every holding entry includes currency and fx_rate_to_base"""
-        with patch(
-            "ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data"
-        ) as mock_fetch:
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
             mock_fetch.return_value = (
                 SAMPLE_XML_MULTI_CURRENCY,
                 date(2025, 1, 1),
@@ -370,9 +366,7 @@ class TestConsolidatedPortfolioCurrency:
 
             for holding in result["consolidated_holdings"]["holdings_by_symbol"]:
                 assert "currency" in holding, f"{holding['symbol']} missing currency"
-                assert "fx_rate_to_base" in holding, (
-                    f"{holding['symbol']} missing fx_rate_to_base"
-                )
+                assert "fx_rate_to_base" in holding, f"{holding['symbol']} missing fx_rate_to_base"
 
     @pytest.mark.asyncio
     async def test_usd_positions_have_fx_rate_1(self, mock_env):
