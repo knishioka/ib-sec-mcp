@@ -9,11 +9,13 @@
 ## Quick Reference
 
 ### Project Context
+
 - **IB Analytics**: Portfolio analytics library for Interactive Brokers
-- **Tech Stack**: Python 3.9+, Pydantic v2, pandas, FastMCP
+- **Tech Stack**: Python 3.12+, Pydantic v2, pandas, FastMCP
 - **Mode 3**: Advanced development workflow automation
 
 ### Key Files
+
 - **README.md**: User documentation, 3 usage modes
 - **/CLAUDE.md**: General development guide, usage mode design
 - **.claude/CLAUDE.md**: This file (Claude Code extensions)
@@ -26,6 +28,7 @@
 ## Sub-Agents (7 specialized experts)
 
 ### Quick List
+
 1. **data-analyzer** 📊 - Financial data analysis
 2. **test-runner** 🧪 - Testing & QA
 3. **code-implementer** 💻 - Feature implementation (TDD)
@@ -35,6 +38,7 @@
 7. **issue-analyzer** 🔍 - GitHub issue analysis
 
 ### When to Create
+
 - ✅ Specialized domain knowledge required
 - ✅ Repeated frequently (3+ times)
 - ✅ Benefits from context isolation
@@ -42,9 +46,10 @@
 - ❌ Requires full project context
 
 ### File Structure
+
 **Location**: `.claude/agents/{agent-name}.md`
 
-```yaml
+````yaml
 ---
 name: agent-name
 description: When to use. Add "Use PROACTIVELY" for auto-activation.
@@ -69,9 +74,11 @@ command --flags
 ```
 
 ## Quality Checklist
+
 - [ ] Check 1
 - [ ] Check 2
-```
+
+````
 
 **Detailed Guide**: See `.claude/SUB_AGENTS.md`
 
@@ -80,11 +87,13 @@ command --flags
 ## Slash Commands (12 automated workflows)
 
 ### Quick List
+
 **Analysis**: `/optimize-portfolio`, `/compare-periods`, `/tax-report`, `/validate-data`
 **Development**: `/test`, `/quality-check`, `/add-test`, `/benchmark`
 **Utility**: `/mcp-status`, `/debug-api`, `/resolve-gh-issue`, `/fetch-latest`
 
 ### When to Create
+
 - ✅ Repeated 3+ times
 - ✅ Consistent structure
 - ✅ Clear, predictable arguments
@@ -92,6 +101,7 @@ command --flags
 - ❌ Requires human judgment
 
 ### File Structure
+
 **Location**: `.claude/commands/{command-name}.md`
 
 ```yaml
@@ -126,12 +136,14 @@ Format description
 ## Development Essentials
 
 ### Python Conventions
+
 - **Line Length**: 100 chars max
 - **Type Hints**: Required, mypy strict mode
 - **Docstrings**: Google-style, required for public APIs
 - **Financial Math**: Always use `Decimal` (never `float`)
 
 ### Code Quality
+
 ```bash
 # Format
 ruff format ib_sec_mcp tests
@@ -147,6 +159,7 @@ pytest --cov=ib_sec_mcp
 ```
 
 ### Repository Etiquette
+
 - **Branches**: `feature/`, `fix/`, `refactor/`, `docs/`
 - **Commits**: `type: description` (feat, fix, refactor, docs, test, chore)
 - **PRs**: Include motivation, changes, testing notes
@@ -157,15 +170,19 @@ pytest --cov=ib_sec_mcp
 ## MCP Server Quick Reference
 
 ### Analysis Tools (7 coarse-grained)
+
 `fetch_ib_data`, `analyze_performance`, `analyze_costs`, `analyze_bonds`, `analyze_tax`, `analyze_risk`, `get_portfolio_summary`
 
 ### Composable Tools (5 fine-grained)
+
 `get_trades`, `get_positions`, `get_account_summary`, `calculate_metric`, `compare_periods`
 
 ### Resources (6 URI patterns)
+
 `ib://portfolio/list`, `ib://portfolio/latest`, `ib://accounts/{id}`, `ib://trades/recent`, `ib://positions/current`
 
 ### Strategy Resources (3 URI patterns)
+
 `ib://strategy/tax-context`, `ib://strategy/rebalancing-context`, `ib://strategy/risk-context`
 
 ---
@@ -173,6 +190,7 @@ pytest --cov=ib_sec_mcp
 ## Common Tasks
 
 ### Adding New Analyzer
+
 1. Create `ib_sec_mcp/analyzers/{name}.py`
 2. Inherit from `BaseAnalyzer`
 3. Implement `analyze()` → `AnalysisResult`
@@ -181,6 +199,7 @@ pytest --cov=ib_sec_mcp
 6. Add CLI option in `analyze.py`
 
 ### Adding MCP Tool
+
 1. Add function in `ib_sec_mcp/mcp/tools.py`
 2. Use `@mcp.tool()` decorator
 3. Type hints + docstring required
@@ -188,6 +207,7 @@ pytest --cov=ib_sec_mcp
 5. Test with Claude Desktop
 
 ### Creating Sub-Agent
+
 1. Create `.claude/agents/{name}.md`
 2. Add frontmatter (name, description, tools, model)
 3. Write system prompt with expertise
@@ -195,6 +215,7 @@ pytest --cov=ib_sec_mcp
 5. Test explicit and auto-activation
 
 ### Creating Slash Command
+
 1. Create `.claude/commands/{name}.md`
 2. Add frontmatter (description, tools, argument-hint)
 3. Define steps + error handling
@@ -205,6 +226,7 @@ pytest --cov=ib_sec_mcp
 ## Important Warnings
 
 ### Financial Code Requirements
+
 - ✅ Always use `Decimal` for money
 - ✅ Validate all user inputs
 - ✅ Handle missing data gracefully
@@ -213,12 +235,14 @@ pytest --cov=ib_sec_mcp
 - ❌ Never modify legacy scripts
 
 ### API & Data
+
 - IB Flex Query API has rate limits (3 retries, 5s delay)
 - CSV has multiple sections (detect by `ClientAccountID`)
 - Single Flex Query can return multiple accounts
 - Bond maturity dates may be missing
 
 ### Testing
+
 - Tests not yet fully implemented (TODO)
 - Use `pytest` with fixtures in `tests/fixtures/`
 - Mock API calls with `pytest-asyncio`
@@ -232,12 +256,7 @@ pytest --cov=ib_sec_mcp
 ```json
 {
   "permissions": {
-    "allow": [
-      "Bash(pytest:*)",
-      "Read",
-      "Write",
-      "mcp__ib-sec-mcp__*"
-    ],
+    "allow": ["Bash(pytest:*)", "Read", "Write", "mcp__ib-sec-mcp__*"],
     "deny": [],
     "ask": []
   },
@@ -245,7 +264,6 @@ pytest --cov=ib_sec_mcp
   "enabledMcpjsonServers": ["ib-sec-mcp"]
 }
 ```
-
 
 ## Timeout Configuration
 
@@ -256,14 +274,15 @@ pytest --cov=ib_sec_mcp
 ```json
 {
   "env": {
-    "BASH_DEFAULT_TIMEOUT_MS": "1800000",  // 30 minutes (for long operations)
-    "BASH_MAX_TIMEOUT_MS": "7200000",      // 120 minutes (absolute max)
-    "MCP_TIMEOUT": "300000"                 // 5 minutes (MCP server startup)
+    "BASH_DEFAULT_TIMEOUT_MS": "1800000", // 30 minutes (for long operations)
+    "BASH_MAX_TIMEOUT_MS": "7200000", // 120 minutes (absolute max)
+    "MCP_TIMEOUT": "300000" // 5 minutes (MCP server startup)
   }
 }
 ```
 
 **Why these values**:
+
 - **Investment strategy**: 6-8 min target with 2+ min safety margin
 - **MCP server startup**: IB Flex Query API can be slow initially
 - **Development workflows**: Complex operations need headroom
@@ -279,12 +298,14 @@ pytest --cov=ib_sec_mcp
 | `/resolve-gh-issue` | 5-8 min | 10 min | 2 min |
 
 **Monitoring Best Practices**:
+
 1. Check elapsed time at major checkpoints
 2. Abort non-critical operations if approaching timeout
 3. Generate partial results rather than failing completely
 4. Log timeout warnings for debugging
 
 ---
+
 ---
 
 ## Resources

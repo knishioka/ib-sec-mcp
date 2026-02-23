@@ -1216,7 +1216,7 @@ pre-commit run mypy --hook-stage manual --all-files
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.12+
 - Interactive Brokers account with Flex Query access
 
 ## Dependencies
