@@ -43,7 +43,7 @@ API_FETCH_TIMEOUT = 60
 FILE_OPERATION_TIMEOUT = 10
 
 
-def _extract_dates_from_filename(file_path: str) -> tuple[date, date]:
+def _extract_dates_from_filename(file_path: str | Path) -> tuple[date, date]:
     """
     Extract from_date and to_date from XML filename
 
@@ -759,7 +759,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             validated_path = validate_file_path(file_path)
             with open(validated_path) as f:
                 data = f.read()
-            from_date, to_date = _extract_dates_from_filename(file_path)
+            from_date, to_date = _extract_dates_from_filename(validated_path)
         else:
             # API mode: fetch from IB API
             if not start_date:
