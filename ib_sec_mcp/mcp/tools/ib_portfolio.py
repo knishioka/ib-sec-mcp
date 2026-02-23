@@ -5,7 +5,10 @@ Interactive Brokers portfolio analysis and data fetching tools.
 
 import asyncio
 import json
+import warnings
+from collections import defaultdict
 from datetime import date, datetime
+from decimal import Decimal
 from pathlib import Path
 
 from fastmcp import Context, FastMCP
@@ -28,6 +31,7 @@ from ib_sec_mcp.mcp.validators import (
     validate_account_index,
     validate_date_range,
     validate_date_string,
+    validate_file_path,
 )
 from ib_sec_mcp.utils.config import Config
 from ib_sec_mcp.utils.logger import get_logger
@@ -486,7 +490,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         account_list = list(accounts.values())
         if account_index >= len(account_list):
             raise ValidationError(
-                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+                f"account_index {account_index} out of range (0-{len(account_list) - 1})"
             )
 
         account = account_list[account_index]
@@ -538,7 +542,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         account_list = list(accounts.values())
         if account_index >= len(account_list):
             raise ValidationError(
-                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+                f"account_index {account_index} out of range (0-{len(account_list) - 1})"
             )
 
         account = account_list[account_index]
@@ -589,7 +593,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         account_list = list(accounts.values())
         if account_index >= len(account_list):
             raise ValidationError(
-                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+                f"account_index {account_index} out of range (0-{len(account_list) - 1})"
             )
 
         account = account_list[account_index]
@@ -640,7 +644,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         account_list = list(accounts.values())
         if account_index >= len(account_list):
             raise ValidationError(
-                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+                f"account_index {account_index} out of range (0-{len(account_list) - 1})"
             )
 
         account = account_list[account_index]
@@ -695,7 +699,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         account_list = list(accounts.values())
         if account_index >= len(account_list):
             raise ValidationError(
-                f"account_index {account_index} out of range (0-{len(account_list)-1})"
+                f"account_index {account_index} out of range (0-{len(account_list) - 1})"
             )
 
         account = account_list[account_index]
@@ -707,22 +711,29 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
     @mcp.tool
     async def analyze_consolidated_portfolio(
-        start_date: str,
+        start_date: str | None = None,
         end_date: str | None = None,
         use_cache: bool = True,
+        file_path: str | None = None,
         ctx: Context | None = None,
     ) -> str:
         """
         Analyze all accounts as a consolidated portfolio
 
-        Automatically fetches data from IB API (with caching) and performs comprehensive
-        analysis across all accounts, providing both consolidated metrics and per-account
-        breakdown.
+        Supports two data sources:
+        - API mode: Fetches data from IB API (with caching) using date parameters
+        - File mode: Reads from a local XML file using file_path parameter
+
+        Performs comprehensive analysis across all accounts, providing both
+        consolidated metrics and per-account breakdown.
 
         Args:
-            start_date: Start date in YYYY-MM-DD format
-            end_date: End date in YYYY-MM-DD format (defaults to today)
-            use_cache: Use cached data if available (default: True)
+            start_date: Start date in YYYY-MM-DD format (required for API mode)
+            end_date: End date in YYYY-MM-DD format (defaults to today, API mode only)
+            use_cache: Use cached data if available (default: True, API mode only)
+            file_path: Path to IB Flex Query XML file (alternative to API mode).
+                When provided, start_date/end_date/use_cache are ignored and dates
+                are extracted from the filename.
             ctx: MCP context for logging
 
         Returns:
@@ -740,18 +751,32 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             APIError: If IB API call fails
             IBTimeoutError: If operation times out
         """
-        from collections import defaultdict
-        from decimal import Decimal
+        if file_path:
+            # File-based mode: read from local XML file
+            if ctx:
+                await ctx.info(f"Analyzing consolidated portfolio from file: {file_path}")
 
-        if ctx:
-            await ctx.info(
-                f"Analyzing consolidated portfolio for {start_date} to {end_date or 'today'}"
+            validated_path = validate_file_path(file_path)
+            with open(validated_path) as f:
+                data = f.read()
+            from_date, to_date = _extract_dates_from_filename(file_path)
+        else:
+            # API mode: fetch from IB API
+            if not start_date:
+                raise ValidationError(
+                    "Either file_path or start_date must be provided",
+                    field="start_date",
+                )
+
+            if ctx:
+                await ctx.info(
+                    f"Analyzing consolidated portfolio for {start_date} to {end_date or 'today'}"
+                )
+
+            # Get or fetch data
+            data, from_date, to_date = await _get_or_fetch_data(
+                start_date, end_date, account_index=0, use_cache=use_cache, ctx=ctx
             )
-
-        # Get or fetch data
-        data, from_date, to_date = await _get_or_fetch_data(
-            start_date, end_date, account_index=0, use_cache=use_cache, ctx=ctx
-        )
 
         # Validate XML format and parse all accounts
         detect_format(data)  # Raises ValueError if not XML
@@ -864,8 +889,6 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                         if maturity_date:
                             # Format: 2040-11-15 → 11/15/2040
                             try:
-                                from datetime import datetime
-
                                 mat_date = datetime.strptime(maturity_date, "%Y-%m-%d")
                                 formatted_date = mat_date.strftime("%m/%d/%Y")
                                 enhanced_desc = f"US Treasury STRIPS 0% {formatted_date}"
@@ -1021,6 +1044,11 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         """
         Get comprehensive portfolio summary
 
+        .. deprecated::
+            Use ``analyze_consolidated_portfolio(file_path=...)`` instead.
+            It provides richer analysis including holdings, asset allocation,
+            and concentration risk.
+
         Args:
             file_path: Path to IB Flex Query XML file
             ctx: MCP context for logging
@@ -1028,7 +1056,17 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         Returns:
             JSON string with portfolio summary (includes all accounts if multiple)
         """
+        warnings.warn(
+            "get_portfolio_summary is deprecated. "
+            "Use analyze_consolidated_portfolio(file_path=...) instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if ctx:
+            await ctx.info(
+                "Note: get_portfolio_summary is deprecated. "
+                "Use analyze_consolidated_portfolio(file_path=...) instead."
+            )
             await ctx.info(f"Getting portfolio summary from {file_path}")
 
         with open(file_path) as f:
@@ -1042,8 +1080,6 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
         # If multiple accounts, return aggregated summary
         if len(accounts) > 1:
-            from decimal import Decimal
-
             total_cash = Decimal("0")
             total_value = Decimal("0")
             total_positions = 0

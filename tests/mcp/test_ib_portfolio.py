@@ -1,6 +1,7 @@
 """Tests for IB Portfolio MCP tools"""
 
 import json
+import warnings
 from datetime import date
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -34,10 +35,14 @@ def clean_cache():
     if data_dir.exists():
         for f in data_dir.glob("*.csv"):
             f.unlink()
+        for f in data_dir.glob("*.xml"):
+            f.unlink()
     yield
     # Clean after
     if data_dir.exists():
         for f in data_dir.glob("*.csv"):
+            f.unlink()
+        for f in data_dir.glob("*.xml"):
             f.unlink()
 
 
@@ -65,10 +70,10 @@ class TestGetOrFetchData:
     @pytest.mark.asyncio
     async def test_cache_hit(self, mock_env, sample_csv_data, clean_cache):
         """Test that cached file is used when available"""
-        # Create cached file
+        # Create cached file (must be .xml to match cache pattern)
         data_dir = Path("data/raw")
         data_dir.mkdir(parents=True, exist_ok=True)
-        cached_file = data_dir / "U12345678_2025-01-01_2025-01-31.csv"
+        cached_file = data_dir / "U12345678_2025-01-01_2025-01-31.xml"
         cached_file.write_text(sample_csv_data)
 
         # Fetch should use cache
@@ -106,19 +111,19 @@ class TestGetOrFetchData:
             assert from_date == date(2025, 1, 1)
             assert to_date == date(2025, 1, 31)
 
-            # Verify file was cached
+            # Verify file was cached (implementation saves as .xml)
             data_dir = Path("data/raw")
-            cached_files = list(data_dir.glob("*_2025-01-01_2025-01-31.csv"))
+            cached_files = list(data_dir.glob("*_2025-01-01_2025-01-31.xml"))
             assert len(cached_files) == 1
             assert cached_files[0].read_text() == sample_csv_data
 
     @pytest.mark.asyncio
     async def test_use_cache_false_always_fetches(self, mock_env, sample_csv_data, clean_cache):
         """Test that use_cache=False always fetches from API"""
-        # Create cached file
+        # Create cached file (must be .xml to match cache pattern)
         data_dir = Path("data/raw")
         data_dir.mkdir(parents=True, exist_ok=True)
-        cached_file = data_dir / "U12345678_2025-01-01_2025-01-31.csv"
+        cached_file = data_dir / "U12345678_2025-01-01_2025-01-31.xml"
         cached_file.write_text("old_data")
 
         # Mock FlexQueryClient
@@ -146,10 +151,10 @@ class TestGetOrFetchData:
     @pytest.mark.asyncio
     async def test_cache_pattern_matching(self, mock_env, sample_csv_data, clean_cache):
         """Test that cache lookup uses glob pattern matching"""
-        # Create cached file with different account ID
+        # Create cached file with different account ID (must be .xml to match pattern)
         data_dir = Path("data/raw")
         data_dir.mkdir(parents=True, exist_ok=True)
-        cached_file = data_dir / "UXXX_2025-01-01_2025-01-31.csv"
+        cached_file = data_dir / "UXXX_2025-01-01_2025-01-31.xml"
         cached_file.write_text(sample_csv_data)
 
         # Fetch should find file by date pattern, regardless of account ID
@@ -324,9 +329,7 @@ class TestConsolidatedPortfolioCurrency:
     @pytest.mark.asyncio
     async def test_consolidated_output_includes_currency(self, mock_env, tool_registry):
         """Test that analyze_consolidated_portfolio JSON output includes currency fields"""
-        with patch(
-            "ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data"
-        ) as mock_fetch:
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
             mock_fetch.return_value = (
                 SAMPLE_XML_MULTI_CURRENCY,
                 date(2025, 1, 1),
@@ -354,9 +357,7 @@ class TestConsolidatedPortfolioCurrency:
     @pytest.mark.asyncio
     async def test_holding_entry_includes_currency(self, mock_env, tool_registry):
         """Test that every holding entry includes currency and fx_rate_to_base"""
-        with patch(
-            "ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data"
-        ) as mock_fetch:
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
             mock_fetch.return_value = (
                 SAMPLE_XML_MULTI_CURRENCY,
                 date(2025, 1, 1),
@@ -370,9 +371,7 @@ class TestConsolidatedPortfolioCurrency:
 
             for holding in result["consolidated_holdings"]["holdings_by_symbol"]:
                 assert "currency" in holding, f"{holding['symbol']} missing currency"
-                assert "fx_rate_to_base" in holding, (
-                    f"{holding['symbol']} missing fx_rate_to_base"
-                )
+                assert "fx_rate_to_base" in holding, f"{holding['symbol']} missing fx_rate_to_base"
 
     @pytest.mark.asyncio
     async def test_usd_positions_have_fx_rate_1(self, mock_env):
@@ -391,3 +390,228 @@ class TestConsolidatedPortfolioCurrency:
         assert usd_position.fx_rate_to_base == Decimal("1")
         # USD position value should equal local value (no conversion)
         assert usd_position.position_value == Decimal("7350")
+
+
+class TestAnalyzeConsolidatedPortfolioFilePath:
+    """
+    Tests for Issue #17: file_path parameter in analyze_consolidated_portfolio
+
+    Acceptance Criteria:
+    - When file_path is provided, read from local XML file (no API call)
+    - Dates are extracted from filename convention {account}_{from}_{to}.xml
+    - Invalid file_path raises ValidationError
+    - API mode still works with start_date (backward compatibility)
+    - Both file_path and start_date absent raises ValidationError
+    """
+
+    @pytest.fixture
+    def tool_registry(self):
+        """Register tools with a CaptureMCP and return tool functions"""
+        from ib_sec_mcp.mcp.tools.ib_portfolio import register_ib_portfolio_tools
+
+        tools = {}
+
+        class CaptureMCP:
+            def tool(self, fn):
+                tools[fn.__name__] = fn
+                return fn
+
+        register_ib_portfolio_tools(CaptureMCP())
+        return tools
+
+    @pytest.fixture
+    def xml_temp_file(self, tmp_path):
+        """Write SAMPLE_XML_MULTI_CURRENCY to a temp file with naming convention"""
+        xml_file = tmp_path / "U1234567_2025-01-01_2025-01-31.xml"
+        xml_file.write_text(SAMPLE_XML_MULTI_CURRENCY)
+        return xml_file
+
+    @pytest.mark.asyncio
+    async def test_file_path_mode_reads_from_file(self, tool_registry, xml_temp_file):
+        """
+        Acceptance Criterion: When file_path is provided, data is read from file
+        without calling _get_or_fetch_data.
+        """
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
+            result_json = await tool_registry["analyze_consolidated_portfolio"](
+                file_path=str(xml_temp_file)
+            )
+
+        # _get_or_fetch_data must NOT be called in file mode
+        mock_fetch.assert_not_called()
+
+        result = json.loads(result_json)
+
+        # Verify result has expected top-level structure
+        assert "num_accounts" in result
+        assert "consolidated_holdings" in result
+        assert "analysis_period" in result
+        assert "total_portfolio_value" in result
+
+        # The sample XML has 1 account with 3 positions
+        assert result["num_accounts"] == 1
+        assert result["consolidated_holdings"]["num_unique_symbols"] == 3
+
+    @pytest.mark.asyncio
+    async def test_file_path_mode_extracts_dates_from_filename(self, tool_registry, xml_temp_file):
+        """
+        Acceptance Criterion: analysis_period in result reflects dates from filename.
+
+        Filename: U1234567_2025-01-01_2025-01-31.xml
+        Expected period: from=2025-01-01, to=2025-01-31
+        """
+        result_json = await tool_registry["analyze_consolidated_portfolio"](
+            file_path=str(xml_temp_file)
+        )
+        result = json.loads(result_json)
+
+        assert result["analysis_period"]["from"] == "2025-01-01"
+        assert result["analysis_period"]["to"] == "2025-01-31"
+
+    @pytest.mark.asyncio
+    async def test_file_path_validates_path(self, tool_registry, tmp_path):
+        """
+        Acceptance Criterion: A non-existent file_path raises ValidationError.
+        """
+        non_existent = tmp_path / "U9999999_2025-01-01_2025-01-31.xml"
+        # File does not exist - validate_file_path should raise ValidationError
+
+        with pytest.raises(ValidationError):
+            await tool_registry["analyze_consolidated_portfolio"](file_path=str(non_existent))
+
+    @pytest.mark.asyncio
+    async def test_api_mode_still_works(self, tool_registry):
+        """
+        Acceptance Criterion: API mode (start_date provided, no file_path) still works.
+        Backward compatibility must be maintained.
+        """
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
+            mock_fetch.return_value = (
+                SAMPLE_XML_MULTI_CURRENCY,
+                date(2025, 1, 1),
+                date(2025, 1, 31),
+            )
+
+            result_json = await tool_registry["analyze_consolidated_portfolio"](
+                start_date="2025-01-01", end_date="2025-01-31", use_cache=False
+            )
+
+        # _get_or_fetch_data MUST be called in API mode
+        mock_fetch.assert_called_once()
+
+        result = json.loads(result_json)
+        assert result["num_accounts"] == 1
+        assert "consolidated_holdings" in result
+
+    @pytest.mark.asyncio
+    async def test_neither_file_path_nor_start_date_raises_error(self, tool_registry):
+        """
+        Acceptance Criterion: When both file_path and start_date are absent (None),
+        a ValidationError is raised with a clear message.
+        """
+        with pytest.raises(
+            ValidationError, match="Either file_path or start_date must be provided"
+        ):
+            await tool_registry["analyze_consolidated_portfolio"]()
+
+
+class TestGetPortfolioSummaryDeprecation:
+    """
+    Tests for Issue #17: DeprecationWarning on get_portfolio_summary
+
+    Acceptance Criteria:
+    - DeprecationWarning is emitted when get_portfolio_summary is called
+    - ctx.info() is called with the deprecation message
+    - The function still returns a valid JSON summary despite the deprecation
+    """
+
+    @pytest.fixture
+    def tool_registry(self):
+        """Register tools with a CaptureMCP and return tool functions"""
+        from ib_sec_mcp.mcp.tools.ib_portfolio import register_ib_portfolio_tools
+
+        tools = {}
+
+        class CaptureMCP:
+            def tool(self, fn):
+                tools[fn.__name__] = fn
+                return fn
+
+        register_ib_portfolio_tools(CaptureMCP())
+        return tools
+
+    @pytest.fixture
+    def xml_temp_file(self, tmp_path):
+        """Write SAMPLE_XML_MULTI_CURRENCY to a temp file with naming convention"""
+        xml_file = tmp_path / "U1234567_2025-01-01_2025-01-31.xml"
+        xml_file.write_text(SAMPLE_XML_MULTI_CURRENCY)
+        return xml_file
+
+    @pytest.mark.asyncio
+    async def test_deprecation_warning_emitted(self, tool_registry, xml_temp_file):
+        """
+        Acceptance Criterion: Calling get_portfolio_summary must emit a DeprecationWarning.
+
+        The warning message must reference the replacement function
+        analyze_consolidated_portfolio.
+        """
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            await tool_registry["get_portfolio_summary"](file_path=str(xml_temp_file))
+
+        deprecation_warnings = [w for w in caught if issubclass(w.category, DeprecationWarning)]
+        assert len(deprecation_warnings) >= 1
+
+        warning_message = str(deprecation_warnings[0].message)
+        assert "get_portfolio_summary" in warning_message
+        assert "analyze_consolidated_portfolio" in warning_message
+
+    @pytest.mark.asyncio
+    async def test_deprecation_notice_logged_to_context(self, tool_registry, xml_temp_file):
+        """
+        Acceptance Criterion: When a ctx is provided, ctx.info() is called with the
+        deprecation notice before normal logging.
+        """
+        mock_ctx = AsyncMock()
+
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            await tool_registry["get_portfolio_summary"](file_path=str(xml_temp_file), ctx=mock_ctx)
+
+        # ctx.info must have been called at least once
+        assert mock_ctx.info.called
+
+        # At least one call must mention the deprecation
+        all_info_messages = [call.args[0] for call in mock_ctx.info.call_args_list]
+        deprecation_logged = any(
+            "deprecated" in msg.lower() or "get_portfolio_summary" in msg
+            for msg in all_info_messages
+        )
+        assert deprecation_logged, (
+            f"No deprecation notice found in ctx.info calls: {all_info_messages}"
+        )
+
+    @pytest.mark.asyncio
+    async def test_still_returns_valid_summary(self, tool_registry, xml_temp_file):
+        """
+        Acceptance Criterion: Despite the deprecation warning, get_portfolio_summary
+        must return a valid JSON summary with the expected structure.
+        """
+        with warnings.catch_warnings(record=True):
+            warnings.simplefilter("always")
+            result_json = await tool_registry["get_portfolio_summary"](file_path=str(xml_temp_file))
+
+        result = json.loads(result_json)
+
+        # Core summary fields must be present
+        assert "num_accounts" in result
+        assert "total_cash" in result
+        assert "total_value" in result
+        assert "date_range" in result
+
+        # Date range must be populated from filename
+        assert result["date_range"]["from"] == "2025-01-01"
+        assert result["date_range"]["to"] == "2025-01-31"
+
+        # Single account in sample XML
+        assert result["num_accounts"] == 1
