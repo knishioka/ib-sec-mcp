@@ -68,14 +68,14 @@ repos:
         name: Check JSON Syntax
       - id: check-added-large-files
         name: Check for Large Files
-        args: ['--maxkb=1000']
+        args: ["--maxkb=1000"]
       - id: check-merge-conflict
         name: Check for Merge Conflicts
       - id: detect-private-key
         name: Detect Private Keys
       - id: mixed-line-ending
         name: Fix Mixed Line Endings
-        args: ['--fix=lf']
+        args: ["--fix=lf"]
 
   # Security checks
   - repo: https://github.com/PyCQA/bandit
@@ -83,7 +83,7 @@ repos:
     hooks:
       - id: bandit
         name: Bandit - Security Linter
-        args: ['-c', 'pyproject.toml']
+        args: ["-c", "pyproject.toml"]
         additional_dependencies: ["bandit[toml]"]
 
   # Claude Code configuration validation
@@ -105,7 +105,6 @@ default_language_version:
 # Files to exclude from all hooks
 exclude: |
   (?x)^(
-      legacy/.*|
       \.git/.*|
       \.mypy_cache/.*|
       \.pytest_cache/.*|
@@ -122,4 +121,4 @@ exclude: |
 fail_fast: false
 
 # Minimum pre-commit version
-minimum_pre_commit_version: '3.0.0'
+minimum_pre_commit_version: "3.0.0"

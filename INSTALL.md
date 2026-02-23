@@ -30,8 +30,6 @@ TOKEN=your_token_here
 ib-sec-fetch --help
 ib-sec-analyze --help
 
-# Or run example script
-python scripts/example_usage.py
 ```
 
 ## Development Setup
@@ -133,25 +131,4 @@ pip install -r requirements.txt
 ## Next Steps
 
 1. Read [README.md](README.md) for detailed documentation
-2. Check [scripts/example_usage.py](scripts/example_usage.py) for code examples
-3. Review existing analyses in `legacy/` folder
-4. Run tests: `pytest` (after implementing tests)
-
-## Migration from Legacy Scripts
-
-Your existing scripts have been moved to `legacy/` folder:
-
-- `analyze_performance.py` → Use `PerformanceAnalyzer`
-- `trading_cost_analysis.py` → Use `CostAnalyzer`
-- `phantom_income_tax_analysis.py` → Use `TaxAnalyzer`
-- `bond_analysis.py` → Use `BondAnalyzer`
-- `interest_rate_scenario_analysis.py` → Use `RiskAnalyzer`
-- `comprehensive_summary_report.py` → Use multiple analyzers + `ConsoleReport`
-
-The new library provides:
-- ✅ Better structure and organization
-- ✅ Type safety with Pydantic v2
-- ✅ Multi-account support
-- ✅ Reusable components
-- ✅ CLI tools
-- ✅ Async support for performance
+2. Run tests: `pytest`

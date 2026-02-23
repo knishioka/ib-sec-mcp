@@ -77,7 +77,6 @@ command --flags
 
 - [ ] Check 1
 - [ ] Check 2
-
 ````
 
 **Detailed Guide**: See `.claude/SUB_AGENTS.md`
@@ -232,7 +231,6 @@ pytest --cov=ib_sec_mcp
 - ✅ Handle missing data gracefully
 - ❌ Never use `float` for calculations
 - ❌ Never commit `.env` files
-- ❌ Never modify legacy scripts
 
 ### API & Data
 
