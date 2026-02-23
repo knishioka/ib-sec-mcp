@@ -6,6 +6,7 @@ All arithmetic calculations are performed in Python to prevent LLM calculation e
 """
 
 import json
+import os
 from decimal import Decimal
 
 from fastmcp import FastMCP
@@ -14,7 +15,15 @@ from ib_sec_mcp.tools.etf_calculator import (
     ETFSwapCalculator,
     validate_etf_price,
 )
-from ib_sec_mcp.utils.config import Config
+
+_DEFAULT_TRADING_FEE_USD = 75.0
+
+
+def _get_etf_swap_calculator(trading_fee_usd: float | None) -> ETFSwapCalculator:
+    """Create ETFSwapCalculator with trading fee from parameter or TRADING_FEE_USD env var."""
+    if trading_fee_usd is None:
+        trading_fee_usd = float(os.environ.get("TRADING_FEE_USD", str(_DEFAULT_TRADING_FEE_USD)))
+    return ETFSwapCalculator(trading_fee_usd=Decimal(str(trading_fee_usd)))
 
 
 def register_etf_calculator_tools(mcp: FastMCP) -> None:
@@ -54,7 +63,7 @@ def register_etf_calculator_tools(mcp: FastMCP) -> None:
             to_dividend_yield: Dividend yield as decimal
             to_withholding_tax: Withholding tax rate as decimal (e.g., 0.00 for 0%, 0.15 for 15%)
             trading_fee_usd: Trading fee in USD. If not provided, reads from
-                Config (TRADING_FEE_USD env var, default: 75.0)
+                TRADING_FEE_USD env var (default: 75.0)
 
         Returns:
             JSON string with calculation results including:
@@ -78,9 +87,7 @@ def register_etf_calculator_tools(mcp: FastMCP) -> None:
             ...     to_withholding_tax=0.15
             ... )
         """
-        if trading_fee_usd is None:
-            trading_fee_usd = Config.load().trading_fee_usd
-        calculator = ETFSwapCalculator(trading_fee_usd=Decimal(str(trading_fee_usd)))
+        calculator = _get_etf_swap_calculator(trading_fee_usd)
 
         calc = calculator.calculate_swap(
             from_symbol=from_symbol,
@@ -161,7 +168,7 @@ def register_etf_calculator_tools(mcp: FastMCP) -> None:
                     ...
                 ]
             trading_fee_usd: Trading fee in USD. If not provided, reads from
-                Config (TRADING_FEE_USD env var, default: 75.0)
+                TRADING_FEE_USD env var (default: 75.0)
 
         Returns:
             JSON string with:
@@ -173,9 +180,7 @@ def register_etf_calculator_tools(mcp: FastMCP) -> None:
             >>> swaps_json = json.dumps([...])
             >>> result = calculate_portfolio_swap(swaps=swaps_json)
         """
-        if trading_fee_usd is None:
-            trading_fee_usd = Config.load().trading_fee_usd
-        calculator = ETFSwapCalculator(trading_fee_usd=Decimal(str(trading_fee_usd)))
+        calculator = _get_etf_swap_calculator(trading_fee_usd)
 
         # Parse JSON input
         swaps_list = json.loads(swaps)
