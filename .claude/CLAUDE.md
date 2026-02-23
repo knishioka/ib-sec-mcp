@@ -71,7 +71,7 @@ Step-by-step process
 ## Tools Usage
 ```bash
 command --flags
-````
+```
 
 ## Quality Checklist
 
@@ -87,11 +87,13 @@ command --flags
 ## Slash Commands (12 automated workflows)
 
 ### Quick List
+
 **Analysis**: `/optimize-portfolio`, `/compare-periods`, `/tax-report`, `/validate-data`
 **Development**: `/test`, `/quality-check`, `/add-test`, `/benchmark`
 **Utility**: `/mcp-status`, `/debug-api`, `/resolve-gh-issue`, `/fetch-latest`
 
 ### When to Create
+
 - ✅ Repeated 3+ times
 - ✅ Consistent structure
 - ✅ Clear, predictable arguments
@@ -99,6 +101,7 @@ command --flags
 - ❌ Requires human judgment
 
 ### File Structure
+
 **Location**: `.claude/commands/{command-name}.md`
 
 ```yaml
@@ -124,7 +127,7 @@ Brief description.
 
 **Expected Output**:
 Format description
-````
+```
 
 **Detailed Guide**: See `.claude/SLASH_COMMANDS.md`
 
