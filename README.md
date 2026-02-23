@@ -250,6 +250,18 @@ class BaseAnalyzer(ABC):
     @abstractmethod
     def analyze(self) -> AnalysisResult:
         pass
+
+    def _create_result(self, **kwargs) -> AnalysisResult:
+        """Shared result creation with metadata"""
+        result = AnalysisResult(self.analyzer_name, **kwargs)
+        result["timestamp"] = datetime.now().isoformat()
+        return result
+
+class PerformanceAnalyzer(BaseAnalyzer):
+    def analyze(self) -> AnalysisResult:
+        trades = self.get_trades()
+        # ... compute metrics ...
+        return self._create_result(win_rate=win_rate, profit_factor=pf)
 ```
 
 **Strategy** (Reports):
@@ -261,15 +273,10 @@ class BaseReport(ABC):
         pass
 ```
 
-**Factory** (Parsers):
+**Factory Method** (Parsers, Portfolio):
 
 ```python
 account = CSVParser.to_account(csv_data, from_date, to_date)
-```
-
-**Builder** (Portfolio):
-
-```python
 portfolio = Portfolio.from_accounts(accounts, base_currency="USD")
 ```
 
