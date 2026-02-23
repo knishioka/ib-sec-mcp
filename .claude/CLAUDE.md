@@ -71,13 +71,12 @@ Step-by-step process
 ## Tools Usage
 ```bash
 command --flags
-````
+```
 
 ## Quality Checklist
 
 - [ ] Check 1
 - [ ] Check 2
-
 ````
 
 **Detailed Guide**: See `.claude/SUB_AGENTS.md`
@@ -127,7 +126,7 @@ Brief description.
 
 **Expected Output**:
 Format description
-````
+```
 
 **Detailed Guide**: See `.claude/SLASH_COMMANDS.md`
 
