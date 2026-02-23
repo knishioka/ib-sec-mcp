@@ -96,10 +96,6 @@ disallow_subclassing_any = true
 check_untyped_defs = true
 no_implicit_reexport = true
 plugins = ["pydantic.mypy"]
-# Exclude MCP server code (FastMCP integration layer)
-# TODO: Gradually add type hints to mcp/ directory
-exclude = ["ib_sec_mcp/mcp/"]
-
 # Ignore missing imports for third-party libraries without stubs
 [[tool.mypy.overrides]]
 module = [
@@ -114,8 +110,23 @@ module = [
     "dotenv",
     "pydantic_settings",
     "pydantic_settings.*",
+    "yaml",
+    "yaml.*",
+    "scipy",
+    "scipy.*",
+    "numpy",
+    "numpy.*",
+    "pandas",
+    "pandas.*",
+    "requests",
+    "requests.*",
 ]
 ignore_missing_imports = true
+
+# FastMCP decorators and base classes lack type stubs
+[[tool.mypy.overrides]]
+module = "ib_sec_mcp.mcp.*"
+disallow_subclassing_any = false
 
 # Skip config.py due to pydantic-settings Python 3.10+ stub syntax
 [[tool.mypy.overrides]]

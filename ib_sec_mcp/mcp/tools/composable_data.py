@@ -5,8 +5,9 @@ custom investment analysis and strategy development.
 """
 
 import json
+from datetime import date
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 
 from fastmcp import Context, FastMCP
 
@@ -21,7 +22,9 @@ from ib_sec_mcp.utils.logger import get_logger
 logger = get_logger(__name__)
 
 
-def _parse_account_by_index(data: str, from_date, to_date, account_index: int) -> Account:
+def _parse_account_by_index(
+    data: str, from_date: date, to_date: date, account_index: int
+) -> Account:
     """
     Parse data and extract account by index
 
@@ -377,7 +380,7 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             positions = account.positions
 
         # Calculate metric
-        result = {
+        result: dict[str, Any] = {
             "metric_name": metric_name,
             "date_range": {"from": str(from_date), "to": str(to_date)},
             "filters": {"symbol": symbol},
@@ -494,8 +497,8 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             largest_win = max(wins) if wins else Decimal("0")
             result["metric_value"] = str(largest_win)
             if wins:
-                winning_trades = [t for t in trades if t.fifo_pnl_realized > 0]
-                largest_trade = max(winning_trades, key=lambda t: t.fifo_pnl_realized)
+                winning_trade_list = [t for t in trades if t.fifo_pnl_realized > 0]
+                largest_trade = max(winning_trade_list, key=lambda t: t.fifo_pnl_realized)
                 result["calculation_details"] = {
                     "symbol": largest_trade.symbol,
                     "trade_date": str(largest_trade.trade_date),
@@ -509,8 +512,8 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             largest_loss = max(losses) if losses else Decimal("0")
             result["metric_value"] = str(largest_loss)
             if losses:
-                losing_trades = [t for t in trades if t.fifo_pnl_realized < 0]
-                largest_trade = min(losing_trades, key=lambda t: t.fifo_pnl_realized)
+                losing_trade_list = [t for t in trades if t.fifo_pnl_realized < 0]
+                largest_trade = min(losing_trade_list, key=lambda t: t.fifo_pnl_realized)
                 result["calculation_details"] = {
                     "symbol": largest_trade.symbol,
                     "trade_date": str(largest_trade.trade_date),
@@ -616,7 +619,7 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
         account2 = _parse_account_by_index(data2, from_date2, to_date2, account_index)
 
         # Calculate metrics for both periods
-        def calculate_metrics(account: Account) -> dict:
+        def calculate_metrics(account: Account) -> dict[str, Any]:
             trades = account.trades
             positions = account.positions
 

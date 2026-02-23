@@ -10,6 +10,7 @@ from collections import defaultdict
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 from fastmcp import Context, FastMCP
 
@@ -189,7 +190,7 @@ async def _get_or_fetch_data(
         if ctx:
             await ctx.debug(f"Calling IB Flex Query API (timeout={API_FETCH_TIMEOUT}s)")
 
-        async def fetch_with_timeout():
+        async def fetch_with_timeout() -> Any:
             return await asyncio.to_thread(client.fetch_statement, from_date, to_date)
 
         statement = await asyncio.wait_for(fetch_with_timeout(), timeout=API_FETCH_TIMEOUT)
@@ -222,7 +223,7 @@ async def _get_or_fetch_data(
 
         logger.debug(f"Saving data to cache: {filepath}")
 
-        async def save_file():
+        async def save_file() -> None:
             await asyncio.to_thread(filepath.write_text, statement.raw_data, encoding="utf-8")
 
         await asyncio.wait_for(save_file(), timeout=FILE_OPERATION_TIMEOUT)
@@ -265,7 +266,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         end_date: str | None = None,
         account_index: int = 0,
         ctx: Context | None = None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """
         Fetch Interactive Brokers data from Flex Query API
 
@@ -326,7 +327,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                     await ctx.debug(f"Calling IB Flex Query API (timeout={API_FETCH_TIMEOUT}s)")
 
                 # Run synchronous API call in thread pool with timeout
-                async def fetch_with_timeout():
+                async def fetch_with_timeout() -> Any:
                     return await asyncio.to_thread(client.fetch_statement, from_date, to_date)
 
                 statement = await asyncio.wait_for(fetch_with_timeout(), timeout=API_FETCH_TIMEOUT)
@@ -360,7 +361,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 filename = f"{statement.account_id}_{from_date}_{to_date}.xml"
                 filepath = data_dir / filename
 
-                async def save_file():
+                async def save_file() -> None:
                     await asyncio.to_thread(
                         filepath.write_text, statement.raw_data, encoding="utf-8"
                     )
@@ -806,7 +807,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         total_cash = Decimal("0")
         total_value = Decimal("0")
         total_trades = 0
-        consolidated_positions_by_symbol = defaultdict(
+        consolidated_positions_by_symbol: defaultdict[str, dict[str, Any]] = defaultdict(
             lambda: {
                 "total_quantity": Decimal("0"),
                 "total_value": Decimal("0"),
@@ -872,28 +873,28 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
         # Calculate consolidated holdings
         holdings_by_symbol = []
-        for symbol, data in sorted(
+        for symbol, pos_data in sorted(
             consolidated_positions_by_symbol.items(),
             key=lambda x: x[1]["total_value"],
             reverse=True,
         ):
             percentage = (
-                round((data["total_value"] / total_value * 100), 2) if total_value > 0 else 0
+                round((pos_data["total_value"] / total_value * 100), 2) if total_value > 0 else 0
             )
 
             # Build holding entry with metadata
             holding_entry = {
                 "symbol": symbol,
-                "total_quantity": str(data["total_quantity"]),
-                "total_value": str(data["total_value"]),
+                "total_quantity": str(pos_data["total_quantity"]),
+                "total_value": str(pos_data["total_value"]),
                 "percentage_of_portfolio": str(percentage),
-                "num_accounts": len(data["accounts"]),
-                "accounts": data["accounts"],
+                "num_accounts": len(pos_data["accounts"]),
+                "accounts": pos_data["accounts"],
             }
 
             # Add metadata if available
-            if data["position_metadata"]:
-                metadata = data["position_metadata"]
+            if pos_data["position_metadata"]:
+                metadata = pos_data["position_metadata"]
                 holding_entry["asset_class"] = metadata["asset_class"]
 
                 # Generate enhanced description for bonds
@@ -941,27 +942,28 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         # Calculate asset allocation
         stocks_value = Decimal("0")
         bonds_value = Decimal("0")
-        bonds_by_country = defaultdict(Decimal)  # Track bonds by country
+        bonds_by_country: defaultdict[str, Decimal] = defaultdict(Decimal)  # Track bonds by country
 
-        for _symbol, data in consolidated_positions_by_symbol.items():
+        for _symbol, pos_data in consolidated_positions_by_symbol.items():
             # Use metadata for accurate classification
-            metadata = data.get("position_metadata")
+            metadata = pos_data.get("position_metadata")
             if metadata and metadata.get("asset_class") == "BOND":
-                bonds_value += data["total_value"]
+                bonds_value += pos_data["total_value"]
                 # Track by country
                 issuer_country = metadata.get("issuer_country", "Unknown")
-                bonds_by_country[issuer_country] += data["total_value"]
+                bonds_by_country[issuer_country] += pos_data["total_value"]
             else:
-                stocks_value += data["total_value"]
+                stocks_value += pos_data["total_value"]
 
         # Concentration risk
         largest_position_pct = (
-            round((Decimal(holdings_by_symbol[0]["total_value"]) / total_value * 100), 2)
+            round((Decimal(str(holdings_by_symbol[0]["total_value"])) / total_value * 100), 2)
             if holdings_by_symbol and total_value > 0
             else 0
         )
         top_3_value = sum(
-            Decimal(h["total_value"]) for h in holdings_by_symbol[:3] if holdings_by_symbol
+            (Decimal(str(h["total_value"])) for h in holdings_by_symbol[:3] if holdings_by_symbol),
+            Decimal("0"),
         )
         top_3_pct = round((top_3_value / total_value * 100), 2) if total_value > 0 else 0
 

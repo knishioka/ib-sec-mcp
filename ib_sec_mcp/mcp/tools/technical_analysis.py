@@ -7,6 +7,7 @@ and pre-computed trading signals for optimal token efficiency.
 import asyncio
 import json
 from datetime import datetime
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -78,7 +79,7 @@ def register_technical_analysis_tools(mcp: FastMCP) -> None:
             # Fetch historical data
             import yfinance as yf
 
-            async def fetch_data():
+            async def fetch_data() -> Any:
                 ticker = yf.Ticker(symbol)
                 # Map timeframe to period
                 period_map = {"1d": f"{lookback_days}d", "1wk": "2y", "1mo": "5y"}
@@ -282,7 +283,7 @@ def register_technical_analysis_tools(mcp: FastMCP) -> None:
             ) from e
 
 
-def _find_support_resistance(hist: pd.DataFrame, window: int = 20) -> dict:
+def _find_support_resistance(hist: pd.DataFrame, window: int = 20) -> dict[str, Any]:
     """Find support and resistance levels using local extrema"""
     close = hist["Close"]
     high = hist["High"]
@@ -302,7 +303,7 @@ def _find_support_resistance(hist: pd.DataFrame, window: int = 20) -> dict:
             support_levels.append(float(low.iloc[i]))
 
     # Cluster nearby levels (within 2% of each other)
-    def cluster_levels(levels, tolerance=0.02):
+    def cluster_levels(levels: list[float], tolerance: float = 0.02) -> list[float]:
         if not levels:
             return []
 
@@ -320,7 +321,7 @@ def _find_support_resistance(hist: pd.DataFrame, window: int = 20) -> dict:
         if current_cluster:
             clusters.append(np.mean(current_cluster))
 
-        return [round(c, 2) for c in clusters]
+        return [round(float(c), 2) for c in clusters]
 
     resistance = cluster_levels(resistance_levels)
     support = cluster_levels(support_levels)
@@ -353,7 +354,7 @@ def _find_support_resistance(hist: pd.DataFrame, window: int = 20) -> dict:
     }
 
 
-def _analyze_trends(close: pd.Series) -> dict:
+def _analyze_trends(close: pd.Series) -> dict[str, Any]:
     """Analyze trends across multiple timeframes"""
     # Short-term: 20-day MA
     sma_20 = close.rolling(window=20).mean()
@@ -388,7 +389,7 @@ def _analyze_trends(close: pd.Series) -> dict:
     }
 
 
-def _calculate_indicators(hist: pd.DataFrame) -> dict:
+def _calculate_indicators(hist: pd.DataFrame) -> dict[str, Any]:
     """Calculate key technical indicators"""
     close = hist["Close"]
     high = hist["High"]
@@ -466,7 +467,7 @@ def _calculate_indicators(hist: pd.DataFrame) -> dict:
     }
 
 
-def _calculate_pivot_points(hist: pd.DataFrame) -> dict:
+def _calculate_pivot_points(hist: pd.DataFrame) -> dict[str, Any]:
     """Calculate pivot points for support/resistance"""
     # Use most recent completed period
     high = float(hist["High"].iloc[-2])
@@ -505,7 +506,7 @@ def _calculate_pivot_points(hist: pd.DataFrame) -> dict:
     }
 
 
-def _analyze_volume(hist: pd.DataFrame) -> dict:
+def _analyze_volume(hist: pd.DataFrame) -> dict[str, Any]:
     """Analyze volume patterns"""
     volume = hist["Volume"]
     close = hist["Close"]
@@ -546,11 +547,11 @@ def _analyze_volume(hist: pd.DataFrame) -> dict:
 
 def _generate_signals(
     current_price: float,
-    support_resistance: dict,
-    trend_analysis: dict,
-    indicators: dict,
-    volume_analysis: dict,
-) -> dict:
+    support_resistance: dict[str, Any],
+    trend_analysis: dict[str, Any],
+    indicators: dict[str, Any],
+    volume_analysis: dict[str, Any],
+) -> dict[str, Any]:
     """Generate trading signals based on technical analysis"""
     signals = []
     score = 0.0
@@ -665,7 +666,9 @@ def _generate_signals(
     }
 
 
-def _analyze_timeframe_confluence(daily: dict, weekly: dict, monthly: dict) -> dict:
+def _analyze_timeframe_confluence(
+    daily: dict[str, Any], weekly: dict[str, Any], monthly: dict[str, Any]
+) -> dict[str, Any]:
     """Analyze confluence across multiple timeframes"""
     # Check trend alignment
     daily_trend = daily["trend_analysis"]["short_term"]

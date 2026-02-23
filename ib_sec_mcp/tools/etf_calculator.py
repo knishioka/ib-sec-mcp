@@ -7,6 +7,7 @@ LLMによる算術計算ミスを防ぐため、すべての計算をPython側�
 
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 
 @dataclass
@@ -200,7 +201,7 @@ class ETFSwapCalculator:
 
         return "\n".join(lines)
 
-    def calculate_portfolio_swap(self, swaps: list[dict]) -> dict:
+    def calculate_portfolio_swap(self, swaps: list[dict[str, Any]]) -> dict[str, Any]:
         """
         ポートフォリオ全体の差し替え計算
 
@@ -279,7 +280,7 @@ def validate_etf_price(
     price: Decimal,
     reference_symbol: str | None = None,
     reference_price: Decimal | None = None,
-) -> dict[str, any]:
+) -> dict[str, Any]:
     """
     ETF価格の妥当性を検証
 

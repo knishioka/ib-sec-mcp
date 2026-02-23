@@ -6,6 +6,7 @@ Compare multiple ETFs with dividend-adjusted performance for investment strategy
 import asyncio
 import json
 from datetime import datetime
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -81,7 +82,7 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
             # Fetch data for all symbols in parallel
             import yfinance as yf
 
-            async def fetch_etf_data(symbol: str) -> tuple[str, dict | None]:
+            async def fetch_etf_data(symbol: str) -> tuple[str, dict[str, Any] | None]:
                 """Fetch comprehensive ETF data"""
                 try:
                     ticker = yf.Ticker(symbol)
@@ -270,7 +271,7 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
 
             # Convert correlation matrix to dict
             # Replace NaN with None for cleaner JSON output
-            corr_dict = {}
+            corr_dict: dict[str, dict[str, float | None]] = {}
             for symbol1 in corr_matrix.index:
                 corr_dict[symbol1] = {}
                 for symbol2 in corr_matrix.columns:

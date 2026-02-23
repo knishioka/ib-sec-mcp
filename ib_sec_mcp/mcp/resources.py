@@ -7,6 +7,7 @@ import json
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import yaml
 from fastmcp import FastMCP
@@ -14,10 +15,22 @@ from fastmcp import FastMCP
 from ib_sec_mcp.analyzers.risk import RiskAnalyzer
 from ib_sec_mcp.analyzers.tax import TaxAnalyzer
 from ib_sec_mcp.core.parsers import XMLParser, detect_format
+from ib_sec_mcp.models.account import Account
 from ib_sec_mcp.models.trade import AssetClass, BuySell
 
+# Resource URI constants
+RESOURCE_PORTFOLIO_LIST = "ib://portfolio/list"
+RESOURCE_PORTFOLIO_LATEST = "ib://portfolio/latest"
+RESOURCE_ACCOUNTS = "ib://accounts/{account_id}"
+RESOURCE_TRADES_RECENT = "ib://trades/recent"
+RESOURCE_POSITIONS_CURRENT = "ib://positions/current"
+RESOURCE_STRATEGY_TAX = "ib://strategy/tax-context"
+RESOURCE_STRATEGY_REBALANCING = "ib://strategy/rebalancing-context"
+RESOURCE_STRATEGY_RISK = "ib://strategy/risk-context"
+RESOURCE_USER_PROFILE = "ib://user/profile"
 
-def _parse_xml_file(file_path: Path):
+
+def _parse_xml_file(file_path: Path) -> Account:
     """
     Parse XML file and return first account with date range
 
@@ -64,7 +77,7 @@ def _parse_xml_file(file_path: Path):
 def register_resources(mcp: FastMCP) -> None:
     """Register all IB Analytics resources with MCP server"""
 
-    @mcp.resource("ib://portfolio/list")
+    @mcp.resource(RESOURCE_PORTFOLIO_LIST)
     def list_portfolio_files() -> str:
         """
         List all available portfolio XML files
@@ -76,7 +89,7 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"files": [], "message": "No data directory found"})
 
-        files = []
+        files: list[dict[str, Any]] = []
         for xml_file in data_dir.glob("*.xml"):
             files.append(
                 {
@@ -87,10 +100,10 @@ def register_resources(mcp: FastMCP) -> None:
                 }
             )
 
-        files.sort(key=lambda x: x["modified"], reverse=True)
+        files.sort(key=lambda x: float(x["modified"]), reverse=True)
         return json.dumps({"files": files, "count": len(files)}, indent=2)
 
-    @mcp.resource("ib://portfolio/latest")
+    @mcp.resource(RESOURCE_PORTFOLIO_LATEST)
     def get_latest_portfolio() -> str:
         """
         Get summary of the most recently modified portfolio file
@@ -128,7 +141,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         return json.dumps(summary, indent=2)
 
-    @mcp.resource("ib://accounts/{account_id}")
+    @mcp.resource(RESOURCE_ACCOUNTS)
     def get_account_data(account_id: str) -> str:
         """
         Get data for a specific account ID
@@ -170,7 +183,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         return json.dumps(account_data, indent=2)
 
-    @mcp.resource("ib://trades/recent")
+    @mcp.resource(RESOURCE_TRADES_RECENT)
     def get_recent_trades() -> str:
         """
         Get most recent trades from latest portfolio file
@@ -212,7 +225,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         return json.dumps({"trades": trades_data, "count": len(trades_data)}, indent=2)
 
-    @mcp.resource("ib://positions/current")
+    @mcp.resource(RESOURCE_POSITIONS_CURRENT)
     def get_current_positions() -> str:
         """
         Get current positions from latest portfolio file
@@ -238,7 +251,7 @@ def register_resources(mcp: FastMCP) -> None:
                 "symbol": p.symbol,
                 "description": p.description,
                 "quantity": str(p.quantity),
-                "cost_basis": str(p.cost_basis_money),
+                "cost_basis": str(p.cost_basis),
                 "market_value": str(p.position_value),
                 "unrealized_pnl": str(p.unrealized_pnl),
                 "asset_class": p.asset_class.value if p.asset_class else None,
@@ -248,7 +261,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         return json.dumps({"positions": positions_data, "count": len(positions_data)}, indent=2)
 
-    @mcp.resource("ib://strategy/tax-context")
+    @mcp.resource(RESOURCE_STRATEGY_TAX)
     def get_tax_context() -> str:
         """
         Get tax planning context with gains/losses and opportunities
@@ -354,8 +367,8 @@ def register_resources(mcp: FastMCP) -> None:
                                 break
 
         # Extract OID income from tax result
-        bond_oid_income = Decimal(tax_result.data.get("phantom_income_total", "0"))
-        estimated_tax_liability = Decimal(tax_result.data.get("total_estimated_tax", "0"))
+        bond_oid_income = Decimal(tax_result.get("phantom_income_total", "0"))
+        estimated_tax_liability = Decimal(tax_result.get("total_estimated_tax", "0"))
 
         tax_context = {
             "short_term_gains": str(short_term_gains),
@@ -374,7 +387,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         return json.dumps(tax_context, indent=2, default=str)
 
-    @mcp.resource("ib://strategy/rebalancing-context")
+    @mcp.resource(RESOURCE_STRATEGY_REBALANCING)
     def get_rebalancing_context() -> str:
         """
         Get portfolio rebalancing context with allocation and drift analysis
@@ -581,7 +594,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         return json.dumps(rebalancing_context, indent=2, default=str)
 
-    @mcp.resource("ib://strategy/risk-context")
+    @mcp.resource(RESOURCE_STRATEGY_RISK)
     def get_risk_context() -> str:
         """
         Get comprehensive risk assessment context
@@ -666,10 +679,10 @@ def register_resources(mcp: FastMCP) -> None:
         interest_rate_impact_1pct_fall = Decimal("0")
 
         if (
-            "interest_rate_scenarios" in risk_result.data
-            and "scenarios" in risk_result.data["interest_rate_scenarios"]
+            "interest_rate_scenarios" in risk_result
+            and "scenarios" in risk_result["interest_rate_scenarios"]
         ):
-            for scenario in risk_result.data["interest_rate_scenarios"]["scenarios"]:
+            for scenario in risk_result["interest_rate_scenarios"]["scenarios"]:
                 if scenario["rate_change"] == "1.0":
                     interest_rate_impact_1pct_rise = Decimal(scenario["total_value_change"])
                 elif scenario["rate_change"] == "-1.0":
@@ -778,7 +791,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         # Maturity ladder
         maturity_ladder = []
-        maturity_by_year = {}
+        maturity_by_year: dict[int, dict[str, Any]] = {}
 
         for position in bond_positions:
             if position.maturity_date:
@@ -820,7 +833,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         return json.dumps(risk_context, indent=2, default=str)
 
-    @mcp.resource("ib://user/profile")
+    @mcp.resource(RESOURCE_USER_PROFILE)
     def get_user_profile() -> str:
         """
         Get user investment profile and preferences

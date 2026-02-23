@@ -6,6 +6,7 @@ Market sentiment analysis from news, options, and technical indicators.
 import asyncio
 import json
 from decimal import Decimal
+from typing import Literal
 
 from fastmcp import Context, FastMCP
 
@@ -28,7 +29,7 @@ def register_sentiment_analysis_tools(mcp: FastMCP) -> None:
     async def analyze_market_sentiment(
         symbol: str,
         lookback_days: int = 7,
-        sources: str = "news",
+        sources: Literal["news", "options", "technical", "composite"] = "news",
         ctx: Context | None = None,
     ) -> str:
         """
