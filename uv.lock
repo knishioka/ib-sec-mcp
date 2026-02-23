@@ -767,6 +767,7 @@ dev = [
 ]
 mcp = [
     { name = "fastmcp" },
+    { name = "pyyaml" },
     { name = "scipy" },
 ]
 reporting = [
@@ -782,7 +783,7 @@ visualization = [
 requires-dist = [
     { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "defusedxml", specifier = ">=0.7.1" },
-    { name = "fastmcp", marker = "extra == 'mcp'", specifier = ">=2.0.0" },
+    { name = "fastmcp", marker = "extra == 'mcp'", specifier = ">=2.0.0,<3.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "jinja2", marker = "extra == 'reporting'", specifier = ">=3.1.0" },
     { name = "kaleido", marker = "extra == 'visualization'", specifier = ">=0.2.1" },
@@ -795,13 +796,14 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
+    { name = "pyyaml", marker = "extra == 'mcp'", specifier = ">=6.0.0" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "rich", specifier = ">=13.7.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "scipy", marker = "extra == 'mcp'", specifier = ">=1.14.0" },
     { name = "typer", specifier = ">=0.12.0" },
     { name = "weasyprint", marker = "extra == 'reporting'", specifier = ">=60.0" },
-    { name = "yfinance", specifier = ">=0.2.40" },
+    { name = "yfinance", specifier = ">=0.2.40,<1.0" },
 ]
 provides-extras = ["mcp", "dev", "visualization", "reporting"]
 

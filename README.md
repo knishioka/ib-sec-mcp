@@ -5,6 +5,7 @@ Interactive Brokers portfolio analytics library with **AI-powered investment ana
 ## 🎯 What This Does
 
 **For Investors** (Mode 1 & 3):
+
 - ⚡ **95% faster investment strategy** generation (6-8 hours → 15-20 minutes)
 - 📊 **Parallel market analysis** of all holdings simultaneously
 - 🎯 **Consolidated multi-account view** with accurate portfolio metrics
@@ -13,6 +14,7 @@ Interactive Brokers portfolio analytics library with **AI-powered investment ana
 - 📉 **Multi-timeframe technical analysis** with entry/exit signals
 
 **For Developers** (Mode 3):
+
 - 🤖 **90% faster issue resolution** (80 minutes → 8 minutes via `/resolve-gh-issue`)
 - ✅ **Automated quality gates** (black, ruff, mypy, pytest)
 - 🔄 **Complete TDD workflow** (tests → code → PR automation)
@@ -30,6 +32,7 @@ Interactive Brokers portfolio analytics library with **AI-powered investment ana
 ## ✨ Key Features
 
 **Investment Analysis**:
+
 - 📊 **Multi-Account Support**: Consolidated analysis across all IB accounts
 - 📈 **Market Analysis**: Multi-timeframe technicals, options Greeks, IV metrics, Max Pain
 - 💰 **Tax Optimization**: Cross-account tax harvesting and loss optimization
@@ -37,6 +40,7 @@ Interactive Brokers portfolio analytics library with **AI-powered investment ana
 - 📉 **Technical Analysis**: Support/resistance, RSI, MACD, volume analysis
 
 **Portfolio Management**:
+
 - 🔄 **Flex Query API Integration**: Automated data fetching via IB Flex Query API v3
 - 📈 **Comprehensive Analysis**: Performance, tax, cost, risk, and bond analytics
 - 📊 **Position History**: SQLite time-series tracking for historical analysis
@@ -45,6 +49,7 @@ Interactive Brokers portfolio analytics library with **AI-powered investment ana
 - 📄 **Rich Reports**: Console, HTML, and optional PDF reporting
 
 **Development Automation** (Mode 3):
+
 - 🤖 **10 Specialized AI Agents**: strategy-coordinator, market-analyst, data-analyzer, + 7 dev agents
 - 📋 **15 Slash Commands**: Automated workflows for analysis and development
 - ✅ **Quality Gates**: Automated black, ruff, mypy, pytest enforcement
@@ -137,6 +142,7 @@ docker-compose up
 ### Docker Compose
 
 Create `.env` file:
+
 ```env
 QUERY_ID=your_query_id
 TOKEN=your_token
@@ -144,6 +150,7 @@ IB_DEBUG=0
 ```
 
 Run:
+
 ```bash
 # Start server
 docker-compose up -d
@@ -229,9 +236,11 @@ IB Analytics provides advanced investment analysis tools through the MCP server.
 ### Stock & Fund Analysis
 
 #### `get_stock_info` - Comprehensive Stock Information
+
 Get detailed information about stocks, ETFs, and funds including fundamental metrics.
 
 **Features**:
+
 - Real-time price data (current, open, high, low, volume)
 - Valuation metrics (P/E, P/B, P/S, PEG, EV/EBITDA, EV/Revenue)
 - Profitability metrics (profit margin, ROE, ROA, operating margin, EPS)
@@ -241,23 +250,28 @@ Get detailed information about stocks, ETFs, and funds including fundamental met
 - Trading information (52-week high/low, market cap, volume)
 
 **Example Usage**:
+
 ```python
 # In Claude Desktop with MCP
 "Show me comprehensive information for AAPL stock"
 ```
 
 #### `get_current_price` - Quick Price Check
+
 Get current price and key metrics for quick market checks.
 
 **Example Usage**:
+
 ```python
 "What's the current price of VOO?"
 ```
 
 #### `get_stock_data` - Historical Price Data with Technical Indicators
+
 Fetch OHLCV data with optional technical indicators (SMA, EMA, RSI, MACD, Bollinger Bands).
 
 **Example Usage**:
+
 ```python
 "Get 1-year daily price data for SPY with SMA 20, SMA 50, and RSI"
 ```
@@ -265,9 +279,11 @@ Fetch OHLCV data with optional technical indicators (SMA, EMA, RSI, MACD, Bollin
 ### Comparative Analysis
 
 #### `compare_with_benchmark` - Performance vs Benchmark
+
 Compare stock/fund performance against a benchmark (default: SPY).
 
 **Features**:
+
 - Return comparison (total return, annualized return)
 - Volatility analysis (standard deviation comparison)
 - Risk metrics (beta, alpha, correlation)
@@ -275,6 +291,7 @@ Compare stock/fund performance against a benchmark (default: SPY).
 - Interpretation and insights
 
 **Example Usage**:
+
 ```python
 # Compare VOO against SPY over 1 year
 "Compare VOO performance with SPY benchmark"
@@ -284,9 +301,11 @@ Compare stock/fund performance against a benchmark (default: SPY).
 ```
 
 #### `get_analyst_consensus` - Analyst Ratings & Target Prices
+
 Get analyst recommendations, target prices, and earnings estimates.
 
 **Features**:
+
 - Rating distribution (strong buy/buy/hold/sell/strong sell)
 - Consensus rating derived from distribution
 - Target prices (mean, median, high, low)
@@ -294,6 +313,7 @@ Get analyst recommendations, target prices, and earnings estimates.
 - Earnings estimates (date, EPS range, revenue estimates)
 
 **Example Usage**:
+
 ```python
 "What's the analyst consensus for TSLA?"
 ```
@@ -301,9 +321,11 @@ Get analyst recommendations, target prices, and earnings estimates.
 ### Portfolio-Level Analysis
 
 #### `calculate_portfolio_metrics` - Advanced Portfolio Metrics
+
 Calculate comprehensive risk-adjusted performance metrics for your portfolio.
 
 **Features**:
+
 - **Return metrics**: Total return, annualized return, volatility
 - **Risk-adjusted ratios**:
   - Sharpe Ratio: Risk-adjusted return (excess return / total risk)
@@ -319,12 +341,14 @@ Calculate comprehensive risk-adjusted performance metrics for your portfolio.
   - Alpha (excess return vs expected return)
 
 **Parameters**:
+
 - `csv_path`: Path to IB Flex Query CSV file
 - `benchmark`: Benchmark symbol (default: "SPY")
 - `risk_free_rate`: Annual risk-free rate (default: 0.05 = 5%)
 - `period`: Time period for analysis (1mo, 3mo, 6mo, 1y, 2y, 5y)
 
 **Example Usage**:
+
 ```python
 # Analyze portfolio with default settings (SPY benchmark, 5% risk-free rate, 1 year)
 "Calculate portfolio metrics for my latest data file"
@@ -334,14 +358,17 @@ Calculate comprehensive risk-adjusted performance metrics for your portfolio.
 ```
 
 **Limitations**:
+
 - ⚠️ Requires Yahoo Finance data for portfolio positions
 - ⚠️ Will not work for bond-only portfolios (STRIPS bonds have no Yahoo Finance data)
 - ✅ Works well for stock and ETF portfolios
 
 #### `analyze_portfolio_correlation` - Diversification Analysis
+
 Analyze correlation between portfolio positions to assess diversification.
 
 **Features**:
+
 - Correlation matrix between all positions
 - High correlation pairs identification (|r| > 0.7)
 - Portfolio beta vs benchmark (default: SPY)
@@ -350,10 +377,12 @@ Analyze correlation between portfolio positions to assess diversification.
 - Interpretation and recommendations
 
 **Parameters**:
+
 - `csv_path`: Path to IB Flex Query CSV file
 - `period`: Time period for correlation analysis (1mo, 3mo, 6mo, 1y, 2y, 5y)
 
 **Example Usage**:
+
 ```python
 # Analyze correlation over 1 year (default)
 "Analyze the correlation between my portfolio positions"
@@ -363,6 +392,7 @@ Analyze correlation between portfolio positions to assess diversification.
 ```
 
 **Limitations**:
+
 - ⚠️ Requires Yahoo Finance data for portfolio positions
 - ⚠️ Will not work for bond-only portfolios
 - ✅ Best for analyzing stock/ETF portfolio diversification
@@ -370,12 +400,15 @@ Analyze correlation between portfolio positions to assess diversification.
 ### Options Analysis
 
 #### `get_options_chain` - Options Data
+
 Get calls and puts data for a stock including strike prices, volume, open interest, and implied volatility.
 
 #### `calculate_put_call_ratio` - Market Sentiment
+
 Calculate put/call ratio based on open interest or volume to gauge market sentiment.
 
 **Example Usage**:
+
 ```python
 # Calculate P/C ratio based on open interest
 "What's the put/call ratio for SPY?"
@@ -387,9 +420,11 @@ Calculate put/call ratio based on open interest or volume to gauge market sentim
 ### News & Market Intelligence
 
 #### `get_stock_news` - Latest News Articles
+
 Get the latest news articles for any stock symbol from Yahoo Finance.
 
 **Features**:
+
 - Latest news articles (up to 50)
 - Article metadata (title, publisher, publish time, summary)
 - Direct links to full articles
@@ -398,10 +433,12 @@ Get the latest news articles for any stock symbol from Yahoo Finance.
 - Multiple content types (stories, videos, press releases)
 
 **Parameters**:
+
 - `symbol`: Stock ticker symbol (e.g., "AAPL", "TSLA", "QQQ")
 - `limit`: Number of articles to return (default: 10, max: 50)
 
 **Example Usage**:
+
 ```python
 # Get latest 5 news articles for Apple
 "Show me the latest news for AAPL"
@@ -414,6 +451,7 @@ Get the latest news articles for any stock symbol from Yahoo Finance.
 ```
 
 **Response Includes**:
+
 - **Title**: Article headline
 - **Publisher**: News source (e.g., Yahoo Finance, Bloomberg, Reuters)
 - **Link**: Direct URL to full article
@@ -424,6 +462,7 @@ Get the latest news articles for any stock symbol from Yahoo Finance.
 - **Related Tickers**: Other stocks mentioned in the article
 
 **Use Cases**:
+
 - **Investment Research**: Stay updated on company news and developments
 - **Market Sentiment**: Gauge market sentiment from news coverage
 - **Due Diligence**: Research companies before making investment decisions
@@ -431,6 +470,7 @@ Get the latest news articles for any stock symbol from Yahoo Finance.
 - **Event-Driven Trading**: Identify market-moving events quickly
 
 **Example Natural Language Queries**:
+
 ```
 "What's the latest news about Apple?"
 "Show me recent news articles for my Tesla position"
@@ -446,6 +486,7 @@ Get the latest news articles for any stock symbol from Yahoo Finance.
 Get comprehensive market sentiment from multiple sources: news articles, options market, and technical indicators.
 
 **Features**:
+
 - **News Sentiment**: Sentiment analysis from recent news articles and headlines
 - **Options Market Sentiment**: Derived from Put/Call ratios, IV Rank, and Max Pain
 - **Technical Sentiment**: Based on RSI, MACD, trend analysis, and support/resistance
@@ -455,6 +496,7 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 - **Risk Factors**: Highlighted concerns (e.g., "overbought_rsi", "near_resistance")
 
 **Parameters**:
+
 - `symbol`: Stock ticker symbol (e.g., "AAPL", "SPY", "QQQ")
 - `sources`: Comma-separated sentiment sources (default: "composite")
   - `"news"`: News article sentiment only
@@ -465,6 +507,7 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 **Sentiment Score Range**: -1.0 (very bearish) to +1.0 (very bullish)
 
 **Example Usage**:
+
 ```python
 # Get composite sentiment from all sources
 "Analyze market sentiment for AAPL using all sources"
@@ -480,11 +523,13 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 ```
 
 **Composite Sentiment Weights** (default):
+
 - News Sentiment: 40%
 - Options Market Sentiment: 30%
 - Technical Sentiment: 30%
 
 **Response Includes**:
+
 - **Overall Score**: Composite sentiment score (-1.0 to +1.0)
 - **Confidence**: Aggregated confidence level (0.0 to 1.0)
 - **Individual Sources**: Breakdown by news, options, technical with individual scores
@@ -495,20 +540,22 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 
 **Sentiment Interpretation Guide**:
 
-| Score Range | Sentiment | Interpretation | Trading Bias |
-|-------------|-----------|----------------|--------------|
-| 0.5 to 1.0 | Very Bullish | Strong positive signals across sources | Strong Buy bias |
-| 0.2 to 0.5 | Bullish | Positive sentiment with good conviction | Buy bias |
-| -0.2 to 0.2 | Neutral | Mixed signals, no clear direction | Hold, wait for clarity |
-| -0.5 to -0.2 | Bearish | Negative sentiment with moderate conviction | Sell bias |
-| -1.0 to -0.5 | Very Bearish | Strong negative signals across sources | Strong Sell bias |
+| Score Range  | Sentiment    | Interpretation                              | Trading Bias           |
+| ------------ | ------------ | ------------------------------------------- | ---------------------- |
+| 0.5 to 1.0   | Very Bullish | Strong positive signals across sources      | Strong Buy bias        |
+| 0.2 to 0.5   | Bullish      | Positive sentiment with good conviction     | Buy bias               |
+| -0.2 to 0.2  | Neutral      | Mixed signals, no clear direction           | Hold, wait for clarity |
+| -0.5 to -0.2 | Bearish      | Negative sentiment with moderate conviction | Sell bias              |
+| -1.0 to -0.5 | Very Bearish | Strong negative signals across sources      | Strong Sell bias       |
 
 **Confidence Interpretation**:
+
 - **High (0.7-1.0)**: Multiple sources agree, strong signal reliability
 - **Medium (0.4-0.7)**: Some agreement, moderate signal reliability
 - **Low (0.0-0.4)**: Sources disagree, weak signal reliability
 
 **Key Themes Examples**:
+
 - `bullish_momentum`: Strong upward price movement
 - `oversold_rsi`: RSI below 30, potential reversal
 - `bullish_options_flow`: Low Put/Call ratio, bullish positioning
@@ -516,6 +563,7 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 - `high_iv_environment`: Elevated volatility, favorable for option sellers
 
 **Risk Factors Examples**:
+
 - `overbought_rsi`: RSI above 70, potential pullback
 - `near_resistance`: Price approaching resistance level
 - `bearish_macd_cross`: MACD bearish crossover
@@ -523,6 +571,7 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 - `negative_news_sentiment`: Negative news coverage
 
 **Use Cases**:
+
 - **Entry Timing**: Identify optimal entry points with sentiment confirmation
 - **Exit Strategy**: Detect sentiment shifts for position management
 - **Risk Assessment**: Gauge market mood before major positions
@@ -531,6 +580,7 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 - **Options Strategy**: Choose premium-selling vs premium-buying based on IV environment
 
 **Example Natural Language Queries**:
+
 ```
 "What's the overall market sentiment for Apple right now?"
 "Analyze sentiment for SPY - should I buy or wait?"
@@ -542,10 +592,13 @@ Get comprehensive market sentiment from multiple sources: news articles, options
 **Integration with Symbol Analysis**:
 
 The sentiment analysis is automatically included when using `/analyze-symbol` command:
+
 ```bash
 /analyze-symbol AAPL
 ```
+
 This provides:
+
 - Multi-timeframe technical analysis
 - Current price and fundamentals
 - Options market analysis
@@ -572,6 +625,7 @@ This provides:
    - **Support/Resistance**: Price proximity to key levels
 
 **Performance Notes**:
+
 - Composite sentiment calculation: ~2-3 seconds
 - Individual source queries: ~1-2 seconds each
 - Cached results valid for 5 minutes (real-time market data)
@@ -580,6 +634,7 @@ This provides:
 **Code Examples**:
 
 See [examples/sentiment_analysis_example.py](examples/sentiment_analysis_example.py) for complete programmatic usage examples including:
+
 - Composite sentiment analysis
 - Individual source queries (technical, options, news)
 - Natural language query examples
@@ -613,11 +668,13 @@ Once you've set up the MCP server in Claude Desktop, you can use natural languag
 ### Technical Notes
 
 **Data Sources**:
+
 - Portfolio data: Interactive Brokers Flex Query (CSV/XML)
 - Market data: Yahoo Finance via yfinance library
 - Real-time quotes: Yahoo Finance delayed quotes (15-20 minutes)
 
 **Performance Metrics Definitions**:
+
 - **Sharpe Ratio**: (Return - Risk-free rate) / Volatility. Higher is better. >1 is good, >2 is excellent.
 - **Sortino Ratio**: Like Sharpe but only penalizes downside volatility. Better for asymmetric returns.
 - **Calmar Ratio**: Annualized return / Maximum drawdown. Measures return per unit of downside risk.
@@ -628,6 +685,7 @@ Once you've set up the MCP server in Claude Desktop, you can use natural languag
 - **Maximum Drawdown**: Largest peak-to-trough decline. Key risk metric for understanding worst-case scenarios.
 
 **Correlation Interpretation**:
+
 - |r| > 0.7: High correlation (limited diversification benefit)
 - 0.3 < |r| < 0.7: Moderate correlation (some diversification)
 - |r| < 0.3: Low correlation (good diversification)
@@ -646,6 +704,7 @@ IB Analytics supports **three distinct usage modes** for different user types an
 **Setup**: Install MCP server in Claude Desktop configuration
 
 **What You Can Do**:
+
 - **Portfolio Analysis**: "What's my portfolio performance this quarter?"
 - **Investment Research**: "Should I buy Apple stock right now?"
 - **Tax Planning**: "Show me tax-loss harvesting opportunities"
@@ -653,12 +712,14 @@ IB Analytics supports **three distinct usage modes** for different user types an
 - **Investment Strategy**: "Create a comprehensive investment plan"
 
 **Key Benefits**:
+
 - ✅ **Zero coding required** - just ask questions in natural language
 - ✅ **Automated data fetching** from Interactive Brokers
 - ✅ **Complete analysis** from a single question
 - ✅ **Real-time market data** integrated with your portfolio
 
 **Example Workflow**:
+
 ```
 You: "Analyze my portfolio performance and suggest tax optimization strategies"
 Claude: [Fetches latest data, runs performance/tax analysis, provides recommendations]
@@ -680,18 +741,21 @@ Claude: [Compares ETFs, analyzes portfolio fit, provides specific recommendation
 **Setup**: Use Claude Code with MCP server enabled
 
 **What You Can Do**:
+
 - **Custom Metrics**: Calculate any combination of performance metrics
 - **Fine-grained Data**: Access trades, positions, account data directly
 - **Period Comparisons**: Compare performance across any date ranges
 - **Advanced Analysis**: Build custom strategies and backtests
 
 **Key Benefits**:
+
 - ✅ **Composable tools** - mix and match for custom analysis
 - ✅ **Fine-grained control** - filter by symbol, asset class, date range
 - ✅ **Programmatic access** - integrate into your own workflows
 - ✅ **Strategy resources** - tax context, rebalancing guides, risk analysis
 
 **Example Workflow**:
+
 ```python
 # Get AAPL trades from Q1
 trades = get_trades(symbol="AAPL", start_date="2025-01-01", end_date="2025-03-31")
@@ -721,6 +785,7 @@ comparison = compare_periods(
 **What You Can Do**:
 
 #### 📊 Portfolio & Investment Analysis (Slash Commands)
+
 - `/investment-strategy` - **Master command**: Complete investment strategy with portfolio + market analysis
   - **Parallel market analysis**: Analyzes all holdings simultaneously (80-90% time reduction)
   - **Consolidated multi-account view**: True portfolio-level analysis across ALL accounts
@@ -748,6 +813,7 @@ comparison = compare_periods(
 - `/compare-periods START END START END` - Period-over-period performance comparison
 
 **Time Savings**:
+
 - Investment strategy: 6-8 hours manual research → **15-20 minutes** (95% time reduction)
 - Stock analysis: 1-2 hours research → **2-3 minutes** (97% time reduction)
 - Options strategy: 45-60 minutes → **3-5 minutes** (93% time reduction)
@@ -755,6 +821,7 @@ comparison = compare_periods(
 #### 🤖 AI-Powered Development (7 Specialized Sub-Agents)
 
 **Investment Analysis Agents**:
+
 - **data-analyzer** 📊: Portfolio analysis specialist
   - Consolidated multi-account analysis
   - Performance, tax, cost, risk, bond analytics
@@ -773,6 +840,7 @@ comparison = compare_periods(
   - Generates actionable, prioritized recommendations
 
 **Development Agents**:
+
 - **test-runner** 🧪: Testing and quality assurance
 - **code-implementer** 💻: Feature implementation with TDD
 - **code-reviewer** 📝: Code quality enforcement
@@ -781,6 +849,7 @@ comparison = compare_periods(
 - **issue-analyzer** 🔍: GitHub issue analysis
 
 **Time Savings**:
+
 - Portfolio analysis: 3-4 hours → **5 minutes** (95% reduction)
 - GitHub issue resolution: 80 minutes → **8 minutes** (90% reduction)
 - Quality checks: 15 minutes → **2 minutes** (87% reduction)
@@ -788,6 +857,7 @@ comparison = compare_periods(
 #### 🔄 Complete Development Workflow Automation
 
 **GitHub Integration**:
+
 ```bash
 # Resolve GitHub issue with complete automation
 /resolve-gh-issue 42
@@ -803,6 +873,7 @@ comparison = compare_periods(
 ```
 
 **Quality Automation**:
+
 ```bash
 /quality-check --fix             # Auto-fix format, lint, type, test issues
 /test --coverage                 # Run pytest with coverage report
@@ -811,6 +882,7 @@ comparison = compare_periods(
 ```
 
 **Expected Impact**:
+
 - **Time Savings**: 90% reduction in routine tasks
 - **Quality Improvement**: Automated enforcement of best practices
 - **Consistency**: Standardized workflows across team
@@ -822,22 +894,23 @@ See [.claude/README.md](.claude/README.md) for complete documentation.
 
 ## Feature Comparison
 
-| Feature | Mode 1: Desktop | Mode 2: MCP | Mode 3: Repository |
-|---------|-----------------|-------------|-------------------|
-| **Investment Analysis** | ✅ Natural language | ✅ Composable tools | ✅ Advanced automation |
-| **Multi-Account Support** | ✅ Automatic | ✅ Manual selection | ✅ Consolidated analysis |
-| **Market Analysis** | ✅ Basic | ✅ Detailed | ✅ **Parallel + Advanced** |
-| **Options Strategies** | ✅ Basic | ✅ Detailed | ✅ **Professional-grade** |
-| **Tax Optimization** | ✅ Recommendations | ✅ Custom analysis | ✅ **Multi-account optimization** |
-| **Development Tools** | ❌ | ❌ | ✅ 7 AI specialists |
-| **GitHub Integration** | ❌ | ❌ | ✅ Issue → PR automation |
-| **Quality Gates** | ❌ | ❌ | ✅ Automated enforcement |
-| **Time to Analysis** | 2 minutes | 15 minutes | 15-20 minutes (comprehensive) |
-| **Time to Implementation** | N/A | N/A | 8 minutes (vs 80 manual) |
-| **Learning Curve** | None | Low | Medium |
-| **Customization** | Low | High | Very High |
+| Feature                    | Mode 1: Desktop     | Mode 2: MCP         | Mode 3: Repository                |
+| -------------------------- | ------------------- | ------------------- | --------------------------------- |
+| **Investment Analysis**    | ✅ Natural language | ✅ Composable tools | ✅ Advanced automation            |
+| **Multi-Account Support**  | ✅ Automatic        | ✅ Manual selection | ✅ Consolidated analysis          |
+| **Market Analysis**        | ✅ Basic            | ✅ Detailed         | ✅ **Parallel + Advanced**        |
+| **Options Strategies**     | ✅ Basic            | ✅ Detailed         | ✅ **Professional-grade**         |
+| **Tax Optimization**       | ✅ Recommendations  | ✅ Custom analysis  | ✅ **Multi-account optimization** |
+| **Development Tools**      | ❌                  | ❌                  | ✅ 7 AI specialists               |
+| **GitHub Integration**     | ❌                  | ❌                  | ✅ Issue → PR automation          |
+| **Quality Gates**          | ❌                  | ❌                  | ✅ Automated enforcement          |
+| **Time to Analysis**       | 2 minutes           | 15 minutes          | 15-20 minutes (comprehensive)     |
+| **Time to Implementation** | N/A                 | N/A                 | 8 minutes (vs 80 manual)          |
+| **Learning Curve**         | None                | Low                 | Medium                            |
+| **Customization**          | Low                 | High                | Very High                         |
 
 **Recommendation**:
+
 - **Start with Mode 1** if you're an investor looking for quick insights
 - **Use Mode 2** if you need custom analysis or programmatic access
 - **Adopt Mode 3** if you're developing features or need advanced automation
@@ -940,6 +1013,7 @@ comparison = await compare_portfolio_snapshots(
 ```
 
 **Returns**:
+
 - Positions added/removed
 - Value changes for continuing positions
 - Total portfolio value change
@@ -986,11 +1060,13 @@ dates = await get_available_snapshot_dates(account_id="U1234567")
 ### Database Schema
 
 **position_snapshots**: Daily position data per account
+
 - Composite key: (account_id, snapshot_date, symbol)
 - Fields: quantity, price, value, cost basis, P&L, bond-specific fields
 - Indexes: account+date, symbol+date, date, asset_class
 
 **snapshot_metadata**: Snapshot-level statistics
+
 - Tracks total positions, portfolio value, cash balance per snapshot
 - Links to source XML files for audit trail
 
@@ -1081,7 +1157,7 @@ pre-commit run mypy --hook-stage manual --all-files
 
 ## Requirements
 
-- Python 3.9+
+- Python 3.12+
 - Interactive Brokers account with Flex Query access
 
 ## Dependencies
@@ -1138,6 +1214,7 @@ ib-sec-mcp
 **Problem**: QUERY_ID or TOKEN not found in environment
 
 **Solution**:
+
 ```bash
 # Create .env file
 echo "QUERY_ID=your_query_id" > .env
@@ -1153,6 +1230,7 @@ export TOKEN=your_token
 **Problem**: Date format is incorrect
 
 **Solution**: Use YYYY-MM-DD format
+
 ```bash
 ib-sec-fetch --start-date 2025-01-01 --end-date 2025-12-31
 ```
@@ -1168,6 +1246,7 @@ ib-sec-fetch --start-date 2025-01-01 --end-date 2025-12-31
 **Problem**: Invalid stock symbol or no data available
 
 **Solution**:
+
 - Verify the ticker symbol is correct
 - Check if the symbol is traded on supported exchanges
 - Try a different period or interval
@@ -1177,6 +1256,7 @@ ib-sec-fetch --start-date 2025-01-01 --end-date 2025-12-31
 **Problem**: API call took too long
 
 **Solution**:
+
 - Check your internet connection
 - Reduce the date range
 - Try again during off-peak hours

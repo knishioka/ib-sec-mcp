@@ -44,15 +44,15 @@
 
 ### Components
 
-| Component | Files | Purpose |
-|-----------|-------|---------|
-| **API Client** | 3 | IB Flex Query API integration |
-| **Models** | 4 | Type-safe domain models |
-| **Core Logic** | 3 | Parsers, calculations, aggregation |
-| **Analyzers** | 6 | Performance, cost, bond, tax, risk |
-| **Reports** | 2 | Console and base report classes |
-| **CLI** | 3 | Fetch, analyze, report commands |
-| **Utils** | 2 | Config and validators |
+| Component      | Files | Purpose                            |
+| -------------- | ----- | ---------------------------------- |
+| **API Client** | 3     | IB Flex Query API integration      |
+| **Models**     | 4     | Type-safe domain models            |
+| **Core Logic** | 3     | Parsers, calculations, aggregation |
+| **Analyzers**  | 6     | Performance, cost, bond, tax, risk |
+| **Reports**    | 2     | Console and base report classes    |
+| **CLI**        | 3     | Fetch, analyze, report commands    |
+| **Utils**      | 2     | Config and validators              |
 
 **Total**: 23 Python modules, ~3,500 lines of code
 
@@ -60,42 +60,46 @@
 
 ## 📦 Dependencies (Latest Stable)
 
-| Library | Version | Purpose |
-|---------|---------|---------|
+| Library      | Version | Purpose         |
+| ------------ | ------- | --------------- |
 | **requests** | 2.32.5+ | HTTP API client |
-| **pandas** | 2.2.3+ | Data analysis |
+| **pandas**   | 2.2.3+  | Data analysis   |
 | **pydantic** | 2.10.0+ | Data validation |
-| **httpx** | 0.27.0+ | Async HTTP |
-| **rich** | 13.7.0+ | Console UI |
-| **typer** | 0.12.0+ | CLI framework |
+| **httpx**    | 0.27.0+ | Async HTTP      |
+| **rich**     | 13.7.0+ | Console UI      |
+| **typer**    | 0.12.0+ | CLI framework   |
 
 ### Python Support
-- ✅ Python 3.9
-- ✅ Python 3.10
-- ✅ Python 3.11
+
 - ✅ Python 3.12
+- ✅ Python 3.13
 
 ---
 
 ## 📊 Available Analyzers
 
 ### 1. PerformanceAnalyzer
+
 **Metrics**: Win rate, profit factor, ROI, risk/reward ratio
 **Use Case**: Overall trading performance evaluation
 
 ### 2. CostAnalyzer
+
 **Metrics**: Commission rates, cost efficiency, impact on P&L
 **Use Case**: Cost optimization and broker comparison
 
 ### 3. BondAnalyzer
+
 **Metrics**: YTM, duration, maturity analysis
 **Use Case**: Zero-coupon bond (STRIPS) analytics
 
 ### 4. TaxAnalyzer
+
 **Metrics**: Phantom income (OID), capital gains tax
 **Use Case**: Tax liability estimation
 
 ### 5. RiskAnalyzer
+
 **Metrics**: Interest rate scenarios, concentration risk
 **Use Case**: Portfolio risk assessment
 
@@ -202,6 +206,7 @@ ib-sec/
 ## 🎯 Design Patterns Used
 
 ### Template Method (BaseAnalyzer)
+
 ```python
 class BaseAnalyzer(ABC):
     @abstractmethod
@@ -215,6 +220,7 @@ class PerformanceAnalyzer(BaseAnalyzer):
 ```
 
 ### Strategy (Reports)
+
 ```python
 class BaseReport(ABC):
     @abstractmethod
@@ -227,11 +233,13 @@ class ConsoleReport(BaseReport):
 ```
 
 ### Factory (Parsers)
+
 ```python
 account = CSVParser.to_account(csv_data, from_date, to_date)
 ```
 
 ### Builder (Portfolio)
+
 ```python
 portfolio = Portfolio.from_accounts(accounts, base_currency="USD")
 ```
@@ -243,12 +251,14 @@ portfolio = Portfolio.from_accounts(accounts, base_currency="USD")
 ### Adding New Features
 
 1. **New Analyzer**
+
    ```bash
    # Use custom command
    /add-analyzer Sharpe "Calculate Sharpe ratio"
    ```
 
 2. **Update Context**
+
    ```bash
    # Press # in Claude Code
    # "New analyzers must calculate annualized metrics"
@@ -279,16 +289,19 @@ pytest tests/test_analyzers/test_performance.py
 ## 📚 Documentation
 
 ### User Documentation
+
 - **README.md**: Quick start and usage guide
 - **INSTALL.md**: Detailed installation instructions
 - **CHANGELOG.md**: Version history and changes
 
 ### Developer Documentation
+
 - **.claude/CLAUDE.md**: Project context for Claude Code
 - **.claude/README.md**: Claude Code configuration guide
 - **Inline Docstrings**: Google-style in all modules
 
 ### API Documentation (Future)
+
 - Sphinx auto-generated docs
 - GitHub Pages deployment
 - Interactive examples
@@ -298,17 +311,20 @@ pytest tests/test_analyzers/test_performance.py
 ## 🎨 Code Quality Standards
 
 ### Style
+
 - **Formatter**: Black (100 char line length)
 - **Linter**: Ruff (E, F, I, N, W, UP, B, A, C4, T20, SIM)
 - **Type Checker**: mypy (strict mode)
 
 ### Conventions
+
 - **Classes**: PascalCase
 - **Functions**: snake_case
 - **Constants**: UPPER_SNAKE_CASE
-- **Private**: _leading_underscore
+- **Private**: \_leading_underscore
 
 ### Documentation
+
 - **Docstrings**: Required for all public APIs
 - **Type Hints**: Required for all functions
 - **Comments**: Explain why, not what
@@ -318,6 +334,7 @@ pytest tests/test_analyzers/test_performance.py
 ## 🔮 Future Roadmap
 
 ### Phase 1 (Current) ✅
+
 - [x] Core library structure
 - [x] Multi-account support
 - [x] 5 core analyzers
@@ -325,6 +342,7 @@ pytest tests/test_analyzers/test_performance.py
 - [x] Console reports
 
 ### Phase 2 (Next)
+
 - [ ] Unit tests with pytest
 - [ ] HTML reports with charts
 - [ ] XML parser implementation
@@ -332,6 +350,7 @@ pytest tests/test_analyzers/test_performance.py
 - [ ] Documentation site
 
 ### Phase 3 (Future)
+
 - [ ] PDF report generation
 - [ ] Web dashboard (Streamlit)
 - [ ] Real-time data streaming
@@ -339,6 +358,7 @@ pytest tests/test_analyzers/test_performance.py
 - [ ] Portfolio optimization
 
 ### Phase 4 (Advanced)
+
 - [ ] Machine learning predictions
 - [ ] Automated trading signals
 - [ ] Risk management alerts
@@ -361,6 +381,7 @@ ib-sec/
 ```
 
 **Issues**:
+
 - ❌ Code duplication
 - ❌ No type safety
 - ❌ Hard to test
@@ -380,6 +401,7 @@ ib_sec_mcp/
 ```
 
 **Benefits**:
+
 - ✅ Modular architecture
 - ✅ Type safety (Pydantic)
 - ✅ Easy to test
@@ -414,11 +436,13 @@ ib_sec_mcp/
 ## 📞 Support
 
 ### Issues
+
 - Check existing issues in git
 - Include error messages and logs
 - Provide minimal reproduction steps
 
 ### Questions
+
 - Review `.claude/CLAUDE.md`
 - Check README and INSTALL guides
 - Use `/explain-architecture` command
@@ -446,6 +470,7 @@ MIT License - See LICENSE file for details
 **Maintainer**: Kenichiro Nishioka
 
 For detailed information, see:
+
 - [README.md](README.md) - User guide
 - [INSTALL.md](INSTALL.md) - Installation
 - [CHANGELOG.md](CHANGELOG.md) - Version history
