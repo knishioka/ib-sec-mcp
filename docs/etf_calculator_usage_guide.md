@@ -19,11 +19,13 @@ ETF差し替え計算を**100%正確**に実行するためのMCPツール群。
 単一ETFの差し替え計算
 
 **用途**:
+
 - 「VOOをCSPXに差し替える場合、何株必要？」
 - 「TLTからIDTLへの差し替えコストは？」
 - 「年間メリットと投資回収期間は？」
 
 **引数**:
+
 ```python
 calculate_etf_swap(
     from_symbol="VOO",           # 売却するETF
@@ -42,13 +44,14 @@ calculate_etf_swap(
 ```
 
 **出力例**:
+
 ```json
 {
   "from_etf": {
     "symbol": "VOO",
     "shares": 40,
     "price": 607.39,
-    "total_value": 24295.60
+    "total_value": 24295.6
   },
   "to_etf": {
     "symbol": "CSPX",
@@ -59,7 +62,7 @@ calculate_etf_swap(
   "required_shares": 34,
   "purchase_amount": 24302.52,
   "surplus_cash": -6.92,
-  "annual_withholding_tax_savings": 84.00,
+  "annual_withholding_tax_savings": 84.0,
   "annual_expense_change": -9.72,
   "annual_net_benefit": 74.28,
   "payback_period_months": 12.1
@@ -73,11 +76,13 @@ calculate_etf_swap(
 ポートフォリオ全体の差し替え計算
 
 **用途**:
+
 - 「複数のETFを一括で差し替える場合の総コストは？」
 - 「ポートフォリオ全体での年間メリットは？」
 - 「総投資回収期間は？」
 
 **引数**:
+
 ```python
 swaps_json = json.dumps([
     {
@@ -115,6 +120,7 @@ calculate_portfolio_swap(
 ```
 
 **出力例**:
+
 ```json
 {
   "individual_results": [
@@ -143,11 +149,13 @@ calculate_portfolio_swap(
 ETF価格の妥当性検証
 
 **用途**:
+
 - 「この価格は正しい？異常に低くない？」
 - 「参照ETFと比較して妥当？」
 - 「計算前に価格をチェックしたい」
 
 **引数**:
+
 ```python
 validate_etf_price_mcp(
     symbol="IDTL",
@@ -158,16 +166,15 @@ validate_etf_price_mcp(
 ```
 
 **出力例**:
+
 ```json
 {
   "symbol": "IDTL",
-  "price": 3.40,
+  "price": 3.4,
   "reference_symbol": "TLT",
   "reference_price": 91.34,
   "price_ratio": 0.037,
-  "warnings": [
-    "ℹ️ IDTLはTLTの3.7%の価格 - 1株あたりの設計が異なる（正常）"
-  ],
+  "warnings": ["ℹ️ IDTLはTLTの3.7%の価格 - 1株あたりの設計が異なる（正常）"],
   "is_valid": true
 }
 ```
@@ -179,11 +186,13 @@ validate_etf_price_mcp(
 ### ケース1: 単一ETFの差し替え
 
 **ユーザー**:
+
 ```
 TLT 200株をIDTLに差し替える場合、何株必要で年間メリットはいくら？
 ```
 
 **Claude Desktopの処理**:
+
 ```python
 # Step 1: 価格取得（WebSearch または get_current_price）
 tlt_price = 91.34
@@ -215,6 +224,7 @@ result = calculate_etf_swap(
 ```
 
 **回答**:
+
 ```
 TLT 200株をIDTLに差し替える場合：
 
@@ -237,12 +247,14 @@ TLT 200株をIDTLに差し替える場合：
 ### ケース2: ポートフォリオ全体の差し替え
 
 **ユーザー**:
+
 ```
 VOO、QQQ、TLT、INDA、VNMをすべてアイルランド籍ETFに差し替えた場合の
 総コストと年間メリットを教えて。
 ```
 
 **Claude Desktopの処理**:
+
 ```python
 # 各ETFの価格を取得
 # ... (省略) ...
@@ -263,6 +275,7 @@ result = calculate_portfolio_swap(
 ```
 
 **回答**:
+
 ```
 ポートフォリオ全体の差し替えサマリー:
 
@@ -329,6 +342,7 @@ MCPツールは入力された価格を信頼します。
 **必ず最新の正確な価格を使用してください。**
 
 推奨:
+
 - `get_current_price()` MCPツールで取得
 - Yahoo Finance等の信頼できるソースから取得
 - 計算前に`validate_etf_price_mcp()`で検証
@@ -344,6 +358,7 @@ MCPツールは入力された価格を信頼します。
 ### 3. LLMは計算しない
 
 **重要**: LLMは以下を行わない:
+
 - ❌ 算術計算（足し算、掛け算、割り算）
 - ❌ 株数の計算
 - ❌ 年間メリットの計算
@@ -354,6 +369,7 @@ MCPツールは入力された価格を信頼します。
 ### 4. 検証の重要性
 
 計算前に必ず`validate_etf_price_mcp()`を使用:
+
 ```python
 # 悪い例（検証なし）
 result = calculate_etf_swap(...)  # 誤った価格でも計算
@@ -376,6 +392,7 @@ else:
 **A**: LLMは算術計算が苦手で、誤りが発生しやすいため。
 
 **実例**: 今回のIDTL価格計算
+
 - LLM計算: $88.67（26倍の誤り）
 - Python計算: $3.40（正確）
 
@@ -396,12 +413,11 @@ Decimal("0.1") + Decimal("0.2") == Decimal("0.3")  # True
 **A**: `validate_etf_price_mcp()`が警告を出します。
 
 例: IDTL $3.40（TLTの1/27）
+
 ```json
 {
   "is_valid": true,
-  "warnings": [
-    "ℹ️ IDTLはTLTの3.7%の価格 - 1株あたりの設計が異なる（正常）"
-  ]
+  "warnings": ["ℹ️ IDTLはTLTの3.7%の価格 - 1株あたりの設計が異なる（正常）"]
 }
 ```
 
@@ -419,7 +435,6 @@ Decimal("0.1") + Decimal("0.2") == Decimal("0.3")  # True
 ## 📚 関連ドキュメント
 
 - **`docs/calculation_error_prevention_strategy.md`** - 対策戦略全体
-- **`docs/phase1_completion_summary.md`** - Phase 1完了サマリー
 - **`ib_sec_mcp/tools/etf_calculator.py`** - 実装コード
 
 ---

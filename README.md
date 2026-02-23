@@ -221,6 +221,65 @@ ib-sec/
 └── legacy/               # Legacy scripts
 ```
 
+## Architecture
+
+### Layer Structure
+
+```
+┌─────────────────────────────────────┐
+│      CLI Layer (typer + rich)       │
+├─────────────────────────────────────┤
+│    Reports Layer (console/html)     │
+├─────────────────────────────────────┤
+│   Analyzers Layer (5 analyzers)     │
+├─────────────────────────────────────┤
+│  Core Logic (parser/calc/agg)       │
+├─────────────────────────────────────┤
+│   Models Layer (Pydantic v2)        │
+├─────────────────────────────────────┤
+│    API Layer (sync + async)         │
+└─────────────────────────────────────┘
+```
+
+### Design Patterns
+
+**Template Method** (BaseAnalyzer):
+
+```python
+class BaseAnalyzer(ABC):
+    @abstractmethod
+    def analyze(self) -> AnalysisResult:
+        pass
+
+    def _create_result(self, **kwargs) -> AnalysisResult:
+        """Shared result creation with metadata"""
+        result = AnalysisResult(self.analyzer_name, **kwargs)
+        result["timestamp"] = datetime.now().isoformat()
+        return result
+
+class PerformanceAnalyzer(BaseAnalyzer):
+    def analyze(self) -> AnalysisResult:
+        trades = self.get_trades()
+        # ... compute metrics ...
+        return self._create_result(win_rate=win_rate, profit_factor=pf)
+```
+
+**Strategy** (Reports):
+
+```python
+class BaseReport(ABC):
+    @abstractmethod
+    def render(self) -> str:
+        pass
+```
+
+**Factory Method** (Parsers, Portfolio):
+
+```python
+account = CSVParser.to_account(csv_data, from_date, to_date)
+portfolio = Portfolio.from_accounts(accounts, base_currency="USD")
+```
+
 ## Available Analyzers
 
 - **PerformanceAnalyzer**: Overall trading performance metrics
