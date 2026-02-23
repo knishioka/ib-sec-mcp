@@ -195,7 +195,7 @@ class ETFSwapCalculator:
             lines.append("  メリットなし（経費増加が源泉税削減を上回る）")
         else:
             lines.append(
-                f"  {calc.payback_period_months:.1f}ヶ月（約{calc.payback_period_months/12:.1f}年）"
+                f"  {calc.payback_period_months:.1f}ヶ月（約{calc.payback_period_months / 12:.1f}年）"
             )
 
         return "\n".join(lines)
@@ -308,7 +308,7 @@ def validate_etf_price(
 
         if price_ratio < 0.01:
             warnings.append(
-                f"⚠️ {symbol}は{reference_symbol}の{price_ratio*100:.1f}%の価格 "
+                f"⚠️ {symbol}は{reference_symbol}の{price_ratio * 100:.1f}%の価格 "
                 f"- 低価格ETFの可能性（正常な場合もあり）"
             )
         elif price_ratio > 100:

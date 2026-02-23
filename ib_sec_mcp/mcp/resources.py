@@ -4,11 +4,11 @@ Provides read-only access to portfolio data via URI patterns.
 """
 
 import json
-import yaml
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
 
+import yaml
 from fastmcp import FastMCP
 
 from ib_sec_mcp.analyzers.risk import RiskAnalyzer
@@ -844,11 +844,14 @@ def register_resources(mcp: FastMCP) -> None:
         profile_path = Path("notes/investor-profile.yaml")
 
         if not profile_path.exists():
-            return json.dumps({
-                "error": "Profile not found",
-                "path": str(profile_path),
-                "hint": "Create notes/investor-profile.yaml with your investment preferences"
-            }, indent=2)
+            return json.dumps(
+                {
+                    "error": "Profile not found",
+                    "path": str(profile_path),
+                    "hint": "Create notes/investor-profile.yaml with your investment preferences",
+                },
+                indent=2,
+            )
 
         try:
             with open(profile_path) as f:
@@ -856,8 +859,7 @@ def register_resources(mcp: FastMCP) -> None:
 
             return json.dumps(profile, indent=2, default=str)
         except yaml.YAMLError as e:
-            return json.dumps({
-                "error": "Failed to parse YAML",
-                "path": str(profile_path),
-                "details": str(e)
-            }, indent=2)
+            return json.dumps(
+                {"error": "Failed to parse YAML", "path": str(profile_path), "details": str(e)},
+                indent=2,
+            )

@@ -49,6 +49,9 @@ class Config(BaseSettings):
     # Analysis settings
     default_currency: str = Field("USD", description="Default currency for analysis")
     tax_rate: float = Field(0.30, description="Default tax rate for estimates")
+    trading_fee_usd: float = Field(
+        75.0, description="Default trading fee in USD for ETF swap calculations"
+    )
 
     @field_validator("data_dir", "raw_data_dir", "processed_data_dir", mode="before")
     @classmethod

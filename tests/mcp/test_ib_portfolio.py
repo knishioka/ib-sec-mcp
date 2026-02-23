@@ -195,7 +195,7 @@ class TestGetOrFetchData:
             mock_ctx.warning.assert_called_once()
             warning_call = mock_ctx.warning.call_args[0][0]
             assert "account_index 1 specified" in warning_call
-            assert "single account supported" in warning_call
+            assert "single Flex Query" in warning_call
 
     @pytest.mark.asyncio
     async def test_default_end_date_is_today(self, mock_env, sample_csv_data, clean_cache):

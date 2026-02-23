@@ -76,10 +76,17 @@ async def _get_or_fetch_data(
     """
     Get data from cache or fetch from IB API
 
+    Note: This function uses a single set of API credentials (QUERY_ID/TOKEN)
+    to fetch data. If the Flex Query is configured to return multiple accounts,
+    all accounts are included in the response. The ``account_index`` parameter
+    is used downstream to select among parsed accounts, not to switch API
+    credentials. See individual analysis tools for account selection.
+
     Args:
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format (defaults to today)
-        account_index: Account index (0 for first account, 1 for second, etc.)
+        account_index: Account index for downstream account selection.
+            Validated here but applied when parsing the response.
         use_cache: Use cached data if available (default: True)
         ctx: MCP context for logging
 
@@ -149,10 +156,15 @@ async def _get_or_fetch_data(
         config = Config.load()
         credentials = config.get_credentials()
 
-        # Note: account_index currently not supported (single account config)
-        # Multi-account support requires config changes
+        # API credentials are for a single Flex Query (one query_id/token pair).
+        # If that query returns multiple accounts, account_index selects among
+        # them at parse time. The warning below is informational only.
         if account_index != 0:
-            warning_msg = f"account_index {account_index} specified but only single account supported. Using default account."
+            warning_msg = (
+                f"account_index {account_index} specified. "
+                "API credentials use a single Flex Query; account_index selects "
+                "among accounts returned in the response."
+            )
             logger.warning(warning_msg)
             if ctx:
                 await ctx.warning(warning_msg)
@@ -260,7 +272,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format (defaults to today)
-            account_index: Account index (0 for first account, 1 for second, etc.)
+            account_index: Index to select among accounts returned by the Flex Query
+                (0 for first account, 1 for second, etc.)
             ctx: MCP context for logging
 
         Returns:
@@ -458,7 +471,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format (defaults to today)
-            account_index: Account index (0 for first account, 1 for second, etc.)
+            account_index: Index to select among accounts returned by the Flex Query
+                (0 for first account, 1 for second, etc.)
             use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
@@ -517,7 +531,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format (defaults to today)
-            account_index: Account index (0 for first account, 1 for second, etc.)
+            account_index: Index to select among accounts returned by the Flex Query
+                (0 for first account, 1 for second, etc.)
             use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
@@ -568,7 +583,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format (defaults to today)
-            account_index: Account index (0 for first account, 1 for second, etc.)
+            account_index: Index to select among accounts returned by the Flex Query
+                (0 for first account, 1 for second, etc.)
             use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
@@ -619,7 +635,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format (defaults to today)
-            account_index: Account index (0 for first account, 1 for second, etc.)
+            account_index: Index to select among accounts returned by the Flex Query
+                (0 for first account, 1 for second, etc.)
             use_cache: Use cached data if available (default: True)
             ctx: MCP context for logging
 
