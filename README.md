@@ -213,12 +213,10 @@ ib-sec/
 │   ├── analyzers/         # Analysis modules
 │   ├── reports/           # Report generators
 │   └── utils/             # Utilities
-├── scripts/               # CLI scripts
 ├── tests/                 # Test suite
-├── data/                  # Data directory
-│   ├── raw/              # Raw CSV/XML data
-│   └── processed/        # Processed data
-└── legacy/               # Legacy scripts
+└── data/                  # Data directory
+    ├── raw/              # Raw CSV/XML data
+    └── processed/        # Processed data
 ```
 
 ## Architecture
@@ -689,16 +687,6 @@ This provides:
 - Individual source queries: ~1-2 seconds each
 - Cached results valid for 5 minutes (real-time market data)
 - Concurrent analysis supported for multiple symbols
-
-**Code Examples**:
-
-See [examples/sentiment_analysis_example.py](examples/sentiment_analysis_example.py) for complete programmatic usage examples including:
-
-- Composite sentiment analysis
-- Individual source queries (technical, options, news)
-- Natural language query examples
-- Integration with `/analyze-symbol` command
-- Sentiment interpretation guidelines
 
 ### Usage Examples in Claude Desktop
 

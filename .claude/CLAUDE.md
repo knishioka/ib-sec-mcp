@@ -71,7 +71,7 @@ Step-by-step process
 ## Tools Usage
 ```bash
 command --flags
-```
+````
 
 ## Quality Checklist
 
@@ -127,7 +127,7 @@ Brief description.
 
 **Expected Output**:
 Format description
-```
+````
 
 **Detailed Guide**: See `.claude/SLASH_COMMANDS.md`
 
@@ -232,7 +232,6 @@ pytest --cov=ib_sec_mcp
 - ✅ Handle missing data gracefully
 - ❌ Never use `float` for calculations
 - ❌ Never commit `.env` files
-- ❌ Never modify legacy scripts
 
 ### API & Data
 

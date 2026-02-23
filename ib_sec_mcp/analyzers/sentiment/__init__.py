@@ -97,10 +97,6 @@ Sentiment analysis is integrated into:
     - /analyze-symbol command: Automatic sentiment inclusion
     - Claude Desktop: Natural language queries
 
-Examples
---------
-See examples/sentiment_analysis_example.py for comprehensive usage examples.
-
 See Also
 --------
 - README.md section "Market Sentiment Analysis" for complete documentation
