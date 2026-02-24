@@ -1,70 +1,80 @@
 ---
-description: Generate comprehensive tax report with optimization strategies and market timing
+description: Generate comprehensive tax report with capital gains, OID (phantom income), wash sale analysis, and optimization strategies
 allowed-tools: Task, Write
 argument-hint: [--year YYYY|--ytd|--save]
 ---
 
-Generate detailed tax analysis report including capital gains, phantom income, and optimization strategies with market timing recommendations.
+Generate a detailed tax report covering capital gains/losses, phantom income (OID) from zero-coupon bonds, wash sale violations, and a prioritized action plan for tax optimization.
+
+**When to use this command**:
+
+- Year-end tax planning (October–December)
+- You want to know your total estimated tax liability for the year
+- You hold STRIPS or zero-coupon bonds and need OID (phantom income) calculations
+- You want integrated advice: tax savings + market timing (when to sell)
 
 ## Task
 
-Create comprehensive tax report combining deep tax analysis (tax-optimizer) with market timing (market-analyst) for optimal tax-loss harvesting and holding period strategies.
+### Step 1: Parse Arguments
 
-### Report Scope
+From `$ARGUMENTS`, extract:
 
-**Year Selection**:
+- `tax_year`: Look for `--year YYYY` → use that year. If `--ytd` → use current year, date range = Jan 1 to today. Otherwise → use current calendar year.
+- `start_date`: `"{tax_year}-01-01"` (or Jan 1 of current year for `--ytd`)
+- `end_date`: `"{tax_year}-12-31"` (or today's date for `--ytd`)
+- `save_output`: True if `--save` is in arguments. Default: False.
 
-- If $ARGUMENTS contains `--year YYYY`: Specific tax year
-- If $ARGUMENTS contains `--ytd`: Year-to-date
-- Otherwise: Current calendar year
+Also accept natural language: "去年の税務レポート" → `--year {last_year}`, "今年の" → current year.
 
-**Output Options**:
+### Step 2: Orchestrate Sub-Agents in Parallel
 
-- If $ARGUMENTS contains `--save`: Save to `data/processed/tax_report_YYYY.txt`
-- Otherwise: Display to console only
+Launch **tax-optimizer** and **market-analyst** sub-agents in parallel using the Task tool.
 
-### Orchestration Process
+**tax-optimizer task** — provide this context:
 
 ```
-Use both tax-optimizer and market-analyst subagents:
+Analyze tax situation for the period {start_date} to {end_date}.
 
-1. Tax Analysis Phase (tax-optimizer):
-   - Calculate capital gains/losses (short-term, long-term)
-   - Identify phantom income (OID) for bonds
-   - Check for wash sale violations
-   - Find tax-loss harvesting candidates
-   - Calculate current tax liability
+Perform:
+1. Capital gains/losses calculation (short-term < 1 year, long-term ≥ 1 year)
+2. OID (phantom income) calculation for zero-coupon bonds (STRIPS, etc.)
+3. Wash sale violation detection (30-day rule)
+4. Tax-loss harvesting candidates (unrealized losses that could offset gains)
+5. Summary: total estimated tax liability for the period
 
-2. Market Timing Analysis (market-analyst):
-   - For loss harvesting candidates:
-     - Analyze technical outlook
-     - Recommend optimal exit timing
-     - Suggest re-entry strategy after 31 days
-     - Identify alternative securities (avoid wash sale)
-
-   - For positions approaching long-term:
-     - Analyze technical support levels
-     - Risk of holding until long-term qualification
-     - Recommend hold vs sell decision
-
-   - For positions with gains:
-     - Check technical levels for profit-taking
-     - Suggest covered call strategies to defer gains
-     - Identify rebalancing opportunities
-
-3. Integrated Tax Strategy:
-   - Combine tax savings with market timing
-   - Prioritize by tax savings × probability of success
-   - Consider technical risk of holding positions
-   - Suggest options strategies for tax deferral
-
-4. Action Plan:
-   - Urgent: Execute before year-end or wash sale period
-   - High Priority: Optimal tax timing with good technicals
-   - Monitor: Positions to watch for tax opportunities
-
-$ARGUMENTS
+Return structured data: gains, losses, OID_income, wash_sale_violations, harvesting_candidates, total_tax_liability.
 ```
+
+**market-analyst task** — provide this context (run in parallel with tax-optimizer):
+
+```
+Analyze market timing for tax decisions in the portfolio.
+
+Focus on:
+1. For any positions with unrealized losses: technical outlook — is now a good time to sell, or wait?
+2. For positions approaching 1-year holding mark: support levels and risk of holding until long-term tax treatment
+3. For positions with gains: profit-taking levels and covered call strategies to defer gains
+
+Return: per-symbol timing recommendation (sell now / hold / wait N days).
+```
+
+### Step 3: Integrate Results
+
+Combine the outputs from both sub-agents:
+
+- Match tax-optimizer's harvesting candidates with market-analyst's timing recommendations
+- Prioritize by: (tax savings × probability of success based on technicals)
+- Generate the integrated action plan
+
+### Step 4: Save if Requested
+
+If `save_output` is True, save the full report to:
+
+```
+data/processed/tax_report_{tax_year}.txt
+```
+
+Print: "Report saved to data/processed/tax*report*{tax_year}.txt"
 
 ### Analysis Components
 

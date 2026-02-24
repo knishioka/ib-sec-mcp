@@ -1,37 +1,50 @@
 ---
-description: Analyze sector allocation and concentration risk
-allowed-tools: mcp__ib-sec-mcp__analyze_sector_allocation
+description: Analyze portfolio sector allocation, concentration risk (HHI score), and diversification quality
+allowed-tools: mcp__ib-sec-mcp__analyze_sector_allocation, mcp__ib-sec-mcp__get_positions
 argument-hint: [--start YYYY-MM-DD] [--account N]
 ---
 
-Analyze portfolio sector allocation, concentration risk (HHI), and equity vs non-equity breakdown.
+Analyze how your portfolio is distributed across sectors (Technology, Healthcare, Financials, etc.), calculate concentration risk using the HHI score, and identify if you are over-exposed to any single sector.
+
+**When to use this command**:
+
+- You want to see which sectors dominate your portfolio
+- You're concerned about over-concentration in one industry (e.g., too much Tech)
+- You want a diversification quality score
 
 ## Task
 
-Call `analyze_sector_allocation` MCP tool and present results in a structured report.
+### Step 1: Parse Arguments
 
-### Argument Parsing
+From `$ARGUMENTS`, extract:
 
-- If $ARGUMENTS contains `--start YYYY-MM-DD`: Use as start_date
-- If $ARGUMENTS contains `--account N`: Use N as account_index
-- Default start_date: `2025-01-01`
-- Default account_index: `0`
+- `start_date`: Look for `--start YYYY-MM-DD`. Also accept natural language: "2024年から" → "2024-01-01", "今年" → current year Jan 1, "去年" → last year Jan 1. Default: `"2025-01-01"`.
+- `account_index`: Look for `--account N`. Default: `0`.
 
-### Steps
+### Step 2: Fetch Sector Data
 
-1. **Fetch Sector Data**
+Call the MCP tool with the following parameters:
 
-Call `mcp__ib-sec-mcp__analyze_sector_allocation` with parsed arguments.
+```
+mcp__ib-sec-mcp__analyze_sector_allocation(
+  start_date=<start_date>,
+  account_index=<account_index>
+)
+```
 
-2. **Present Report**
+### Step 3: Present Report
 
-Format the JSON response into the output format below.
+Format the JSON response. The HHI (Herfindahl-Hirschman Index) measures concentration:
+
+- Below 1500 = well-diversified ✅
+- 1500–2500 = moderate concentration ⚠️
+- Above 2500 = high concentration risk ❌
 
 ### Expected Output
 
 ```
 === Sector Allocation Analysis ===
-Period: {start_date} to {end_date}
+Period: {start_date} to today
 Account: {account_id}
 
 📊 SECTOR BREAKDOWN
@@ -46,54 +59,58 @@ Consumer Defensive  | $15,000     | 10.7%   | 2
 
 📈 EQUITY vs NON-EQUITY
 
-Equity Positions:    {equity_count} positions
-Non-Equity:          {non_equity_count} positions
+Equity Positions:    {equity_count} positions ({equity_pct}% of portfolio)
+Non-Equity (Bonds, Cash, etc.): {non_equity_count} positions ({non_equity_pct}%)
 Total:               {position_count} positions
 
-⚠️ CONCENTRATION RISK
+⚠️ CONCENTRATION RISK (HHI Score)
 
-HHI Score: {concentration_risk.hhi}
-Assessment: {concentration_risk.assessment}
-  - LOW (< 1500): Well-diversified
-  - MODERATE (1500-2500): Moderate concentration
-  - HIGH (> 2500): High concentration risk
+HHI Score:   {hhi}
+Assessment:  {LOW ✅ / MODERATE ⚠️ / HIGH ❌}
 
-Top Sector Concentration:
-  1. {sector}: {pct}% ← {assessment}
+  LOW  (HHI < 1500): Portfolio is well-diversified
+  MOD  (HHI 1500–2500): Some concentration, monitor top sectors
+  HIGH (HHI > 2500): Significant concentration risk, consider rebalancing
+
+Top Sector Weights:
+  1. {sector}: {pct}% {← HIGH if >40%}
   2. {sector}: {pct}%
   3. {sector}: {pct}%
 
-📋 PER-SECTOR POSITIONS
+📋 POSITIONS BY SECTOR
 
 Technology (32.1%):
   - AAPL: $15,000 (10.7%)
   - MSFT: $12,000 (8.6%)
-  - GOOGL: $10,000 (7.1%)
-  - ...
+  ...
 
 Healthcare (20.0%):
   - JNJ: $15,000 (10.7%)
-  - ...
+  ...
 
 💡 RECOMMENDATIONS
 
-{Based on HHI assessment}:
-- If HIGH: Consider diversifying away from {top_sector}
-- If MODERATE: Monitor {top_sector} weight
-- If LOW: Portfolio is well-diversified
+{If HIGH concentration}:
+  ⚠️ Consider reducing {top_sector} exposure. It represents {pct}% of equity portfolio.
+  → Options: Sell partial {symbol}, add positions in underrepresented sectors
+
+{If MODERATE}:
+  → Monitor {top_sector} weight. Aim to keep any single sector below 30%.
+
+{If LOW}:
+  ✅ Portfolio is well-diversified. No immediate action needed.
 
 === NEXT STEPS ===
-
-→ Check currency exposure (/fx-exposure)
-→ Review dividend impact by sector (/dividend-analysis)
+→ Check currency exposure by region (/fx-exposure)
+→ Review dividend income by sector (/dividend-analysis)
 → Full portfolio optimization (/optimize-portfolio)
 ```
 
 ### Error Handling
 
-- If no positions found: Report "No positions found in account."
-- If sector data unavailable for some positions: Show available data with "Unknown" sector for missing
-- If MCP tool fails: Report error and suggest `/debug-api` for troubleshooting
+- **No positions found**: Print "No positions found in account {account_index}. Try `/fetch-latest` to load data."
+- **Sector data unavailable for some tickers**: Show what is available; mark missing as "Unknown sector". Do not abort.
+- **MCP tool fails**: Print the error, then suggest `/mcp-status` and `/debug-api`.
 
 ### Examples
 
@@ -101,5 +118,6 @@ Healthcare (20.0%):
 /sector-analysis
 /sector-analysis --start 2024-01-01
 /sector-analysis --account 1
-/sector-analysis --start 2025-01-01 --account 0
+/sector-analysis 今年
+/sector-analysis 2024年から --account 0
 ```

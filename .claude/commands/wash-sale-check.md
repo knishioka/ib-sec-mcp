@@ -1,110 +1,114 @@
 ---
-description: Detect wash sale violations and tax loss harvesting opportunities
-allowed-tools: mcp__ib-sec-mcp__calculate_tax_loss_harvesting
+description: Check wash sale rule violations (30-day window) and find tax loss harvesting opportunities with Ireland ETF alternatives
+allowed-tools: mcp__ib-sec-mcp__calculate_tax_loss_harvesting, mcp__ib-sec-mcp__get_positions
 argument-hint: [--start YYYY-MM-DD] [--tax-rate 0.30] [--account N]
 ---
 
-Check for wash sale rule violations (30-day window), identify tax loss harvesting opportunities, and suggest Ireland-domiciled alternative ETFs.
+Detect wash sale violations (selling at a loss then repurchasing within 30 days), identify positions where you could harvest tax losses, and suggest Ireland-domiciled ETF alternatives that maintain market exposure during the 31-day waiting period.
+
+**When to use this command**:
+
+- You want to reduce this year's capital gains tax by harvesting losses
+- You want to check if any recent trades violated the wash sale rule
+- You're planning to sell a losing position and want to know the safest alternative to hold during the 31-day window
+- Tax year-end planning (typically October–December)
 
 ## Task
 
-Call `calculate_tax_loss_harvesting` MCP tool and present results in a structured report.
+### Step 1: Parse Arguments
 
-### Argument Parsing
+From `$ARGUMENTS`, extract:
 
-- If $ARGUMENTS contains `--start YYYY-MM-DD`: Use as start_date
-- If $ARGUMENTS contains `--tax-rate X.XX`: Use as tax_rate (decimal string, e.g., "0.30")
-- If $ARGUMENTS contains `--account N`: Use N as account_index
-- Default start_date: `2025-01-01`
-- Default tax_rate: `"0.30"` (30%)
-- Default account_index: `0`
+- `start_date`: Look for `--start YYYY-MM-DD`. Also accept: "2024年から" → "2024-01-01", "今年" → current year Jan 1, "去年" → last year Jan 1. Default: `"2025-01-01"`.
+- `tax_rate`: Look for `--tax-rate X.XX` (decimal, e.g., `0.30` = 30%). Also accept "30%" → 0.30, "20%" → 0.20. Default: `"0.30"` (Malaysia: capital gains tax 0%, but use this for withholding tax calculations).
+- `account_index`: Look for `--account N`. Default: `0`.
 
-### Steps
+### Step 2: Fetch Tax Loss Harvesting Data
 
-1. **Fetch Tax Loss Harvesting Data**
+Call the MCP tool with the following parameters:
 
-Call `mcp__ib-sec-mcp__calculate_tax_loss_harvesting` with parsed arguments.
+```
+mcp__ib-sec-mcp__calculate_tax_loss_harvesting(
+  start_date=<start_date>,
+  tax_rate=<tax_rate as string, e.g., "0.30">,
+  account_index=<account_index>
+)
+```
 
-2. **Present Report**
+### Step 3: Present Report
 
-Format the JSON response into the output format below, with emphasis on wash sale warnings.
+Format the JSON response. Emphasize wash sale warnings prominently — these are violations that reduce your deductible losses.
 
 ### Expected Output
 
 ```
 === Wash Sale & Tax Loss Harvesting Report ===
-Period: {start_date} to {end_date}
+Period: {start_date} to today
 Account: {account_id}
-Tax Rate: {tax_rate as percentage, e.g., 0.30 → 30%}
+Tax Rate Used: {tax_rate * 100}%
 
-⚠️ WASH SALE WARNINGS
+⚠️ WASH SALE VIOLATIONS
 
-{If wash sale violations found}:
-Symbol | Sell Date  | Buy Date   | Days Apart | Status      | Disallowed Loss
--------|------------|------------|------------|-------------|----------------
-ABC    | 2025-09-15 | 2025-10-01 | 16 days    | ⚠️ VIOLATION | $890
-XYZ    | 2025-08-10 | 2025-09-20 | 41 days    | ✅ CLEAR     | $0
-
-Forward-Looking Wash Sale Risk:
-  Positions sold at loss in last 30 days:
-  - {symbol}: Sold {date}, avoid repurchase until {date + 31 days}
-
-Backward-Looking Wash Sale Risk:
-  Positions purchased in last 30 days with prior loss:
-  - {symbol}: Bought {date}, loss on {prior_sale_date} may be disallowed
+{If violations found}:
+Symbol | Sold Date  | Repurchased | Days Apart | Status       | Disallowed Loss
+-------|------------|-------------|------------|--------------|----------------
+ABC    | 2025-09-15 | 2025-10-01  | 16 days    | ⚠️ VIOLATION  | $890
+XYZ    | 2025-08-10 | 2025-09-20  | 41 days    | ✅ OK (>30d)  | $0
 
 {If no violations}: ✅ No wash sale violations detected.
 
+Forward-Looking Risk (positions sold at a loss in the last 30 days):
+  {symbol}: Sold {date} at a loss — avoid repurchasing until {date + 31 days}
+
+Backward-Looking Risk (positions bought in the last 30 days with a prior loss):
+  {symbol}: Bought {date} — the earlier loss on {prior_sale_date} may be disallowed
+
 💰 TAX LOSS HARVESTING OPPORTUNITIES
 
-Total Unrealized Losses: -${total_unrealized_loss}
-Potential Tax Savings:   ${potential_tax_savings} (at {tax_rate as percentage}% rate)
+Total Unrealized Losses Available: -${total_unrealized_loss}
+Potential Tax Savings:             ${potential_tax_savings} (at {tax_rate * 100}% rate)
 
-Rank | Symbol | Unrealized Loss | Tax Savings | Wash Sale Risk | Alternative
------|--------|-----------------|-------------|----------------|------------
-1    | VTI    | -$2,500         | $750        | ✅ Safe        | IWDA (IE)
-2    | QQQ    | -$1,200         | $360        | ⚠️ 30-day wait | CNDX (IE)
+Rank | Symbol | Unrealized Loss | Tax Savings | Wash Sale Risk | Suggested IE Alternative
+-----|--------|-----------------|-------------|----------------|-------------------------
+1    | VTI    | -$2,500         | $750        | ✅ Safe now    | IWDA.L (IE-domiciled)
+2    | QQQ    | -$1,200         | $360        | ⚠️ Wait 12d    | CNDX.L (IE-domiciled)
 ...
 
 🏷️ IRELAND-DOMICILED ALTERNATIVES
 
-For each loss position, suggested IE-domiciled ETF to maintain exposure:
-1. VTI → IWDA (IE00B4L5Y983) - MSCI World
-2. QQQ → CNDX (IE00B53SZB19) - Nasdaq 100
-3. SPY → CSPX (IE00B5BMR087) - S&P 500
+Switching to Ireland ETFs during the 31-day window gives you:
+  ✅ Maintains market exposure (avoids missing a potential rebound)
+  ✅ Avoids "substantially identical security" rule (Ireland ≠ US version)
+  ✅ Lower withholding tax (15%) vs US ETFs (30%)
 
-Benefits of IE-domiciled switch:
-  - Lower withholding tax: 30% → 15%
-  - Maintains market exposure during 31-day wash sale window
-  - Avoids substantially identical security rule
+Common substitutions:
+  VTI / VTSAX → IWDA.L or SWRD.L (MSCI World, IE-domiciled)
+  QQQ / QQQM  → CNDX.L (Nasdaq 100, IE-domiciled)
+  SPY / VOO   → CSPX.L (S&P 500, IE-domiciled)
 
-💡 HARVESTING STRATEGY
+💡 PRIORITY HARVESTING ACTIONS
 
-Priority Actions:
-1. 🎯 {symbol}: Harvest -${loss} → Save ${savings} in taxes
-   - Sell and replace with {ie_alternative}
-   - Wait 31 days before repurchasing original
+{For each top opportunity}:
+1. 🎯 {symbol}: Harvest -${loss} → Est. tax saving: ${savings}
+   - Action: Sell {symbol}, buy {ie_alternative} immediately
+   - Repurchase window: Can buy back {symbol} after {date + 31 days}
 
-2. 🎯 {symbol}: Harvest -${loss} → Save ${savings} in taxes
-   - Safe to harvest (no recent wash sale risk)
-
-⏰ Timing Considerations:
-  - Settlement: T+1 for stocks, T+2 for bonds
-  - Repurchase window: 31 days from settlement date
-  - Year-end deadline: Last trading day of {year}
+⏰ TIMING NOTES
+  - Settlement: T+1 (stocks); T+2 (bonds/ETFs on some exchanges)
+  - Repurchase window: 31 days from settlement date (not trade date)
+  - Year-end deadline: Complete trades by last trading day of {current_year}
 
 === NEXT STEPS ===
-
 → Review dividend impact before selling (/dividend-analysis)
-→ Check sector impact of restructuring (/sector-analysis)
-→ Full tax report (/tax-report)
+→ Check sector exposure changes after restructuring (/sector-analysis)
+→ Full tax report with capital gains summary (/tax-report)
 ```
 
 ### Error Handling
 
-- If no loss positions found: Report "No unrealized loss positions found. Portfolio is fully in gain."
-- If invalid tax_rate: Report "Invalid tax rate. Use decimal format, e.g., --tax-rate 0.30 for 30%"
-- If MCP tool fails: Report error and suggest `/debug-api` for troubleshooting
+- **No unrealized loss positions**: Print "No unrealized loss positions found. Your portfolio is fully in gain — no harvesting needed right now."
+- **Invalid tax_rate format**: Print "Tax rate must be a decimal between 0 and 1. Examples: `--tax-rate 0.30` (30%) or `--tax-rate 0.20` (20%)."
+- **MCP tool fails**: Print the error, then suggest `/mcp-status` and `/debug-api`.
 
 ### Examples
 
@@ -113,5 +117,6 @@ Priority Actions:
 /wash-sale-check --start 2024-01-01
 /wash-sale-check --tax-rate 0.20
 /wash-sale-check --account 1
-/wash-sale-check --start 2025-01-01 --tax-rate 0.30 --account 0
+/wash-sale-check 今年 --tax-rate 0.30
+/wash-sale-check 年末に向けて損出しできる銘柄を確認したい
 ```

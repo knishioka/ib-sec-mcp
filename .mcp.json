@@ -2,8 +2,13 @@
   "mcpServers": {
     "ib-sec-mcp": {
       "type": "stdio",
-      "command": ".venv/bin/python",
-      "args": ["-m", "ib_sec_mcp.mcp.server"],
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/ken/Developer/private/ib-sec-mcp",
+        "run",
+        "ib-sec-mcp"
+      ],
       "env": {
         "QUERY_ID": "${QUERY_ID}",
         "TOKEN": "${TOKEN}"

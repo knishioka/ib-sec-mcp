@@ -4,27 +4,29 @@ Complete reference for all MCP tools, resources, and prompts provided by the IB 
 
 ## Overview
 
-IB Analytics provides **38 tools**, **9 resources**, and **5 prompts** across two usage modes:
+IB Analytics provides **45 tools**, **9 resources**, and **5 prompts** across two usage modes:
 
 - **Mode 1 (Claude Desktop)**: Coarse-grained tools for complete, self-contained analysis
 - **Mode 2 (Claude Code + MCP)**: Fine-grained tools for composable, custom workflows
 
 ## Quick Reference
 
-| Category                                        | Tools | Mode   | Description                                |
-| ----------------------------------------------- | ----- | ------ | ------------------------------------------ |
-| [IB Portfolio Analysis](#ib-portfolio-analysis) | 7     | Mode 1 | Complete portfolio analysis with IB API    |
-| [Composable Data](#composable-data-access)      | 5     | Mode 2 | Fine-grained data access and metrics       |
-| [Stock Data](#stock-data)                       | 3     | Both   | Price data and company information         |
-| [Stock News](#stock-news)                       | 1     | Both   | News article retrieval                     |
-| [Options Analysis](#options-analysis)           | 5     | Both   | Options chain, Greeks, IV, Max Pain        |
-| [Portfolio Analytics](#portfolio-analytics)     | 2     | Both   | Advanced metrics and correlation           |
-| [Market Comparison](#market-comparison)         | 2     | Both   | Benchmark comparison and analyst consensus |
-| [ETF Comparison](#etf-comparison)               | 1     | Both   | Multi-ETF performance comparison           |
-| [Technical Analysis](#technical-analysis)       | 2     | Both   | Technical indicators and signals           |
-| [Position History](#position-history)           | 5     | Mode 2 | SQLite-based position tracking             |
-| [ETF Calculator](#etf-calculator)               | 3     | Both   | ETF swap calculations                      |
-| [Sentiment Analysis](#sentiment-analysis)       | 2     | Both   | Market sentiment from multiple sources     |
+| Category                                        | Tools | Mode   | Description                                      |
+| ----------------------------------------------- | ----- | ------ | ------------------------------------------------ |
+| [IB Portfolio Analysis](#ib-portfolio-analysis) | 9     | Mode 1 | Complete portfolio analysis with IB API          |
+| [Composable Data](#composable-data-access)      | 6     | Mode 2 | Fine-grained data access, metrics, and dividends |
+| [Rebalancing](#rebalancing)                     | 2     | Mode 1 | Portfolio rebalancing trades and simulation      |
+| [Sector & FX Analysis](#sector--fx-analysis)    | 2     | Mode 1 | Sector allocation and currency exposure          |
+| [Stock Data](#stock-data)                       | 3     | Both   | Price data and company information               |
+| [Stock News](#stock-news)                       | 1     | Both   | News article retrieval                           |
+| [Options Analysis](#options-analysis)           | 5     | Both   | Options chain, Greeks, IV, Max Pain              |
+| [Portfolio Analytics](#portfolio-analytics)     | 2     | Both   | Advanced metrics and correlation                 |
+| [Market Comparison](#market-comparison)         | 2     | Both   | Benchmark comparison and analyst consensus       |
+| [ETF Comparison](#etf-comparison)               | 1     | Both   | Multi-ETF performance comparison                 |
+| [Technical Analysis](#technical-analysis)       | 2     | Both   | Technical indicators and signals                 |
+| [Position History](#position-history)           | 5     | Mode 2 | SQLite-based position tracking                   |
+| [ETF Calculator](#etf-calculator)               | 3     | Both   | ETF swap calculations                            |
+| [Sentiment Analysis](#sentiment-analysis)       | 2     | Both   | Market sentiment from multiple sources           |
 
 ---
 
@@ -141,6 +143,33 @@ Analyze all accounts as a consolidated portfolio. Supports both API mode and fil
 >>> # File mode
 >>> result = await analyze_consolidated_portfolio(file_path="data/raw/U1234567_2025-01-01_2025-06-30.xml")
 ```
+
+### `calculate_tax_loss_harvesting`
+
+Identify unrealized loss positions eligible for tax loss harvesting. Detects wash sale violations (30-day rule) and suggests Ireland-domiciled ETF alternatives to maintain exposure during the waiting period.
+
+| Parameter       | Type  | Required | Default  | Description                                       |
+| --------------- | ----- | -------- | -------- | ------------------------------------------------- |
+| `start_date`    | `str` | Yes      | -        | Start date in YYYY-MM-DD format                   |
+| `end_date`      | `str` | No       | today    | End date in YYYY-MM-DD format                     |
+| `account_index` | `int` | No       | `0`      | Account selection index                           |
+| `tax_rate`      | `str` | No       | `"0.30"` | Tax rate as decimal string (e.g., `"0.30"` = 30%) |
+
+**Returns**: JSON with `wash_sale_violations` (symbol, sell_date, buy_date, days_apart, status, disallowed_loss), `harvesting_opportunities` (symbol, unrealized_loss, potential_tax_savings, wash_sale_risk, ie_alternative), and `summary` (total_unrealized_losses, potential_total_savings).
+
+```
+>>> result = await calculate_tax_loss_harvesting("2025-01-01", tax_rate="0.20")
+```
+
+### `get_portfolio_summary`
+
+Get a lightweight portfolio summary from a saved XML or CSV file (no API call). Useful for quick checks without re-fetching from IB.
+
+| Parameter   | Type  | Required | Default | Description                        |
+| ----------- | ----- | -------- | ------- | ---------------------------------- |
+| `file_path` | `str` | Yes      | -       | Path to IB Flex Query XML/CSV file |
+
+**Returns**: JSON with account summary, position list, and basic P&L totals.
 
 ---
 
@@ -262,6 +291,96 @@ Compare metrics across two time periods.
 ...     metrics=["win_rate", "realized_pnl"]
 ... )
 ```
+
+### `analyze_dividend_income`
+
+Analyze dividend income from held equity positions and compare Ireland-domiciled vs US-domiciled ETF tax efficiency.
+
+| Parameter       | Type  | Required | Default | Description                     |
+| --------------- | ----- | -------- | ------- | ------------------------------- |
+| `start_date`    | `str` | Yes      | -       | Start date in YYYY-MM-DD format |
+| `end_date`      | `str` | No       | today   | End date in YYYY-MM-DD format   |
+| `account_index` | `int` | No       | `0`     | Account selection index         |
+
+**Returns**: JSON with `positions` (symbol, domicile, yield, annual_dividend, withholding_rate, net_receipt), `portfolio_summary` (total_gross, total_withholding, total_net, weighted_yield), and `ie_savings_analysis` (potential_annual_savings per position).
+
+**Note**: Ireland-domiciled ETFs (IE ISIN prefix) are subject to 15% withholding tax vs 30% for US-domiciled ETFs. This tool identifies restructuring opportunities.
+
+```
+>>> result = await analyze_dividend_income("2025-01-01")
+```
+
+---
+
+## Rebalancing
+
+Tools for generating and simulating portfolio rebalancing trades. Typically invoked via `/rebalance-portfolio`.
+
+### `generate_rebalancing_trades`
+
+Calculate specific buy/sell trades required to move from current allocation to a target allocation.
+
+| Parameter           | Type               | Required | Default | Description                                 |
+| ------------------- | ------------------ | -------- | ------- | ------------------------------------------- |
+| `target_allocation` | `dict[str, float]` | Yes      | -       | Target weights per symbol (must sum to 100) |
+| `start_date`        | `str`              | Yes      | -       | Start date in YYYY-MM-DD format             |
+| `end_date`          | `str`              | No       | today   | End date in YYYY-MM-DD format               |
+| `account_index`     | `int`              | No       | `0`     | Account selection index                     |
+
+**Returns**: JSON with `trades` list (symbol, direction BUY/SELL, amount_usd, estimated_shares, commission, drift_pct), `summary` (total_buy, total_sell, net_cash, total_commission), and `warnings`.
+
+```
+>>> result = await generate_rebalancing_trades(
+...     target_allocation={"CSPX": 30, "INDA": 20, "STRIPS-2040": 40, "USD.CASH": 10},
+...     start_date="2025-01-01"
+... )
+```
+
+### `simulate_rebalancing`
+
+Simulate rebalancing and calculate the tax and commission impact before executing trades.
+
+| Parameter           | Type               | Required | Default | Description                                 |
+| ------------------- | ------------------ | -------- | ------- | ------------------------------------------- |
+| `target_allocation` | `dict[str, float]` | Yes      | -       | Target weights per symbol (must sum to 100) |
+| `start_date`        | `str`              | Yes      | -       | Start date in YYYY-MM-DD format             |
+| `end_date`          | `str`              | No       | today   | End date in YYYY-MM-DD format               |
+| `account_index`     | `int`              | No       | `0`     | Account selection index                     |
+
+**Returns**: Same as `generate_rebalancing_trades` plus `tax_impact` (estimated_taxable_gains, estimated_tax_losses, net_tax_impact).
+
+---
+
+## Sector & FX Analysis
+
+Tools for portfolio diversification analysis across sectors and currencies.
+
+### `analyze_sector_allocation`
+
+Analyze portfolio sector breakdown and concentration risk using the Herfindahl-Hirschman Index (HHI).
+
+| Parameter       | Type  | Required | Default | Description                     |
+| --------------- | ----- | -------- | ------- | ------------------------------- |
+| `start_date`    | `str` | Yes      | -       | Start date in YYYY-MM-DD format |
+| `end_date`      | `str` | No       | today   | End date in YYYY-MM-DD format   |
+| `account_index` | `int` | No       | `0`     | Account selection index         |
+
+**Returns**: JSON with `sectors` (name, value, weight, positions), `concentration_risk` (hhi, assessment: LOW/MODERATE/HIGH), `equity_vs_non_equity` breakdown, and `recommendations`.
+
+**HHI interpretation**: < 1500 = well-diversified; 1500–2500 = moderate concentration; > 2500 = high concentration risk.
+
+### `analyze_fx_exposure`
+
+Analyze currency exposure across all portfolio positions and simulate exchange rate scenario impact.
+
+| Parameter         | Type    | Required | Default | Description                              |
+| ----------------- | ------- | -------- | ------- | ---------------------------------------- |
+| `start_date`      | `str`   | Yes      | -       | Start date in YYYY-MM-DD format          |
+| `end_date`        | `str`   | No       | today   | End date in YYYY-MM-DD format            |
+| `account_index`   | `int`   | No       | `0`     | Account selection index                  |
+| `fx_scenario_pct` | `float` | No       | `10.0`  | % move to simulate for all non-base CCYs |
+
+**Returns**: JSON with `currencies` (currency, value_usd, weight, positions), `scenario_impact` (best_case, worst_case per currency), `concentration_risk`, and `hedge_recommendations`.
 
 ---
 

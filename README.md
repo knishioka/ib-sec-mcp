@@ -1175,7 +1175,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-See [MCP Tools Reference](docs/mcp-tools-reference.md) for complete documentation of all 38 tools, 9 resources, and 5 prompts.
+See [MCP Tools Reference](docs/mcp-tools-reference.md) for complete documentation of all 45 tools, 9 resources, and 5 prompts.
 
 See [.claude/CLAUDE.md](.claude/CLAUDE.md) for development guide and usage patterns.
 
