@@ -158,8 +158,7 @@ class TestCalculateSharpeRatio:
     def test_normal_returns(self) -> None:
         returns = [Decimal("0.10"), Decimal("0.05"), Decimal("0.08"), Decimal("0.12")]
         sharpe = PerformanceCalculator.calculate_sharpe_ratio(returns, Decimal("0.02"))
-        assert sharpe != Decimal("0")
-        assert isinstance(sharpe, Decimal)
+        assert abs(sharpe - Decimal("2.26")) < Decimal("0.01")
 
     def test_single_return(self) -> None:
         sharpe = PerformanceCalculator.calculate_sharpe_ratio([Decimal("0.10")])
@@ -298,8 +297,7 @@ class TestCalculatePhantomIncome:
             years_to_maturity=Decimal("10"),
             days_held=365,
         )
-        assert phantom > Decimal("0")
-        assert isinstance(phantom, Decimal)
+        assert abs(phantom - Decimal("9.52")) < Decimal("0.01")
 
     def test_zero_maturity(self) -> None:
         phantom = PerformanceCalculator.calculate_phantom_income(

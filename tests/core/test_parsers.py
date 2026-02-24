@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from unittest.mock import patch
 
 import defusedxml.ElementTree as ET  # noqa: N817
 import pytest
@@ -171,16 +172,23 @@ class TestParseDateYYYYMMDD:
         assert result == date(2025, 1, 15)
 
     def test_empty_string(self) -> None:
-        result = XMLParser._parse_date_yyyymmdd("")
-        assert result == date.today()
+        with patch("ib_sec_mcp.core.parsers.date") as mock_date:
+            mock_date.today.return_value = date(2025, 1, 1)
+            result = XMLParser._parse_date_yyyymmdd("")
+            assert result == date(2025, 1, 1)
 
     def test_none(self) -> None:
-        result = XMLParser._parse_date_yyyymmdd(None)
-        assert result == date.today()
+        with patch("ib_sec_mcp.core.parsers.date") as mock_date:
+            mock_date.today.return_value = date(2025, 1, 1)
+            result = XMLParser._parse_date_yyyymmdd(None)
+            assert result == date(2025, 1, 1)
 
     def test_invalid_format(self) -> None:
-        result = XMLParser._parse_date_yyyymmdd("2025-01-15")
-        assert result == date.today()
+        with patch("ib_sec_mcp.core.parsers.date") as mock_date:
+            mock_date.today.return_value = date(2025, 1, 1)
+            mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
+            result = XMLParser._parse_date_yyyymmdd("2025-01-15")
+            assert result == date(2025, 1, 1)
 
 
 class TestParseAccountInfo:
