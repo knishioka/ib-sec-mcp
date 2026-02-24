@@ -8,25 +8,27 @@ Generate detailed tax analysis report including capital gains, phantom income, a
 
 ## Task
 
-Create comprehensive tax report combining tax analysis (data-analyzer) with market timing (market-analyst) for optimal tax-loss harvesting and holding period strategies.
+Create comprehensive tax report combining deep tax analysis (tax-optimizer) with market timing (market-analyst) for optimal tax-loss harvesting and holding period strategies.
 
 ### Report Scope
 
 **Year Selection**:
+
 - If $ARGUMENTS contains `--year YYYY`: Specific tax year
 - If $ARGUMENTS contains `--ytd`: Year-to-date
 - Otherwise: Current calendar year
 
 **Output Options**:
+
 - If $ARGUMENTS contains `--save`: Save to `data/processed/tax_report_YYYY.txt`
 - Otherwise: Display to console only
 
 ### Orchestration Process
 
 ```
-Use both data-analyzer and market-analyst subagents:
+Use both tax-optimizer and market-analyst subagents:
 
-1. Tax Analysis Phase (data-analyzer):
+1. Tax Analysis Phase (tax-optimizer):
    - Calculate capital gains/losses (short-term, long-term)
    - Identify phantom income (OID) for bonds
    - Check for wash sale violations
@@ -66,7 +68,7 @@ $ARGUMENTS
 
 ### Analysis Components
 
-The integration of **data-analyzer** and **market-analyst** will provide:
+The integration of **tax-optimizer** and **market-analyst** will provide:
 
 ### Expected Output
 

@@ -2,19 +2,21 @@
 
 Detailed guide for creating and managing specialized sub-agents in Claude Code.
 
-## Current Sub-Agents (7)
+## Current Sub-Agents (8)
 
 1. **data-analyzer** 📊 - Financial data analysis specialist
-2. **test-runner** 🧪 - Testing and quality assurance
-3. **code-implementer** 💻 - Feature implementation with TDD
-4. **code-reviewer** 📝 - Code quality enforcement
-5. **performance-optimizer** ⚡ - Profiling and optimization
-6. **api-debugger** 🔧 - IB API troubleshooting
-7. **issue-analyzer** 🔍 - GitHub issue analysis
+2. **tax-optimizer** 💰 - Tax optimization for Malaysian tax residents
+3. **test-runner** 🧪 - Testing and quality assurance
+4. **code-implementer** 💻 - Feature implementation with TDD
+5. **code-reviewer** 📝 - Code quality enforcement
+6. **performance-optimizer** ⚡ - Profiling and optimization
+7. **api-debugger** 🔧 - IB API troubleshooting
+8. **issue-analyzer** 🔍 - GitHub issue analysis
 
 ## When to Create New Sub-Agents
 
 Create a new sub-agent when:
+
 - ✅ Task requires **specialized domain knowledge**
 - ✅ Operation is **repeated frequently** (3+ times)
 - ✅ Task benefits from **context isolation** (prevents main thread pollution)
@@ -22,6 +24,7 @@ Create a new sub-agent when:
 - ✅ Operation has **complex multi-step logic**
 
 Do NOT create sub-agents for:
+
 - ❌ One-off operations
 - ❌ Simple tasks without specialization
 - ❌ Operations requiring full project context
@@ -31,18 +34,21 @@ Do NOT create sub-agents for:
 **Location**: `.claude/agents/{agent-name}.md`
 
 **Required Frontmatter**:
+
 ```yaml
 ---
-name: agent-name                    # Kebab-case identifier
+name: agent-name # Kebab-case identifier
 description: When to use and what it does. Use PROACTIVELY if auto-activation desired.
-tools: Read, Write, Bash(pytest:*)  # Comma-separated, or omit to inherit all
-model: sonnet                       # sonnet (default) | opus | haiku | inherit
+tools: Read, Write, Bash(pytest:*) # Comma-separated, or omit to inherit all
+model: sonnet # sonnet (default) | opus | haiku | inherit
 ---
 ```
 
 **System Prompt Structure**:
-```markdown
+
+````markdown
 You are a [role] with expertise in:
+
 - Expertise area 1
 - Expertise area 2
 - Expertise area 3
@@ -60,6 +66,7 @@ Step-by-step process for common operations
 ## Tools Usage
 
 **Tool Name** (Purpose):
+
 ```bash
 tool-command --with-flags
 ```
@@ -71,13 +78,13 @@ tool-command --with-flags
 - [ ] Check 3
 
 Always provide [expected output format].
-```
+````
 
 ## Development Example: ML Analyzer
 
 **File**: `.claude/agents/ml-analyzer.md`
 
-```markdown
+````markdown
 ---
 name: ml-analyzer
 description: Machine learning specialist for predictive analysis and pattern recognition. Use for time series forecasting, anomaly detection, and performance prediction. Use PROACTIVELY when performance prediction is mentioned.
@@ -86,6 +93,7 @@ model: opus
 ---
 
 You are a machine learning specialist with expertise in:
+
 - Time series analysis and forecasting
 - Anomaly detection in trading data
 - Performance prediction algorithms
@@ -110,12 +118,15 @@ You are a machine learning specialist with expertise in:
 ## Tools Usage
 
 **Fetch Training Data**:
+
 ```python
 # Get 1 year of trades for model training
 trades = get_trades(start_date="2024-01-01", end_date="2025-01-01")
 ```
+````
 
 **Feature Engineering**:
+
 ```python
 # Calculate multiple metrics for feature set
 metrics = [
@@ -126,6 +137,7 @@ metrics = [
 ```
 
 **Model Training** (scikit-learn):
+
 ```bash
 python3 -c "
 from sklearn.ensemble import RandomForestRegressor
@@ -144,6 +156,7 @@ from sklearn.ensemble import RandomForestRegressor
 - [ ] Overfitting checked
 
 Always provide model accuracy metrics and prediction confidence intervals.
+
 ```
 
 ## Best Practices
@@ -177,12 +190,16 @@ Always provide model accuracy metrics and prediction confidence intervals.
 
 **Manual Testing**:
 ```
+
 # Explicit invocation
+
 You: "Use the ml-analyzer subagent to forecast next month's performance"
 
 # Automatic delegation (if description includes PROACTIVELY)
+
 You: "Predict my next month's win rate"
 → [Auto-delegates to ml-analyzer if keywords match]
+
 ```
 
 **Verification Checklist**:
@@ -191,3 +208,4 @@ You: "Predict my next month's win rate"
 - [ ] Output format matches expectations
 - [ ] Context isolation prevents pollution
 - [ ] Error handling is robust
+```

@@ -5,6 +5,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 ## 🎯 What You Get with Mode 3
 
 **For Investors & Analysts**:
+
 - ⚡ **95% faster investment strategy generation** (6-8 hours → 15-20 minutes)
 - 📊 **Parallel market analysis** of all holdings simultaneously
 - 🎯 **Consolidated multi-account view** with accurate portfolio metrics
@@ -12,11 +13,12 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 - 💰 **Tax-optimized execution plans** across multiple accounts
 
 **For Developers**:
+
 - 🤖 **90% faster issue resolution** (80 minutes → 8 minutes)
 - ✅ **Automated quality gates** (black, ruff, mypy, pytest)
 - 🔄 **Complete TDD workflow** (tests → code → PR)
 - 📝 **Auto-generated PR descriptions** with comprehensive context
-- 🔧 **7 specialized AI agents** for different domains
+- 🔧 **8 specialized AI agents** for different domains
 
 **Time Savings Summary**:
 | Task | Manual | Automated | Savings |
@@ -35,14 +37,15 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 ├── CLAUDE.md              # Main project context (auto-loaded)
 ├── README.md              # This file
 ├── settings.local.json    # Local settings (gitignored)
-├── agents/                # Specialized sub-agents (7 agents)
+├── agents/                # Specialized sub-agents (8 agents)
 │   ├── test-runner.md
 │   ├── data-analyzer.md
+│   ├── tax-optimizer.md       # NEW: Tax optimization specialist
 │   ├── api-debugger.md
 │   ├── code-reviewer.md
 │   ├── performance-optimizer.md
-│   ├── issue-analyzer.md      # NEW: GitHub issue analysis
-│   └── code-implementer.md    # NEW: Code implementation
+│   ├── issue-analyzer.md
+│   └── code-implementer.md
 └── commands/              # Custom slash commands (12 commands)
     ├── fetch-latest.md
     ├── debug-api.md
@@ -67,64 +70,87 @@ Specialized AI assistants that handle specific tasks in their own context window
 #### 📊 **Investment Analysis Agents** (NEW!)
 
 ##### **strategy-coordinator** 🎯
+
 **Purpose**: Investment strategy orchestration and synthesis
 **When to use**: Comprehensive investment planning, multi-account optimization
 **Key Features**:
+
 - **Parallel market analysis**: Analyzes 5-10 stocks simultaneously (80-90% time reduction)
 - **Multi-agent coordination**: Delegates to data-analyzer + market-analyst
 - **Consolidated portfolio view**: True portfolio-level analysis across ALL accounts
 - **Actionable priorities**: Urgent → High → Medium → Monitoring
-**Time Savings**: 6-8 hours → 15-20 minutes (95% reduction)
+  **Time Savings**: 6-8 hours → 15-20 minutes (95% reduction)
 
 ##### **market-analyst** 📈
+
 **Purpose**: Stock and options market specialist
 **When to use**: Technical analysis, options strategies, entry/exit timing
 **Tools**: All Yahoo Finance MCP tools, technical indicators, Greeks calculations
 **Key Features**:
+
 - Multi-timeframe analysis (daily/weekly/monthly confluence)
 - Support/resistance levels with entry/exit signals
 - Options Greeks, IV Rank/Percentile, Max Pain
 - News sentiment and catalysts
 - **Buy/Sell/Hold ratings** with conviction (1-10)
-**Time Savings**:
+  **Time Savings**:
 - Stock analysis: 1-2 hours → 2-3 minutes (97% reduction)
 - Options strategy: 45-60 minutes → 3-5 minutes (93% reduction)
 
 ##### **data-analyzer** 📊
+
 **Purpose**: Financial data analysis specialist for IB trading data
-**When to use**: Deep portfolio analysis, performance metrics, tax planning
+**When to use**: Deep portfolio analysis, performance metrics, portfolio reviews
 **Tools**: All MCP analysis tools, Python, Read
 **Key Features**:
+
 - **Consolidated multi-account analysis** (accurate portfolio-level metrics)
-- Performance, tax, cost, risk, bond analytics
+- Performance, cost, risk, bond analytics
 - Time-series position tracking
-- Cross-account tax optimization
-**Auto-activates**: On portfolio/analysis queries
-**Time Savings**: 3-4 hours → 5 minutes (95% reduction)
+- For deep tax optimization, delegates to `tax-optimizer`
+  **Auto-activates**: On portfolio/analysis queries
+  **Time Savings**: 3-4 hours → 5 minutes (95% reduction)
+
+##### **tax-optimizer** 💰
+
+**Purpose**: Tax optimization specialist for Malaysian tax residents
+**When to use**: Wash sale analysis, OID/phantom income, Ireland ETF advantages, tax-loss harvesting
+**Tools**: analyze_tax, calculate_tax_loss_harvesting, analyze_dividend_income, compare_periods
+**Key Features**:
+
+- Malaysia tax regime expertise (capital gains exemption, WHT optimization)
+- Wash sale 30-day window analysis
+- OID/phantom income calculations for zero-coupon bonds
+- Ireland-domiciled ETF restructuring recommendations (15% vs 30% WHT)
+- Tax-loss harvesting with alternative securities
 
 #### 💻 **Development Agents**
 
 ##### **test-runner** 🧪
+
 **Purpose**: Testing specialist for pytest, coverage, and quality assurance
 **When to use**: After code changes, before commits, for coverage analysis
 **Tools**: pytest, pytest-cov, Read, Write, Grep
 **Auto-activates**: On test-related queries
 
 ##### **code-implementer** 💻
+
 **Purpose**: Python implementation specialist with financial software expertise
 **When to use**: Implementing features, writing analyzers, TDD development
 **Tools**: Edit, MultiEdit, Write, Read, WebSearch, TodoWrite, Python tools
 **Model**: opus (for complex implementations)
 **Key Features**:
+
 - Follows existing codebase patterns
 - Enforces Decimal precision for financial calculations
 - Implements Pydantic v2 models correctly
 - Writes comprehensive docstrings
 - Test-Driven Development (TDD) workflow
 - WebSearch for best practices research
-**Auto-activates**: Via `/resolve-gh-issue` command
+  **Auto-activates**: Via `/resolve-gh-issue` command
 
 ##### **code-reviewer** 📝
+
 **Purpose**: Code quality and standards enforcement
 **When to use**: Before commits, PR reviews, quality checks
 **Tools**: black, ruff, mypy, Read, Grep
@@ -132,34 +158,39 @@ Specialized AI assistants that handle specific tasks in their own context window
 **Time Savings**: 15 minutes → 2 minutes (87% reduction)
 
 ##### **performance-optimizer** ⚡
+
 **Purpose**: Performance analysis and optimization
 **When to use**: Profiling, benchmarking, bottleneck identification
 **Tools**: cProfile, timeit, tracemalloc, Read
 **Auto-activates**: On performance queries
 
 ##### **api-debugger** 🔧
+
 **Purpose**: IB Flex Query API troubleshooting specialist
 **When to use**: API connectivity issues, credential validation, debugging
 **Tools**: curl, Python, grep, MCP fetch tools
 **Auto-activates**: On API error queries
 
 ##### **issue-analyzer** 🔍
+
 **Purpose**: GitHub issue analysis and requirement extraction
 **When to use**: Analyzing GitHub issues, extracting acceptance criteria, planning implementation
 **Tools**: gh CLI, Read, WebSearch, TodoWrite, Grep
 **Model**: opus (for high precision)
 **Key Features**:
+
 - Extracts structured requirements from GitHub issues
 - Identifies acceptance criteria and technical scope
 - Flags financial code requirements (Decimal precision, etc.)
 - Generates implementation checklists
 - Never hallucinates - always uses actual GitHub data
-**Auto-activates**: Via `/resolve-gh-issue` command
-**Time Savings**: 20 minutes analysis → 3 minutes (85% reduction)
+  **Auto-activates**: Via `/resolve-gh-issue` command
+  **Time Savings**: 20 minutes analysis → 3 minutes (85% reduction)
 
 ### How Sub-Agents Work
 
 **Automatic Delegation**:
+
 ```
 You: "Run tests with coverage"
 Claude: [Delegates to test-runner sub-agent]
@@ -169,12 +200,14 @@ Claude: [Presents formatted results]
 ```
 
 **Explicit Invocation**:
+
 ```
 You: "Use the data-analyzer subagent to analyze my portfolio"
 Claude: [Explicitly delegates to data-analyzer]
 ```
 
 **Benefits**:
+
 - ✅ **Context Isolation**: Each sub-agent has dedicated context window
 - ✅ **Specialization**: Expert knowledge for specific domains
 - ✅ **Parallel Work**: Multiple sub-agents can work simultaneously
@@ -187,10 +220,12 @@ Pre-configured prompts for common operations. Type `/` in Claude Code to see all
 ### 📊 Investment Analysis Commands (NEW!)
 
 #### `/investment-strategy [--save]`
+
 **Master command** for comprehensive investment planning
 Delegates to: **strategy-coordinator** → **data-analyzer** + **market-analyst** (parallel)
 
 **What it does**:
+
 - **Consolidated portfolio analysis** across ALL accounts (not per-account)
 - **Parallel market analysis** of all holdings (5-10 stocks simultaneously)
 - **2-year chart context** for every position with entry/exit scenarios
@@ -199,6 +234,7 @@ Delegates to: **strategy-coordinator** → **data-analyzer** + **market-analyst*
 - **Actionable priorities**: Urgent (this week) → High (this month) → Medium (this quarter)
 
 **Performance Optimization**:
+
 - **Parallel sub-agent execution**: 80-90% time reduction
 - Sequential: N stocks × 2 min = 10-20 min
 - Parallel: max(2 min) = 2 min
@@ -211,10 +247,12 @@ Delegates to: **strategy-coordinator** → **data-analyzer** + **market-analyst*
 ```
 
 #### `/analyze-symbol SYMBOL`
+
 Comprehensive symbol analysis with technical, fundamental, and options (stocks, ETFs, crypto, forex)
 Delegates to: **market-analyst** sub-agent
 
 **What it does**:
+
 - Multi-timeframe technical analysis (daily/weekly/monthly)
 - Support/resistance levels with entry/exit signals
 - Options market analysis (IV Rank, Greeks, Max Pain) - when available
@@ -231,10 +269,12 @@ Delegates to: **market-analyst** sub-agent
 ```
 
 #### `/options-strategy SYMBOL`
+
 Detailed options strategy analysis
 Delegates to: **market-analyst** sub-agent
 
 **What it does**:
+
 - IV environment assessment (buy vs sell premium)
 - Greeks analysis with risk assessment
 - 2-3 specific strategy recommendations with exact strikes
@@ -251,6 +291,7 @@ Delegates to: **market-analyst** sub-agent
 ### 📈 Portfolio Analysis Commands
 
 #### `/optimize-portfolio [csv-file-path]`
+
 Comprehensive portfolio analysis with recommendations
 Delegates to: **data-analyzer** sub-agent
 
@@ -262,6 +303,7 @@ Delegates to: **data-analyzer** sub-agent
 ```
 
 #### `/compare-periods period1-start period1-end period2-start period2-end`
+
 Compare performance across two time periods
 Delegates to: **data-analyzer** sub-agent
 
@@ -272,8 +314,9 @@ Delegates to: **data-analyzer** sub-agent
 ```
 
 #### `/tax-report [--year YYYY|--ytd|--save]`
+
 Generate comprehensive tax analysis report
-Delegates to: **data-analyzer** sub-agent
+Delegates to: **tax-optimizer** + **market-analyst** sub-agents
 
 ```bash
 /tax-report                # Current year
@@ -284,6 +327,7 @@ Delegates to: **data-analyzer** sub-agent
 ### 🔧 Development Commands
 
 #### `/test [--coverage|--verbose|--failed|pattern]`
+
 Run pytest test suite with coverage reporting
 Delegates to: **test-runner** sub-agent
 
@@ -296,6 +340,7 @@ Delegates to: **test-runner** sub-agent
 ```
 
 #### `/quality-check [--fix|--strict]`
+
 Run full quality gate: format, lint, type, test
 Delegates to: **code-reviewer** sub-agent
 
@@ -306,6 +351,7 @@ Delegates to: **code-reviewer** sub-agent
 ```
 
 #### `/add-test module-name [--analyzer|--parser|--model]`
+
 Create comprehensive test file for module
 Delegates to: **test-runner** sub-agent
 
@@ -316,6 +362,7 @@ Delegates to: **test-runner** sub-agent
 ```
 
 #### `/benchmark [--full|--quick|module-name]`
+
 Performance benchmarking and profiling
 Delegates to: **performance-optimizer** sub-agent
 
@@ -328,6 +375,7 @@ Delegates to: **performance-optimizer** sub-agent
 ### Analysis Commands
 
 #### `/optimize-portfolio [csv-file-path]`
+
 Comprehensive portfolio analysis with recommendations
 Delegates to: **data-analyzer** sub-agent
 
@@ -337,6 +385,7 @@ Delegates to: **data-analyzer** sub-agent
 ```
 
 #### `/compare-periods period1-start period1-end period2-start period2-end`
+
 Compare performance across two time periods
 Delegates to: **data-analyzer** sub-agent
 
@@ -348,8 +397,9 @@ Delegates to: **data-analyzer** sub-agent
 ```
 
 #### `/tax-report [--year YYYY|--ytd|--save]`
+
 Generate comprehensive tax analysis report
-Delegates to: **data-analyzer** sub-agent
+Delegates to: **tax-optimizer** + **market-analyst** sub-agents
 
 ```bash
 /tax-report                # Current year
@@ -359,6 +409,7 @@ Delegates to: **data-analyzer** sub-agent
 ```
 
 #### `/validate-data [csv-file-path|--latest]`
+
 Data integrity and format validation
 
 ```bash
@@ -370,6 +421,7 @@ Data integrity and format validation
 ### Utility Commands
 
 #### `/mcp-status [--verbose|--test]`
+
 Check MCP server health and tool availability
 
 ```bash
@@ -379,6 +431,7 @@ Check MCP server health and tool availability
 ```
 
 #### `/debug-api [--verbose|--test-credentials]`
+
 Troubleshoot IB API connectivity
 Delegates to: **api-debugger** sub-agent
 
@@ -391,6 +444,7 @@ Delegates to: **api-debugger** sub-agent
 ### GitHub Workflow Commands (NEW!)
 
 #### `/resolve-gh-issue issue-number [--skip-checks|--skip-tests|--dry-run]`
+
 Complete GitHub issue resolution workflow with TDD
 Orchestrates: **issue-analyzer**, **test-runner**, **code-implementer**, **code-reviewer** sub-agents
 
@@ -402,6 +456,7 @@ Orchestrates: **issue-analyzer**, **test-runner**, **code-implementer**, **code-
 ```
 
 **Complete 10-Phase Workflow**:
+
 1. **Issue Analysis** - Extract requirements from GitHub issue (issue-analyzer)
 2. **Planning** - Create task breakdown and branch (TodoWrite + git)
 3. **Test Creation** - Write failing tests first (TDD via test-runner)
@@ -414,6 +469,7 @@ Orchestrates: **issue-analyzer**, **test-runner**, **code-implementer**, **code-
 10. **Issue Closure** - Automatic closure when PR merges
 
 **Quality Gates**:
+
 - ✅ All acceptance criteria met
 - ✅ Tests created and passing (≥80% coverage)
 - ✅ Black formatting applied
@@ -423,6 +479,7 @@ Orchestrates: **issue-analyzer**, **test-runner**, **code-implementer**, **code-
 - ✅ Documentation complete
 
 **Example Output**:
+
 ```
 [1/10] Analyzing Issue #42...
 ✓ Requirements extracted
@@ -603,11 +660,13 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ### Using Sub-Agents
 
 **When to delegate to sub-agents**:
+
 - ✅ Complex, specialized tasks (testing, profiling, analysis)
 - ✅ Tasks requiring isolated context (prevent main thread pollution)
 - ✅ Repetitive workflows that benefit from expertise
 
 **When NOT to delegate**:
+
 - ❌ Simple one-off tasks
 - ❌ Tasks requiring main context awareness
 - ❌ Quick questions or clarifications
@@ -615,11 +674,13 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ### Using Slash Commands
 
 **Create new commands when**:
+
 - ✅ Repeating the same workflow 3+ times
 - ✅ Task has consistent structure and arguments
 - ✅ Team members would benefit from standardization
 
 **Don't create commands for**:
+
 - ❌ One-time operations
 - ❌ Highly variable workflows
 - ❌ Tasks that need human judgment
@@ -627,17 +688,20 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ### Context Management
 
 **Project Context** (`.claude/CLAUDE.md`):
+
 - Project-specific conventions
 - Architecture decisions
 - Common workflows
 - Team standards
 
 **User Context** (`~/.claude/CLAUDE.md`):
+
 - Personal preferences
 - Global coding style
 - Cross-project patterns
 
 **Sub-Agent Context** (`.claude/agents/*.md`):
+
 - Specialized knowledge
 - Domain expertise
 - Tool configurations
@@ -647,15 +711,18 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ### Regular Updates
 
 **Weekly**:
+
 - Review sub-agent performance
 - Update command arguments if needed
 
 **Monthly**:
+
 - Review CLAUDE.md for accuracy
 - Add new commands for emerging patterns
 - Archive unused commands
 
 **After Major Changes**:
+
 - Update CLAUDE.md with new conventions
 - Add commands for new workflows
 - Update sub-agent tools/permissions
@@ -678,11 +745,13 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ## 📖 Additional Resources
 
 ### Documentation
+
 - [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
 - [Sub-Agents Guide](https://docs.claude.com/en/docs/claude-code/sub-agents)
 - [Slash Commands Guide](https://docs.claude.com/en/docs/claude-code/slash-commands)
 
 ### Examples
+
 - See `WORKFLOWS.md` for complete workflow examples
 - Check individual command files for usage examples
 - Review sub-agent files for specialization details
@@ -692,6 +761,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ## 📚 Additional Resources
 
 ### Documentation
+
 - [Main README](../README.md): User documentation and 3 usage modes
 - [Project CLAUDE.md](../CLAUDE.md): General development guide
 - [.claude/CLAUDE.md](CLAUDE.md): Claude Code extensions
@@ -699,6 +769,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 - [SLASH_COMMANDS.md](SLASH_COMMANDS.md): Detailed slash command development guide
 
 ### Quick Links
+
 - [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
 - [Sub-Agents Guide](https://docs.claude.com/en/docs/claude-code/sub-agents)
 - [Slash Commands Guide](https://docs.claude.com/en/docs/claude-code/slash-commands)
@@ -710,6 +781,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ### For Investors
 
 **Comprehensive Investment Strategy** (95% time savings):
+
 ```bash
 /investment-strategy --save
 # Analyzes ALL accounts + holdings in parallel → 15-20 minutes
@@ -717,6 +789,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ```
 
 **Individual Symbol Analysis** (97% time savings):
+
 ```bash
 /analyze-symbol PG
 # Multi-timeframe technicals + options + news → 2-3 minutes
@@ -724,6 +797,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ```
 
 **Options Strategy** (93% time savings):
+
 ```bash
 /options-strategy SPY
 # IV environment + Greeks + strategies → 3-5 minutes
@@ -733,6 +807,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ### For Developers
 
 **GitHub Issue Resolution** (90% time savings):
+
 ```bash
 /resolve-gh-issue 42
 # Issue → Tests → Code → Quality → PR → 8 minutes
@@ -740,6 +815,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 ```
 
 **Quality Check** (87% time savings):
+
 ```bash
 /quality-check --fix
 # black + ruff + mypy + pytest → 2 minutes
@@ -752,6 +828,7 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 **Maintained By**: Development Team
 
 **New in this version (v3.0)** - Investment Analysis Automation:
+
 - ✨ **3 new investment agents**: strategy-coordinator, market-analyst, data-analyzer
 - 📊 **Parallel market analysis**: 80-90% time reduction for multi-stock analysis
 - 🎯 **Consolidated multi-account view**: True portfolio-level metrics
@@ -762,15 +839,18 @@ User Query → Claude Code → MCP Server → IB Analytics Library → Results
 - 🏗️ **Time savings documentation**: 95-97% reduction for investment workflows
 
 **Version v2.1** (Previous):
+
 - 7 specialized sub-agents (issue-analyzer, code-implementer added)
 - 12 slash commands (removed 3 obsolete, added /resolve-gh-issue)
 - Complete Test-Driven Development (TDD) workflow
 - GitHub integration: issue → branch → tests → code → PR → CI
 
 **Version v2.0**:
+
 - 7 sub-agents, 15 slash commands
 - Initial GitHub workflow integration
 
 **Version v1.0**:
+
 - 5 sub-agents, 14 slash commands
 - Basic portfolio analysis tools

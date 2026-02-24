@@ -25,17 +25,18 @@
 
 ---
 
-## Sub-Agents (7 specialized experts)
+## Sub-Agents (8 specialized experts)
 
 ### Quick List
 
 1. **data-analyzer** 📊 - Financial data analysis
-2. **test-runner** 🧪 - Testing & QA
-3. **code-implementer** 💻 - Feature implementation (TDD)
-4. **code-reviewer** 📝 - Code quality enforcement
-5. **performance-optimizer** ⚡ - Profiling & optimization
-6. **api-debugger** 🔧 - IB API troubleshooting
-7. **issue-analyzer** 🔍 - GitHub issue analysis
+2. **tax-optimizer** 💰 - Tax optimization (Malaysia tax resident)
+3. **test-runner** 🧪 - Testing & QA
+4. **code-implementer** 💻 - Feature implementation (TDD)
+5. **code-reviewer** 📝 - Code quality enforcement
+6. **performance-optimizer** ⚡ - Profiling & optimization
+7. **api-debugger** 🔧 - IB API troubleshooting
+8. **issue-analyzer** 🔍 - GitHub issue analysis
 
 ### When to Create
 
@@ -308,7 +309,7 @@ pytest --cov=ib_sec_mcp
 
 ## Resources
 
-- **.claude/README.md**: Complete feature list (7 sub-agents, 12 commands)
+- **.claude/README.md**: Complete feature list (8 sub-agents, 12 commands)
 - **.claude/SUB_AGENTS.md**: Detailed sub-agent development guide
 - **.claude/SLASH_COMMANDS.md**: Detailed slash command development guide
 - **/CLAUDE.md**: General project development guide
