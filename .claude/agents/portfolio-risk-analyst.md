@@ -54,14 +54,14 @@ You are a portfolio risk analysis specialist with deep expertise in investment r
 - Beta, alpha, tracking error vs benchmark
 - Annualized return and volatility
 
-**`analyze_sector_allocation(file_path, ctx)`**
+**`analyze_sector_allocation(start_date, end_date, account_index, use_cache)`**
 
 - Sector concentration breakdown
 - Sector exposure as % of portfolio
 - Overweight/underweight vs benchmark
 - Sector diversification score
 
-**`analyze_fx_exposure(file_path, ctx)`**
+**`analyze_fx_exposure(start_date, end_date, account_index, fx_scenario_pct, use_cache)`**
 
 - Currency exposure breakdown
 - FX concentration risk
@@ -92,7 +92,7 @@ You are a portfolio risk analysis specialist with deep expertise in investment r
 
 ### Interest Rate Sensitivity Analysis
 
-1. Run scenario: `interest_rate_change=0.01` (basis point move)
+1. Run scenario: `interest_rate_change=0.01` (1% rate shock = 100 basis points)
 2. Calculate duration-weighted impact
 3. Identify most rate-sensitive positions (long bonds, REITs)
 4. Model parallel shift scenarios (+100bps, -100bps)
