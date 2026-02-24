@@ -303,11 +303,11 @@ ib-sec-fetch --start-date 2025-01-01 --end-date 2025-10-05
 # Fetch and split into separate files per account
 ib-sec-fetch --split-accounts --start-date 2025-01-01 --end-date 2025-10-05
 
-# Analyze a specific account
-ib-sec-analyze --account U1234567
+# Analyze a specific account's data file
+ib-sec-analyze data/raw/U1234567_2025-01-01_2025-10-05.xml --all
 
-# Analyze all accounts
-ib-sec-analyze --all-accounts
+# Analyze with a specific analyzer
+ib-sec-analyze data/raw/U1234567_2025-01-01_2025-10-05.xml --analyzer performance
 ```
 
 ---

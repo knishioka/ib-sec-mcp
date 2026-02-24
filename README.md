@@ -1323,60 +1323,6 @@ flowchart TD
 
 > For a comprehensive troubleshooting guide with 12 detailed error cases, prevention tips, and the full exception hierarchy, see **[docs/troubleshooting.md](docs/troubleshooting.md)**.
 
-### Common Issues
-
-#### 1. "Configuration error: Failed to load credentials"
-
-**Problem**: QUERY_ID or TOKEN not found in environment
-
-**Solution**:
-
-```bash
-# Create .env file
-echo "QUERY_ID=your_query_id" > .env
-echo "TOKEN=your_token" >> .env
-
-# Or set environment variables
-export QUERY_ID=your_query_id
-export TOKEN=your_token
-```
-
-#### 2. "Validation error for 'start_date': Invalid date format"
-
-**Problem**: Date format is incorrect
-
-**Solution**: Use YYYY-MM-DD format
-
-```bash
-ib-sec-fetch --start-date 2025-01-01 --end-date 2025-12-31
-```
-
-#### 3. "IB API error: Statement not yet ready"
-
-**Problem**: IB Flex Query is still processing
-
-**Solution**: The server automatically retries (up to 3 times). If it still fails, wait a few minutes and try again.
-
-#### 4. "Yahoo Finance API error: No data found for SYMBOL"
-
-**Problem**: Invalid stock symbol or no data available
-
-**Solution**:
-
-- Verify the ticker symbol is correct
-- Check if the symbol is traded on supported exchanges
-- Try a different period or interval
-
-#### 5. "Timeout: IB API call timed out after 60 seconds"
-
-**Problem**: API call took too long
-
-**Solution**:
-
-- Check your internet connection
-- Reduce the date range
-- Try again during off-peak hours
-
 ### Testing
 
 Run tests to verify your installation:

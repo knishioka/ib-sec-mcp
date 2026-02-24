@@ -779,5 +779,5 @@ If you cannot resolve an issue using this guide:
 2. **Check INSTALL.md**: [INSTALL.md](../INSTALL.md) for installation-specific guidance
 3. **Enable debug mode**: Set `IB_DEBUG=1` for detailed error information
 4. **Check IB documentation**: [IB Flex Query documentation](https://www.interactivebrokers.com/campus/ibkr-api-page/flex-web-service/)
-5. **Review the data format**: [IB Flex Query Data Format](./csv-format.md) for XML structure details
+5. **Review the data format**: [IB Flex Query Data Format](./data-format.md) for XML structure details
 6. **File an issue**: Open a GitHub issue with the error message, debug output, and steps to reproduce
