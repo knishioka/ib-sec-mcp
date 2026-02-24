@@ -757,12 +757,10 @@ class TestCalculateTaxLossHarvesting:
 
     @pytest.mark.asyncio
     async def test_wash_sale_risk_detected(self, tool_registry):
-        """Positions with recent buy (within 30 days) should flag wash sale risk"""
-        from datetime import timedelta
-
-        # Create XML with a buy date within last 30 days
-        recent_date = (date.today() - timedelta(days=10)).strftime("%Y%m%d")
-        xml_data = SAMPLE_XML_WASH_SALE.replace("{recent_buy_date}", recent_date)
+        """Positions with recent buy (within 30 days of analysis end) should flag wash sale risk"""
+        # Use a buy date 10 days before the analysis end_date (2025-06-30)
+        # 2025-06-20 is within 30 days of 2025-06-30
+        xml_data = SAMPLE_XML_WASH_SALE.replace("{recent_buy_date}", "20250620")
 
         with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
             mock_fetch.return_value = (xml_data, date(2025, 1, 1), date(2025, 6, 30))
@@ -879,7 +877,7 @@ class TestCalculateTaxLossHarvesting:
     @pytest.mark.asyncio
     async def test_tax_rate_out_of_range(self, tool_registry):
         """Tax rate > 1 should raise ValidationError"""
-        with pytest.raises(ValidationError, match="must be between 0 and 1"):
+        with pytest.raises(ValidationError, match="finite number between 0 and 1"):
             await tool_registry["calculate_tax_loss_harvesting"](
                 start_date="2025-01-01", tax_rate="1.5"
             )
@@ -916,7 +914,7 @@ class TestCalculateTaxLossHarvesting:
 
     @pytest.mark.asyncio
     async def test_holding_period_classification(self, tool_registry):
-        """Positions should be classified as short_term or long_term"""
+        """Positions should be classified as short_term, long_term, or unknown"""
         with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
             mock_fetch.return_value = (SAMPLE_XML_TLH, date(2025, 1, 1), date(2025, 6, 30))
 
@@ -926,8 +924,10 @@ class TestCalculateTaxLossHarvesting:
             result = json.loads(result_json)
 
         for position in result["loss_positions"]:
-            assert position["holding_period_type"] in ("short_term", "long_term")
-            assert isinstance(position["holding_period_days"], int)
+            assert position["holding_period_type"] in ("short_term", "long_term", "unknown")
+            assert position["holding_period_days"] is None or isinstance(
+                position["holding_period_days"], int
+            )
 
     @pytest.mark.asyncio
     async def test_decimal_precision(self, tool_registry):
@@ -954,6 +954,124 @@ class TestCalculateTaxLossHarvesting:
                     Decimal(position[field])
                 except InvalidOperation:
                     pytest.fail(f"{field}='{position[field]}' is not a valid Decimal string")
+
+    @pytest.mark.asyncio
+    async def test_nan_tax_rate_rejected(self, tool_registry):
+        """NaN, Infinity, -Infinity should be rejected as tax_rate"""
+        for bad_rate in ["NaN", "Infinity", "-Infinity"]:
+            with pytest.raises(ValidationError, match="finite number"):
+                await tool_registry["calculate_tax_loss_harvesting"](
+                    start_date="2025-01-01", tax_rate=bad_rate
+                )
+
+    @pytest.mark.asyncio
+    async def test_unknown_holding_period_when_no_buy_trades(self, tool_registry):
+        """Positions without buy trades in period should have 'unknown' holding period"""
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
+            mock_fetch.return_value = (SAMPLE_XML_NO_LOSSES, date(2025, 1, 1), date(2025, 6, 30))
+
+            # Use custom XML with a loss position but no trades
+            xml_with_loss_no_trades = SAMPLE_XML_NO_LOSSES.replace(
+                'fifoPnlUnrealized="5000"', 'fifoPnlUnrealized="-1000"'
+            ).replace('costBasisMoney="20000"', 'costBasisMoney="26000"')
+            mock_fetch.return_value = (
+                xml_with_loss_no_trades,
+                date(2025, 1, 1),
+                date(2025, 6, 30),
+            )
+
+            result_json = await tool_registry["calculate_tax_loss_harvesting"](
+                start_date="2025-01-01", end_date="2025-06-30"
+            )
+            result = json.loads(result_json)
+
+        assert len(result["loss_positions"]) == 1
+        assert result["loss_positions"][0]["holding_period_days"] is None
+        assert result["loss_positions"][0]["holding_period_type"] == "unknown"
+
+    @pytest.mark.asyncio
+    async def test_analysis_uses_end_date_not_today(self, tool_registry):
+        """Wash sale window and holding period should use to_date, not date.today()"""
+        # Use SAMPLE_XML_WASH_SALE with a buy date within 30 days of to_date (2025-06-30)
+        # but far from today, proving we use to_date not today
+        xml_data = SAMPLE_XML_WASH_SALE.replace("{recent_buy_date}", "20250620")
+
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
+            mock_fetch.return_value = (xml_data, date(2025, 1, 1), date(2025, 6, 30))
+
+            result_json = await tool_registry["calculate_tax_loss_harvesting"](
+                start_date="2025-01-01", end_date="2025-06-30"
+            )
+            result = json.loads(result_json)
+
+        # The buy on 2025-06-20 is within 30 days of to_date 2025-06-30
+        # If using date.today(), this wouldn't be flagged since it's far in the past
+        assert result["loss_positions"][0]["wash_sale_risk"] is True
+
+    @pytest.mark.asyncio
+    async def test_backward_wash_sale_detection(self, tool_registry):
+        """Buying within 30 days BEFORE a loss sale should also trigger wash sale warning"""
+        # SAMPLE_XML_HISTORICAL_WASH has:
+        # T002: BUY on 2025-03-15, T001: SELL at loss on 2025-03-01
+        # Forward: sell(03-01) -> buy(03-15) = 14 days (caught before)
+        # Backward: buy(03-15) was before sell... wait, the order is sell first then buy
+        # Let's create a scenario: buy on 02-15, sell at loss on 03-01 = 14 days
+        xml_backward = """<?xml version="1.0" encoding="UTF-8"?>
+<FlexQueryResponse queryName="test" type="AF">
+  <FlexStatements count="1">
+    <FlexStatement accountId="U1234567" fromDate="20250101" toDate="20250630">
+      <AccountInformation accountId="U1234567" acctAlias="Test Account" />
+      <CashReport>
+        <CashReportCurrency currency="BASE_SUMMARY"
+          startingCash="5000" endingCash="5000" endingSettledCash="5000"
+          deposits="0" withdrawals="0" dividends="0" brokerInterest="0"
+          commissions="0" otherFees="0" netTradesSales="0" netTradesPurchases="0" />
+      </CashReport>
+      <OpenPositions>
+        <OpenPosition symbol="INDA" description="ISHARES MSCI INDIA ETF"
+          assetCategory="STK" currency="USD" fxRateToBase="1"
+          isin="US46429B5984" position="100" markPrice="45.00"
+          positionValue="4500" costBasisMoney="6000" fifoPnlUnrealized="-1500"
+          reportDate="20250630" multiplier="1" />
+      </OpenPositions>
+      <Trades>
+        <Trade tradeID="T001" accountId="U1234567" symbol="INDA"
+          description="ISHARES MSCI INDIA ETF" assetCategory="STK"
+          currency="USD" fxRateToBase="1"
+          buySell="BUY" quantity="50" tradePrice="50.00"
+          tradeMoney="-2500" ibCommission="-1.00" ibCommissionCurrency="USD"
+          tradeDate="20250215" settleDate="20250217"
+          fifoPnlRealized="0" mtmPnl="0" multiplier="1"
+          orderID="O001" execID="E001" />
+        <Trade tradeID="T002" accountId="U1234567" symbol="INDA"
+          description="ISHARES MSCI INDIA ETF" assetCategory="STK"
+          currency="USD" fxRateToBase="1"
+          buySell="SELL" quantity="-50" tradePrice="40.00"
+          tradeMoney="2000" ibCommission="-1.00" ibCommissionCurrency="USD"
+          tradeDate="20250301" settleDate="20250303"
+          fifoPnlRealized="-500" mtmPnl="0" multiplier="1"
+          orderID="O002" execID="E002" />
+      </Trades>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>"""
+
+        with patch("ib_sec_mcp.mcp.tools.ib_portfolio._get_or_fetch_data") as mock_fetch:
+            mock_fetch.return_value = (xml_backward, date(2025, 1, 1), date(2025, 6, 30))
+
+            result_json = await tool_registry["calculate_tax_loss_harvesting"](
+                start_date="2025-01-01", end_date="2025-06-30"
+            )
+            result = json.loads(result_json)
+
+        # Should detect backward wash sale: bought 02-15, sold at loss 03-01 (14 days)
+        assert len(result["wash_sale_warnings"]) >= 1
+        backward_warning = [
+            w for w in result["wash_sale_warnings"] if w["buy_date"] == "2025-02-15"
+        ]
+        assert len(backward_warning) == 1
+        assert backward_warning[0]["sell_date"] == "2025-03-01"
+        assert int(backward_warning[0]["days_between"]) == 14
 
     @pytest.mark.asyncio
     async def test_result_structure(self, tool_registry):

@@ -8,7 +8,7 @@ import json
 import warnings
 from collections import defaultdict
 from datetime import date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +43,24 @@ logger = get_logger(__name__)
 # Timeout constants (in seconds)
 API_FETCH_TIMEOUT = 60
 FILE_OPERATION_TIMEOUT = 10
+
+# Ireland-domiciled alternative ETF mapping (US-listed -> Ireland-domiciled UCITS)
+ETF_ALTERNATIVES: dict[str, str] = {
+    "INDA": "NDIA.L",  # iShares MSCI India
+    "EEM": "IEEM.L",  # iShares MSCI Emerging Markets
+    "VWO": "VFEM.L",  # Vanguard FTSE Emerging Markets
+    "SPY": "CSPX.L",  # S&P 500
+    "VOO": "VUAA.L",  # Vanguard S&P 500
+    "IVV": "CSPX.L",  # iShares Core S&P 500
+    "QQQ": "EQQQ.L",  # Invesco NASDAQ-100
+    "VTI": "VWRA.L",  # Vanguard Total World (closest)
+    "AGG": "AGGU.L",  # iShares Core US Aggregate Bond
+    "TLT": "IDTL.L",  # iShares 20+ Year Treasury Bond
+    "VEA": "VEUR.L",  # Vanguard Developed Markets
+    "EFA": "SWDA.L",  # iShares MSCI World
+    "VGK": "VEUR.L",  # Vanguard FTSE Europe
+    "IEMG": "IEEM.L",  # iShares Core MSCI Emerging Markets
+}
 
 
 def _extract_dates_from_filename(file_path: str | Path) -> tuple[date, date]:
@@ -1103,14 +1121,14 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         # Validate tax_rate
         try:
             rate = Decimal(tax_rate)
-        except Exception as e:
+        except InvalidOperation as e:
             raise ValidationError(
                 f"Invalid tax_rate '{tax_rate}': must be a decimal string (e.g. '0.30')",
                 field="tax_rate",
             ) from e
-        if rate < Decimal("0") or rate > Decimal("1"):
+        if not rate.is_finite() or rate < Decimal("0") or rate > Decimal("1"):
             raise ValidationError(
-                f"tax_rate must be between 0 and 1, got {tax_rate}",
+                f"tax_rate must be a finite number between 0 and 1, got {tax_rate}",
                 field="tax_rate",
             )
 
@@ -1133,25 +1151,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             )
 
         account = account_list[account_index]
-        today = date.today()
-
-        # Ireland-domiciled alternative ETF mapping (US-listed -> Ireland-domiciled)
-        etf_alternatives: dict[str, str] = {
-            "INDA": "NDIA.L",  # iShares MSCI India
-            "EEM": "IEEM.L",  # iShares MSCI Emerging Markets
-            "VWO": "VFEM.L",  # Vanguard FTSE Emerging Markets
-            "SPY": "CSPX.L",  # S&P 500
-            "VOO": "VUAA.L",  # Vanguard S&P 500
-            "IVV": "CSPX.L",  # iShares Core S&P 500
-            "QQQ": "EQQQ.L",  # Invesco NASDAQ-100
-            "VTI": "VWRA.L",  # Vanguard Total World (closest)
-            "AGG": "AGGU.L",  # iShares Core US Aggregate Bond
-            "TLT": "IDTL.L",  # iShares 20+ Year Treasury Bond
-            "VEA": "VEUR.L",  # Vanguard Developed Markets
-            "EFA": "SWDA.L",  # iShares MSCI World
-            "VGK": "VEUR.L",  # Vanguard FTSE Europe
-            "IEMG": "IEEM.L",  # iShares Core MSCI Emerging Markets
-        }
+        analysis_date = to_date
 
         # Identify positions with unrealized losses
         loss_positions: list[dict[str, Any]] = []
@@ -1171,24 +1171,31 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 for t in account.trades
                 if t.symbol == position.symbol and t.buy_sell == BuySell.BUY
             ]
+            holding_period_days: int | None
             if position_trades:
                 earliest_trade = min(position_trades, key=lambda t: t.trade_date)
-                holding_period_days = (today - earliest_trade.trade_date).days
+                holding_period_days = (analysis_date - earliest_trade.trade_date).days
             else:
-                holding_period_days = 0
+                # No buy trades in the analysis period — position was opened before start_date
+                holding_period_days = None
 
-            holding_period_type = "long_term" if holding_period_days >= 365 else "short_term"
+            if holding_period_days is None:
+                holding_period_type = "unknown"
+            elif holding_period_days >= 365:
+                holding_period_type = "long_term"
+            else:
+                holding_period_type = "short_term"
 
             # Check wash sale risk: was this symbol bought within last 30 days?
             wash_sale_risk = False
             wash_sale_detail: str | None = None
-            window_start = today - timedelta(days=30)
+            window_start = analysis_date - timedelta(days=30)
             recent_buys = [
                 t
                 for t in account.trades
                 if t.symbol == position.symbol
                 and t.buy_sell == BuySell.BUY
-                and window_start <= t.trade_date <= today
+                and window_start <= t.trade_date <= analysis_date
             ]
             if recent_buys:
                 wash_sale_risk = True
@@ -1206,7 +1213,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             )
 
             # Alternative ETF suggestion
-            suggested_alternative = etf_alternatives.get(position.symbol)
+            suggested_alternative = ETF_ALTERNATIVES.get(position.symbol)
 
             loss_positions.append(
                 {
@@ -1227,7 +1234,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 }
             )
 
-        # Historical wash sale warnings (past sells at loss rebought within 30 days)
+        # Historical wash sale warnings
+        # IRS rule: 30 days before OR after a loss sale
         wash_sale_warnings: list[dict[str, str]] = []
         for symbol in {t.symbol for t in account.trades}:
             symbol_trades = sorted(
@@ -1236,21 +1244,42 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             )
             for i, trade in enumerate(symbol_trades):
                 if trade.buy_sell == BuySell.SELL and trade.fifo_pnl_realized < Decimal("0"):
+                    # Forward check: rebought within 30 days after the loss sale
                     for future_trade in symbol_trades[i + 1 :]:
                         if future_trade.buy_sell == BuySell.BUY:
-                            days_between = (future_trade.trade_date - trade.trade_date).days
-                            if days_between <= 30:
+                            days_after = (future_trade.trade_date - trade.trade_date).days
+                            if days_after <= 30:
                                 wash_sale_warnings.append(
                                     {
                                         "symbol": symbol,
                                         "sell_date": str(trade.trade_date),
                                         "buy_date": str(future_trade.trade_date),
-                                        "days_between": str(days_between),
+                                        "days_between": str(days_after),
                                         "message": (
                                             f"Potential wash sale: {symbol} sold at loss on "
                                             f"{trade.trade_date}, rebought on "
                                             f"{future_trade.trade_date} "
-                                            f"({days_between} days later)"
+                                            f"({days_after} days later)"
+                                        ),
+                                    }
+                                )
+                                break
+                    # Backward check: bought within 30 days before the loss sale
+                    for prior_trade in reversed(symbol_trades[:i]):
+                        if prior_trade.buy_sell == BuySell.BUY:
+                            days_before = (trade.trade_date - prior_trade.trade_date).days
+                            if days_before <= 30:
+                                wash_sale_warnings.append(
+                                    {
+                                        "symbol": symbol,
+                                        "sell_date": str(trade.trade_date),
+                                        "buy_date": str(prior_trade.trade_date),
+                                        "days_between": str(days_before),
+                                        "message": (
+                                            f"Potential wash sale: {symbol} bought on "
+                                            f"{prior_trade.trade_date}, sold at loss on "
+                                            f"{trade.trade_date} "
+                                            f"({days_before} days after purchase)"
                                         ),
                                     }
                                 )
