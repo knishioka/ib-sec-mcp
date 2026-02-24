@@ -35,7 +35,7 @@ Format the JSON response into the output format below, with emphasis on wash sal
 === Wash Sale & Tax Loss Harvesting Report ===
 Period: {start_date} to {end_date}
 Account: {account_id}
-Tax Rate: {tax_rate}%
+Tax Rate: {tax_rate as percentage, e.g., 0.30 → 30%}
 
 ⚠️ WASH SALE WARNINGS
 
@@ -58,7 +58,7 @@ Backward-Looking Wash Sale Risk:
 💰 TAX LOSS HARVESTING OPPORTUNITIES
 
 Total Unrealized Losses: -${total_unrealized_loss}
-Potential Tax Savings:   ${potential_tax_savings} (at {tax_rate}% rate)
+Potential Tax Savings:   ${potential_tax_savings} (at {tax_rate as percentage}% rate)
 
 Rank | Symbol | Unrealized Loss | Tax Savings | Wash Sale Risk | Alternative
 -----|--------|-----------------|-------------|----------------|------------

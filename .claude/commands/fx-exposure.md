@@ -50,23 +50,25 @@ Total Portfolio Value: ${total_value}
 
 📈 FX SCENARIO SIMULATION (+/-{fx_scenario_pct}%)
 
-Currency | Current Value | +{pct}% Impact  | -{pct}% Impact
----------|---------------|-----------------|----------------
-USD      | $120,000      | +$12,000        | -$12,000
-EUR      | $35,000       | +$3,500         | -$3,500
-GBP      | $18,000       | +$1,800         | -$1,800
-JPY      | $11,000       | +$1,100         | -$1,100
+Note: Base currency (e.g., USD) is excluded from scenario simulation.
+
+Currency | Current Value | +{fx_scenario_pct}% Impact  | -{fx_scenario_pct}% Impact
+---------|---------------|----------------------------|----------------------------
+EUR      | $35,000       | +$3,500                    | -$3,500
+GBP      | $18,000       | +$1,800                    | -$1,800
+JPY      | $11,000       | +$1,100                    | -$1,100
 
 Aggregate Portfolio Impact:
-  Best case (+{pct}% all):  +${best_case}  (+{best_pct}%)
-  Worst case (-{pct}% all): -${worst_case} (-{worst_pct}%)
+  Best case (+{fx_scenario_pct}% all):  +${best_case}  (+{best_pct}%)
+  Worst case (-{fx_scenario_pct}% all): -${worst_case} (-{worst_pct}%)
 
 ⚠️ CONCENTRATION RISK
 
 {Currencies with weight > 30%}:
   - {currency}: {weight}% ← {HIGH CONCENTRATION if >50%, MODERATE if >30%}
 
-FX Diversification Score: {score}/10
+Concentration Assessment:
+  {Based on hedge_recommendations from tool output}
 
 🛡️ HEDGE RECOMMENDATIONS
 

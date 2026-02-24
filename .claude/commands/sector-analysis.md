@@ -46,16 +46,14 @@ Consumer Defensive  | $15,000     | 10.7%   | 2
 
 📈 EQUITY vs NON-EQUITY
 
-Equity Positions:    ${equity_value} ({equity_pct}%)
-Non-Equity:          ${non_equity_value} ({non_equity_pct}%)
-  - Bonds:           ${bond_value}
-  - Cash:            ${cash_value}
-  - Other:           ${other_value}
+Equity Positions:    {equity_count} positions
+Non-Equity:          {non_equity_count} positions
+Total:               {position_count} positions
 
 ⚠️ CONCENTRATION RISK
 
-HHI Score: {hhi_value}
-Assessment: {LOW|MODERATE|HIGH}
+HHI Score: {concentration_risk.hhi}
+Assessment: {concentration_risk.assessment}
   - LOW (< 1500): Well-diversified
   - MODERATE (1500-2500): Moderate concentration
   - HIGH (> 2500): High concentration risk
