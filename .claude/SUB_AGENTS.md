@@ -70,7 +70,6 @@ Step-by-step process for common operations
 ```bash
 tool-command --with-flags
 ```
-````
 
 ## Quality Checklist
 
@@ -79,14 +78,13 @@ tool-command --with-flags
 - [ ] Check 3
 
 Always provide [expected output format].
-
 ````
 
 ## Development Example: ML Analyzer
 
 **File**: `.claude/agents/ml-analyzer.md`
 
-```markdown
+````markdown
 ---
 name: ml-analyzer
 description: Machine learning specialist for predictive analysis and pattern recognition. Use for time series forecasting, anomaly detection, and performance prediction. Use PROACTIVELY when performance prediction is mentioned.
@@ -95,6 +93,7 @@ model: opus
 ---
 
 You are a machine learning specialist with expertise in:
+
 - Time series analysis and forecasting
 - Anomaly detection in trading data
 - Performance prediction algorithms
@@ -119,9 +118,11 @@ You are a machine learning specialist with expertise in:
 ## Tools Usage
 
 **Fetch Training Data**:
+
 ```python
 # Get 1 year of trades for model training
 trades = get_trades(start_date="2024-01-01", end_date="2025-01-01")
+```
 ````
 
 **Feature Engineering**:

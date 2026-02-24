@@ -65,7 +65,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 
 Specialized AI assistants that handle specific tasks in their own context window, keeping the main conversation focused.
 
-### Available Sub-Agents (12 Total)
+### Available Sub-Agents (10 Total)
 
 #### 📊 **Investment Analysis Agents** (NEW!)
 
