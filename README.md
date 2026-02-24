@@ -1172,6 +1172,16 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 See [.claude/CLAUDE.md](.claude/CLAUDE.md) for detailed MCP documentation and usage patterns.
 
+## Documentation
+
+| Document                                                                      | Description                                                                                          |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [Architecture](docs/architecture.md)                                          | Data flow diagrams, layer responsibilities, and new feature decision guide                           |
+| [Financial Calculators](docs/calculators.md)                                  | Calculation formulas (YTM, duration, Sharpe, Sortino, phantom income) with implementation references |
+| [Database Schema](docs/database-schema.md)                                    | SQLite position history schema, indexes, and migration procedures                                    |
+| [Calculation Error Prevention](docs/calculation_error_prevention_strategy.md) | ETF calculation accuracy strategy                                                                    |
+| [ETF Calculator Usage](docs/etf_calculator_usage_guide.md)                    | ETF calculator usage guide                                                                           |
+
 ## Development
 
 ```bash
