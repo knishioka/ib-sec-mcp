@@ -49,7 +49,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 │   ├── market-analyst.md
 │   ├── strategy-coordinator.md
 │   └── portfolio-risk-analyst.md  # NEW: Portfolio risk analysis
-└── commands/              # Custom slash commands (16 commands)
+└── commands/              # Custom slash commands (17 commands)
     ├── fetch-latest.md
     ├── debug-api.md
     ├── test.md
@@ -61,6 +61,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
     ├── benchmark.md
     ├── validate-data.md
     ├── mcp-status.md
+    ├── rebalance-portfolio.md # Portfolio rebalancing with target profiles
     ├── resolve-gh-issue.md
     ├── dividend-analysis.md   # Dividend income & IE ETF tax efficiency
     ├── sector-analysis.md     # Sector allocation & HHI concentration
@@ -390,6 +391,24 @@ Uses: `analyze_fx_exposure` MCP tool
 /fx-exposure                          # Default +/-10% scenario
 /fx-exposure --scenario-pct 15        # Custom +/-15% scenario
 /fx-exposure --account 1              # Second account
+```
+
+#### `/rebalance-portfolio [--profile balanced|growth|conservative|income] [--dry-run]`
+
+Calculate rebalancing trades to align portfolio with target allocation profiles
+Uses: `generate_rebalancing_trades` and `simulate_rebalancing` MCP tools
+
+**What it does**:
+
+- Compares current portfolio allocation against target asset-class weights
+- Generates specific buy/sell trades with estimated shares and commissions
+- Supports 4 investment profiles (balanced, growth, conservative, income)
+- `--dry-run` mode shows tax impact and cost analysis without generating trades
+
+```bash
+/rebalance-portfolio                            # Default balanced profile
+/rebalance-portfolio --profile growth           # Growth-focused allocation
+/rebalance-portfolio --profile conservative --dry-run  # Preview with tax impact
 ```
 
 ### 🔧 Development Commands
