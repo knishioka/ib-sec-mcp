@@ -7,8 +7,8 @@ import asyncio
 import json
 import warnings
 from collections import defaultdict
-from datetime import date, datetime
-from decimal import Decimal
+from datetime import date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +34,7 @@ from ib_sec_mcp.mcp.validators import (
     validate_date_string,
     validate_file_path,
 )
+from ib_sec_mcp.models.trade import BuySell
 from ib_sec_mcp.utils.config import Config
 from ib_sec_mcp.utils.logger import get_logger
 
@@ -42,6 +43,24 @@ logger = get_logger(__name__)
 # Timeout constants (in seconds)
 API_FETCH_TIMEOUT = 60
 FILE_OPERATION_TIMEOUT = 10
+
+# Ireland-domiciled alternative ETF mapping (US-listed -> Ireland-domiciled UCITS)
+ETF_ALTERNATIVES: dict[str, str] = {
+    "INDA": "NDIA.L",  # iShares MSCI India
+    "EEM": "IEEM.L",  # iShares MSCI Emerging Markets
+    "VWO": "VFEM.L",  # Vanguard FTSE Emerging Markets
+    "SPY": "CSPX.L",  # S&P 500
+    "VOO": "VUAA.L",  # Vanguard S&P 500
+    "IVV": "CSPX.L",  # iShares Core S&P 500
+    "QQQ": "EQQQ.L",  # Invesco NASDAQ-100
+    "VTI": "VWRA.L",  # Vanguard Total World (closest)
+    "AGG": "AGGU.L",  # iShares Core US Aggregate Bond
+    "TLT": "IDTL.L",  # iShares 20+ Year Treasury Bond
+    "VEA": "VEUR.L",  # Vanguard Developed Markets
+    "EFA": "SWDA.L",  # iShares MSCI World
+    "VGK": "VEUR.L",  # Vanguard FTSE Europe
+    "IEMG": "IEEM.L",  # iShares Core MSCI Emerging Markets
+}
 
 
 def _extract_dates_from_filename(file_path: str | Path) -> tuple[date, date]:
@@ -1054,6 +1073,252 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 f"Consolidated analysis complete: {len(accounts)} accounts, "
                 f"{len(consolidated_positions_by_symbol)} unique symbols, "
                 f"${total_value:,.2f} total value"
+            )
+
+        return json.dumps(result, indent=2, default=str)
+
+    @mcp.tool
+    async def calculate_tax_loss_harvesting(
+        start_date: str,
+        end_date: str | None = None,
+        account_index: int = 0,
+        tax_rate: str = "0.30",
+        use_cache: bool = True,
+        ctx: Context | None = None,
+    ) -> str:
+        """
+        Calculate tax loss harvesting opportunities
+
+        Identifies positions with unrealized losses, estimates potential tax savings,
+        checks for wash sale rule violations (30-day window), and suggests
+        Ireland-domiciled alternative ETFs to maintain market exposure.
+
+        Args:
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+            account_index: Index to select among accounts returned by the Flex Query
+                (0 for first account, 1 for second, etc.)
+            tax_rate: Tax rate as decimal string (default: "0.30" = 30%).
+                Set to "0" for jurisdictions without capital gains tax (e.g. Malaysia).
+            use_cache: Use cached data if available (default: True)
+            ctx: MCP context for logging
+
+        Returns:
+            JSON string with loss positions, wash sale warnings, and alternative
+            ETF suggestions
+
+        Raises:
+            ValidationError: If input validation fails
+            ConfigurationError: If credentials are missing
+            APIError: If IB API call fails
+            IBTimeoutError: If operation times out
+        """
+        if ctx:
+            await ctx.info(
+                f"Calculating tax loss harvesting for {start_date} to {end_date or 'today'}"
+            )
+
+        # Validate tax_rate
+        try:
+            rate = Decimal(tax_rate)
+        except InvalidOperation as e:
+            raise ValidationError(
+                f"Invalid tax_rate '{tax_rate}': must be a decimal string (e.g. '0.30')",
+                field="tax_rate",
+            ) from e
+        if not rate.is_finite() or rate < Decimal("0") or rate > Decimal("1"):
+            raise ValidationError(
+                f"tax_rate must be a finite number between 0 and 1, got {tax_rate}",
+                field="tax_rate",
+            )
+
+        # Get or fetch data
+        data, from_date, to_date = await _get_or_fetch_data(
+            start_date, end_date, account_index, use_cache, ctx
+        )
+
+        # Parse accounts
+        detect_format(data)
+        accounts = XMLParser.to_accounts(data, from_date, to_date)
+
+        if not accounts:
+            raise ValidationError("No accounts found in data")
+
+        account_list = list(accounts.values())
+        if account_index >= len(account_list):
+            raise ValidationError(
+                f"account_index {account_index} out of range (0-{len(account_list) - 1})"
+            )
+
+        account = account_list[account_index]
+        analysis_date = to_date
+
+        # Identify positions with unrealized losses
+        loss_positions: list[dict[str, Any]] = []
+        total_unrealized_loss = Decimal("0")
+
+        for position in account.positions:
+            if position.unrealized_pnl >= Decimal("0"):
+                continue
+
+            unrealized_loss = position.unrealized_pnl  # negative value
+            total_unrealized_loss += unrealized_loss
+            potential_tax_savings = abs(unrealized_loss) * rate
+
+            # Calculate holding period
+            position_trades = [
+                t
+                for t in account.trades
+                if t.symbol == position.symbol and t.buy_sell == BuySell.BUY
+            ]
+            holding_period_days: int | None
+            if position_trades:
+                earliest_trade = min(position_trades, key=lambda t: t.trade_date)
+                holding_period_days = (analysis_date - earliest_trade.trade_date).days
+            else:
+                # No buy trades in the analysis period — position was opened before start_date
+                holding_period_days = None
+
+            if holding_period_days is None:
+                holding_period_type = "unknown"
+            elif holding_period_days >= 365:
+                holding_period_type = "long_term"
+            else:
+                holding_period_type = "short_term"
+
+            # Check wash sale risk: was this symbol bought within last 30 days?
+            wash_sale_risk = False
+            wash_sale_detail: str | None = None
+            window_start = analysis_date - timedelta(days=30)
+            recent_buys = [
+                t
+                for t in account.trades
+                if t.symbol == position.symbol
+                and t.buy_sell == BuySell.BUY
+                and window_start <= t.trade_date <= analysis_date
+            ]
+            if recent_buys:
+                wash_sale_risk = True
+                latest_buy = max(recent_buys, key=lambda t: t.trade_date)
+                wash_sale_detail = (
+                    f"Bought {position.symbol} on {latest_buy.trade_date} "
+                    f"(within 30-day window). Selling now would trigger wash sale rule."
+                )
+
+            # Loss percentage
+            loss_pct = (
+                (unrealized_loss / position.cost_basis * Decimal("100"))
+                if position.cost_basis != Decimal("0")
+                else Decimal("0")
+            )
+
+            # Alternative ETF suggestion
+            suggested_alternative = ETF_ALTERNATIVES.get(position.symbol)
+
+            loss_positions.append(
+                {
+                    "symbol": position.symbol,
+                    "description": position.description,
+                    "asset_class": position.asset_class.value,
+                    "quantity": str(position.quantity),
+                    "cost_basis": str(position.cost_basis),
+                    "current_value": str(position.position_value),
+                    "unrealized_loss": str(unrealized_loss),
+                    "loss_percentage": str(round(loss_pct, 2)),
+                    "holding_period_days": holding_period_days,
+                    "holding_period_type": holding_period_type,
+                    "potential_tax_savings": str(round(potential_tax_savings, 2)),
+                    "wash_sale_risk": wash_sale_risk,
+                    "wash_sale_detail": wash_sale_detail,
+                    "suggested_alternative": suggested_alternative,
+                }
+            )
+
+        # Historical wash sale warnings
+        # IRS rule: 30 days before OR after a loss sale
+        wash_sale_warnings: list[dict[str, str]] = []
+        for symbol in {t.symbol for t in account.trades}:
+            symbol_trades = sorted(
+                [t for t in account.trades if t.symbol == symbol],
+                key=lambda t: t.trade_date,
+            )
+            for i, trade in enumerate(symbol_trades):
+                if trade.buy_sell == BuySell.SELL and trade.fifo_pnl_realized < Decimal("0"):
+                    # Forward check: rebought within 30 days after the loss sale
+                    for future_trade in symbol_trades[i + 1 :]:
+                        if future_trade.buy_sell == BuySell.BUY:
+                            days_after = (future_trade.trade_date - trade.trade_date).days
+                            if days_after <= 30:
+                                wash_sale_warnings.append(
+                                    {
+                                        "symbol": symbol,
+                                        "sell_date": str(trade.trade_date),
+                                        "buy_date": str(future_trade.trade_date),
+                                        "days_between": str(days_after),
+                                        "message": (
+                                            f"Potential wash sale: {symbol} sold at loss on "
+                                            f"{trade.trade_date}, rebought on "
+                                            f"{future_trade.trade_date} "
+                                            f"({days_after} days later)"
+                                        ),
+                                    }
+                                )
+                                break
+                    # Backward check: bought within 30 days before the loss sale
+                    for prior_trade in reversed(symbol_trades[:i]):
+                        if prior_trade.buy_sell == BuySell.BUY:
+                            days_before = (trade.trade_date - prior_trade.trade_date).days
+                            if days_before <= 30:
+                                wash_sale_warnings.append(
+                                    {
+                                        "symbol": symbol,
+                                        "sell_date": str(trade.trade_date),
+                                        "buy_date": str(prior_trade.trade_date),
+                                        "days_between": str(days_before),
+                                        "message": (
+                                            f"Potential wash sale: {symbol} bought on "
+                                            f"{prior_trade.trade_date}, sold at loss on "
+                                            f"{trade.trade_date} "
+                                            f"({days_before} days after purchase)"
+                                        ),
+                                    }
+                                )
+                                break
+
+        # Sort loss positions by unrealized loss (largest loss first)
+        loss_positions.sort(key=lambda p: Decimal(p["unrealized_loss"]))
+
+        total_potential_tax_savings = abs(total_unrealized_loss) * rate
+
+        # Determine tax regime note
+        if rate == Decimal("0"):
+            tax_regime = "No capital gains tax (tax_rate=0)"
+        else:
+            tax_regime = f"Estimated at {rate * Decimal('100')}% tax rate"
+
+        result: dict[str, Any] = {
+            "analysis_period": {"from": str(from_date), "to": str(to_date)},
+            "account_id": account.account_id,
+            "loss_positions": loss_positions,
+            "wash_sale_warnings": wash_sale_warnings,
+            "summary": {
+                "total_positions_with_loss": len(loss_positions),
+                "total_unrealized_loss": str(total_unrealized_loss),
+                "total_potential_tax_savings": str(round(total_potential_tax_savings, 2)),
+                "tax_rate": tax_rate,
+                "tax_regime": tax_regime,
+            },
+            "disclaimer": (
+                "This analysis is for informational purposes only and does not constitute "
+                "tax advice. Consult a qualified tax professional for tax planning decisions. "
+                "Wash sale rules may vary by jurisdiction."
+            ),
+        }
+
+        if ctx:
+            await ctx.info(
+                f"Found {len(loss_positions)} positions with unrealized losses, "
+                f"total: {total_unrealized_loss}"
             )
 
         return json.dumps(result, indent=2, default=str)
