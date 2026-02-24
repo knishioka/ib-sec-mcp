@@ -1252,7 +1252,76 @@ ib-sec-mcp
 - Use separate credentials for development and production
 - Regularly rotate API tokens
 
+## Command Selection Guide
+
+Use this guide to find the right command for your task. For full documentation on each command, see [.claude/README.md](.claude/README.md).
+
+### Decision Flowchart
+
+```mermaid
+flowchart TD
+    Start([What do you want to do?]) --> Role{Are you an<br/>investor or developer?}
+
+    Role -->|Investor| InvestorGoal{What do you want<br/>to analyze?}
+    Role -->|Developer| DevGoal{What task?}
+
+    %% Investor branch
+    InvestorGoal -->|Full portfolio strategy| IS["/investment-strategy<br/>Complete strategy with parallel<br/>market analysis of all holdings"]
+    InvestorGoal -->|Single stock/ETF/crypto| AS["/analyze-symbol SYMBOL<br/>Deep dive with multi-timeframe<br/>technicals and sentiment"]
+    InvestorGoal -->|Options analysis| OS["/options-strategy SYMBOL<br/>Greeks, IV, Max Pain,<br/>specific strike recommendations"]
+    InvestorGoal -->|Portfolio optimization| OP["/optimize-portfolio<br/>Allocation and rebalancing<br/>recommendations"]
+    InvestorGoal -->|Tax planning| TR["/tax-report<br/>Tax optimization strategies<br/>across accounts"]
+    InvestorGoal -->|Compare time periods| CP["/compare-periods<br/>Period-over-period<br/>performance comparison"]
+    InvestorGoal -->|Fetch new data| FL["/fetch-latest<br/>Fetch latest data from<br/>IB Flex Query API"]
+
+    %% Developer branch
+    DevGoal -->|Resolve GitHub issue| RGI["/resolve-gh-issue N<br/>Automated Issue to PR workflow"]
+    DevGoal -->|Run tests| T["/test<br/>Run pytest with coverage"]
+    DevGoal -->|Code quality| QC["/quality-check<br/>Format, lint, type check, test"]
+    DevGoal -->|Add tests for module| AT["/add-test MODULE<br/>Generate test file"]
+    DevGoal -->|Performance| BM["/benchmark<br/>Run performance benchmarks"]
+    DevGoal -->|Debug API issues| DA["/debug-api<br/>Troubleshoot API connections"]
+    DevGoal -->|Check MCP server| MS["/mcp-status<br/>Check MCP server health"]
+    DevGoal -->|Validate data| VD["/validate-data<br/>Check data integrity"]
+```
+
+### Command Reference Table
+
+#### Investment Analysis Commands
+
+| Command                    | Description                                                         | Time Savings         | Example                                                        |
+| -------------------------- | ------------------------------------------------------------------- | -------------------- | -------------------------------------------------------------- |
+| `/investment-strategy`     | Complete investment strategy with all holdings analyzed in parallel | 6-8 hrs to 15-20 min | `/investment-strategy`                                         |
+| `/analyze-symbol SYMBOL`   | Deep dive into a single stock, ETF, crypto, or forex pair           | 1-2 hrs to 2-3 min   | `/analyze-symbol AAPL`                                         |
+| `/options-strategy SYMBOL` | Options analysis with Greeks, IV, Max Pain, specific strikes        | 45-60 min to 3-5 min | `/options-strategy SPY`                                        |
+| `/optimize-portfolio`      | Portfolio-level optimization recommendations                        | 3-4 hrs to 5 min     | `/optimize-portfolio`                                          |
+| `/tax-report`              | Tax planning and optimization strategies                            | 2-3 hrs to 5 min     | `/tax-report --save`                                           |
+| `/compare-periods`         | Compare performance across two time periods                         | 1-2 hrs to 5 min     | `/compare-periods 2025-01-01 2025-03-31 2025-04-01 2025-06-30` |
+
+#### Data and Utility Commands
+
+| Command          | Description                                      | Use Case                                |
+| ---------------- | ------------------------------------------------ | --------------------------------------- |
+| `/fetch-latest`  | Fetch latest trading data from IB Flex Query API | Before running analysis with fresh data |
+| `/validate-data` | Validate data integrity and format               | After fetching data or troubleshooting  |
+| `/debug-api`     | Troubleshoot API connection issues               | When API calls fail                     |
+| `/mcp-status`    | Check MCP server health                          | When tools are not responding           |
+
+#### Development Commands
+
+| Command               | Description                                       | Use Case                |
+| --------------------- | ------------------------------------------------- | ----------------------- |
+| `/resolve-gh-issue N` | Automated issue-to-PR workflow (90% time savings) | Resolving GitHub issues |
+| `/quality-check`      | Run format, lint, type, and test checks           | Before committing code  |
+| `/test`               | Run pytest with coverage report                   | Testing changes         |
+| `/add-test MODULE`    | Generate comprehensive test file for a module     | Adding test coverage    |
+| `/benchmark`          | Run performance benchmarks                        | Optimizing performance  |
+
+---
+
 ## Troubleshooting
+
+> For a comprehensive troubleshooting guide with 12 detailed error cases, prevention tips, and the full exception hierarchy, see **[docs/troubleshooting.md](docs/troubleshooting.md)**.
 
 ### Common Issues
 
