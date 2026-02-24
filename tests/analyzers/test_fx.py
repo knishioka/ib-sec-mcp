@@ -338,6 +338,55 @@ class TestFXExposureAnalyzer:
             Decimal(data["percentage"])
             Decimal(data["fx_rate_to_base"])
 
+    def test_cash_currency_without_position_excluded(self):
+        """Test that cash in a currency with no position FX rate is excluded."""
+        positions = [
+            Position(
+                account_id="U1234567",
+                symbol="AAPL",
+                description="Apple Inc",
+                asset_class=AssetClass.STOCK,
+                quantity=Decimal("10"),
+                mark_price=Decimal("150"),
+                position_value=Decimal("1500"),
+                average_cost=Decimal("120"),
+                cost_basis=Decimal("1200"),
+                unrealized_pnl=Decimal("300"),
+                currency="USD",
+                fx_rate_to_base=Decimal("1"),
+                position_date=date(2025, 1, 31),
+            ),
+        ]
+        cash_balances = [
+            CashBalance(
+                currency="USD",
+                starting_cash=Decimal("5000"),
+                ending_cash=Decimal("5000"),
+                ending_settled_cash=Decimal("5000"),
+            ),
+            CashBalance(
+                currency="EUR",
+                starting_cash=Decimal("1000"),
+                ending_cash=Decimal("1000"),
+                ending_settled_cash=Decimal("1000"),
+            ),
+        ]
+        account = Account(
+            account_id="U1234567",
+            from_date=date(2025, 1, 1),
+            to_date=date(2025, 1, 31),
+            positions=positions,
+            cash_balances=cash_balances,
+            base_currency="USD",
+        )
+        analyzer = FXExposureAnalyzer(account=account)
+        result = analyzer.analyze()
+
+        # EUR cash should be excluded (no FX rate from positions)
+        assert "EUR" not in result["currency_exposures"]
+        # USD should still be present
+        assert "USD" in result["currency_exposures"]
+
     def test_includes_cash_in_exposure(self, multi_currency_account):
         """Test that cash balances are included in currency exposure."""
         analyzer = FXExposureAnalyzer(account=multi_currency_account)

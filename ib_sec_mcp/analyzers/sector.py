@@ -1,12 +1,15 @@
 """Sector allocation analyzer"""
 
 import asyncio
+import logging
 from collections import defaultdict
 from decimal import Decimal
 from typing import Any
 
 from ib_sec_mcp.analyzers.base import AnalysisResult, BaseAnalyzer
 from ib_sec_mcp.models.trade import AssetClass
+
+logger = logging.getLogger(__name__)
 
 # Asset classes that have GICS sector data (equity-like)
 EQUITY_ASSET_CLASSES = {AssetClass.STOCK, AssetClass.FUND}
@@ -44,6 +47,7 @@ async def fetch_sector_info(symbols: list[str]) -> dict[str, dict[str, str]]:
                     "industry": info.get("industry", "Unknown"),
                 }
             except Exception:
+                logger.warning("Failed to fetch sector info for %s", symbol)
                 return {"sector": "Unknown", "industry": "Unknown"}
 
         info = await asyncio.to_thread(_get_info)
@@ -105,11 +109,7 @@ class SectorAnalyzer(BaseAnalyzer):
         Returns:
             AnalysisResult with sector allocation data
         """
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(self.analyze_async())
-        finally:
-            loop.close()
+        return asyncio.run(self.analyze_async())
 
     async def analyze_async(self) -> AnalysisResult:
         """Run sector allocation analysis.

@@ -1,5 +1,6 @@
 """FX exposure analyzer"""
 
+import logging
 from collections import defaultdict
 from decimal import Decimal
 from typing import Any
@@ -8,6 +9,8 @@ from ib_sec_mcp.analyzers.base import AnalysisResult, BaseAnalyzer
 from ib_sec_mcp.models.account import Account, CashBalance
 from ib_sec_mcp.models.portfolio import Portfolio
 from ib_sec_mcp.models.position import Position
+
+logger = logging.getLogger(__name__)
 
 # Default scenario percentage for FX simulation
 DEFAULT_FX_SCENARIO_PCT = Decimal("10")
@@ -66,10 +69,12 @@ class FXExposureAnalyzer(BaseAnalyzer):
             )
 
         # Build currency exposure from positions
-        currency_data = self._build_currency_exposure(positions, cash_balances, total_value)
+        currency_data, computed_total = self._build_currency_exposure(
+            positions, cash_balances, total_value
+        )
 
-        # Run FX scenarios
-        scenarios = self._simulate_fx_scenarios(currency_data, total_value)
+        # Run FX scenarios using computed total for consistent denominator
+        scenarios = self._simulate_fx_scenarios(currency_data, computed_total)
 
         # Generate hedge recommendations
         recommendations = self._generate_hedge_recommendations(currency_data)
@@ -99,7 +104,7 @@ class FXExposureAnalyzer(BaseAnalyzer):
         positions: list[Position],
         cash_balances: list[CashBalance],
         total_value: Decimal,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], Decimal]:
         """Build currency exposure breakdown.
 
         Position values are already converted to base currency by the parser.
@@ -111,7 +116,7 @@ class FXExposureAnalyzer(BaseAnalyzer):
             total_value: Total portfolio value in base currency
 
         Returns:
-            Dict mapping currency code to exposure details
+            Tuple of (currency exposure dict, computed total in base currency)
         """
         # Accumulate position values by currency (already in base currency)
         currency_position_value: dict[str, Decimal] = defaultdict(Decimal)
@@ -136,7 +141,17 @@ class FXExposureAnalyzer(BaseAnalyzer):
         for cb in cash_balances:
             if cb.currency == "BASE_SUMMARY":
                 continue
-            fx_rate = currency_fx_rates.get(cb.currency, Decimal("1"))
+            if cb.currency == self.base_currency:
+                fx_rate = Decimal("1")
+            elif cb.currency in currency_fx_rates:
+                fx_rate = currency_fx_rates[cb.currency]
+            else:
+                logger.warning(
+                    "No FX rate available for cash currency %s; "
+                    "excluding from exposure calculation",
+                    cb.currency,
+                )
+                continue
             cash_base = cb.ending_cash * fx_rate
             currency_cash_base[cb.currency] += cash_base
             currency_cash_local[cb.currency] += cb.ending_cash
@@ -179,7 +194,7 @@ class FXExposureAnalyzer(BaseAnalyzer):
                 "is_base_currency": currency == self.base_currency,
             }
 
-        return result
+        return result, computed_total
 
     def _simulate_fx_scenarios(
         self,
