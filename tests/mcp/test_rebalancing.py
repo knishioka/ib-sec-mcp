@@ -6,10 +6,12 @@ from decimal import Decimal
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from fastmcp import FastMCP
 
 from ib_sec_mcp.mcp.exceptions import ValidationError
 from ib_sec_mcp.mcp.tools.rebalancing import (
     _estimate_commission,
+    _estimate_shares,
     register_rebalancing_tools,
 )
 from ib_sec_mcp.models.account import Account, CashBalance
@@ -86,6 +88,14 @@ def sample_xml_data():
     )
 
 
+@pytest.fixture
+def mcp_with_rebalancing_tools():
+    """Create a FastMCP instance with rebalancing tools registered."""
+    mcp = FastMCP("test")
+    register_rebalancing_tools(mcp)
+    return mcp
+
+
 class TestEstimateCommission:
     """Tests for _estimate_commission helper."""
 
@@ -130,16 +140,63 @@ class TestEstimateCommission:
         assert commission == Decimal("10.000")
 
 
+class TestEstimateShares:
+    """Tests for _estimate_shares helper with multiplier support."""
+
+    def test_stock_no_multiplier(self):
+        """Stocks have multiplier=1, so shares = value / price."""
+        shares = _estimate_shares(Decimal("15000"), Decimal("150"), Decimal("1"))
+        assert shares == Decimal("100")
+
+    def test_option_multiplier_100(self):
+        """Options have multiplier=100, so contracts = value / (price * 100)."""
+        shares = _estimate_shares(Decimal("10000"), Decimal("5.00"), Decimal("100"))
+        # 10000 / (5 * 100) = 20 contracts
+        assert shares == Decimal("20")
+
+    def test_futures_multiplier(self):
+        """Futures with multiplier=50 (e.g., ES mini)."""
+        shares = _estimate_shares(Decimal("250000"), Decimal("5000"), Decimal("50"))
+        # 250000 / (5000 * 50) = 1 contract
+        assert shares == Decimal("1")
+
+    def test_rounds_down(self):
+        """Fractional shares should round down."""
+        shares = _estimate_shares(Decimal("1550"), Decimal("150"), Decimal("1"))
+        # 1550 / 150 = 10.333... → 10
+        assert shares == Decimal("10")
+
+    def test_zero_mark_price_returns_zero(self):
+        """Zero mark price should return 0 shares."""
+        shares = _estimate_shares(Decimal("10000"), Decimal("0"), Decimal("1"))
+        assert shares == Decimal("0")
+
+    def test_negative_mark_price_returns_zero(self):
+        """Negative mark price should return 0 shares."""
+        shares = _estimate_shares(Decimal("10000"), Decimal("-5"), Decimal("1"))
+        assert shares == Decimal("0")
+
+    def test_small_trade_value_rounds_to_zero(self):
+        """Very small trade value relative to price rounds to zero."""
+        shares = _estimate_shares(Decimal("1"), Decimal("150"), Decimal("1"))
+        # 1 / 150 = 0.006... → 0
+        assert shares == Decimal("0")
+
+    def test_uses_absolute_trade_value(self):
+        """Negative trade values (sells) should use absolute value."""
+        shares = _estimate_shares(Decimal("-15000"), Decimal("150"), Decimal("1"))
+        assert shares == Decimal("100")
+
+
 class TestGenerateRebalancingTrades:
     """Tests for generate_rebalancing_trades tool."""
 
     @pytest.mark.asyncio
-    async def test_basic_rebalancing(self, sample_account, sample_xml_data):
+    async def test_basic_rebalancing(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test basic rebalancing trade generation."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -169,12 +226,11 @@ class TestGenerateRebalancingTrades:
             assert result["portfolio_summary"]["position_count"] == 3
 
     @pytest.mark.asyncio
-    async def test_rebalancing_with_new_position(self, sample_account, sample_xml_data):
+    async def test_rebalancing_with_new_position(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test rebalancing when target includes a symbol not in current portfolio."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -202,12 +258,11 @@ class TestGenerateRebalancingTrades:
             assert goog_trade["mark_price"] == "N/A"
 
     @pytest.mark.asyncio
-    async def test_rebalancing_close_position(self, sample_account, sample_xml_data):
+    async def test_rebalancing_close_position(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test rebalancing when a current position should be closed."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -233,12 +288,11 @@ class TestGenerateRebalancingTrades:
             assert msft_trade["target_weight_pct"] == "0.00"
 
     @pytest.mark.asyncio
-    async def test_custom_portfolio_value(self, sample_account, sample_xml_data):
+    async def test_custom_portfolio_value(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test rebalancing with custom total_portfolio_value override."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -262,12 +316,9 @@ class TestGenerateRebalancingTrades:
             assert result["portfolio_summary"]["total_value"] == "100000.00"
 
     @pytest.mark.asyncio
-    async def test_validation_empty_allocation(self, sample_account, sample_xml_data):
+    async def test_validation_empty_allocation(self, mcp_with_rebalancing_tools):
         """Test that empty target allocation raises ValidationError."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
         with pytest.raises(ValidationError, match="target_allocation cannot be empty"):
@@ -277,12 +328,9 @@ class TestGenerateRebalancingTrades:
             )
 
     @pytest.mark.asyncio
-    async def test_validation_weights_not_100(self, sample_account, sample_xml_data):
+    async def test_validation_weights_not_100(self, mcp_with_rebalancing_tools):
         """Test that weights not summing to 100 raises ValidationError."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
         with pytest.raises(ValidationError, match="must sum to 100"):
@@ -292,12 +340,9 @@ class TestGenerateRebalancingTrades:
             )
 
     @pytest.mark.asyncio
-    async def test_validation_negative_weight(self, sample_account, sample_xml_data):
+    async def test_validation_negative_weight(self, mcp_with_rebalancing_tools):
         """Test that negative weight raises ValidationError."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
         with pytest.raises(ValidationError, match="must be non-negative"):
@@ -307,12 +352,11 @@ class TestGenerateRebalancingTrades:
             )
 
     @pytest.mark.asyncio
-    async def test_validation_negative_portfolio_value(self, sample_account, sample_xml_data):
+    async def test_validation_negative_portfolio_value(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test that negative portfolio value raises ValidationError."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -334,12 +378,9 @@ class TestGenerateRebalancingTrades:
                 )
 
     @pytest.mark.asyncio
-    async def test_validation_empty_symbol(self, sample_account, sample_xml_data):
+    async def test_validation_empty_symbol(self, mcp_with_rebalancing_tools):
         """Test that empty symbol raises ValidationError."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
         with pytest.raises(ValidationError, match="Symbol cannot be empty"):
@@ -349,12 +390,11 @@ class TestGenerateRebalancingTrades:
             )
 
     @pytest.mark.asyncio
-    async def test_trade_summary_values(self, sample_account, sample_xml_data):
+    async def test_trade_summary_values(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test that trade summary correctly sums buy/sell values."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -379,12 +419,11 @@ class TestGenerateRebalancingTrades:
             assert Decimal(summary["total_estimated_commission"]) >= Decimal("0")
 
     @pytest.mark.asyncio
-    async def test_json_serialization(self, sample_account, sample_xml_data):
+    async def test_json_serialization(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test that result is valid JSON with proper Decimal serialization."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -420,17 +459,90 @@ class TestGenerateRebalancingTrades:
 
             check_no_decimal(result)
 
+    @pytest.mark.asyncio
+    async def test_zero_unit_trades_skipped(self, mcp_with_rebalancing_tools, sample_xml_data):
+        """Test that trades rounding to zero shares are skipped."""
+        # Create account with an expensive stock where small rebalance rounds to 0
+        account = Account(
+            account_id="U12345678",
+            from_date=date(2025, 1, 1),
+            to_date=date(2025, 6, 30),
+            base_currency="USD",
+            cash_balances=[
+                CashBalance(
+                    currency="USD",
+                    starting_cash=Decimal("0"),
+                    ending_cash=Decimal("0"),
+                    ending_settled_cash=Decimal("0"),
+                )
+            ],
+            positions=[
+                Position(
+                    account_id="U12345678",
+                    symbol="BRK.A",
+                    asset_class=AssetClass.STOCK,
+                    quantity=Decimal("1"),
+                    multiplier=Decimal("1"),
+                    mark_price=Decimal("700000.00"),
+                    position_value=Decimal("700000.00"),
+                    average_cost=Decimal("650000.00"),
+                    cost_basis=Decimal("650000.00"),
+                    unrealized_pnl=Decimal("50000.00"),
+                    position_date=date(2025, 6, 30),
+                ),
+                Position(
+                    account_id="U12345678",
+                    symbol="AAPL",
+                    asset_class=AssetClass.STOCK,
+                    quantity=Decimal("200"),
+                    multiplier=Decimal("1"),
+                    mark_price=Decimal("150.00"),
+                    position_value=Decimal("30000.00"),
+                    average_cost=Decimal("120.00"),
+                    cost_basis=Decimal("24000.00"),
+                    unrealized_pnl=Decimal("6000.00"),
+                    position_date=date(2025, 6, 30),
+                ),
+            ],
+            trades=[],
+        )
+
+        mcp = mcp_with_rebalancing_tools
+
+        with (
+            patch(
+                "ib_sec_mcp.mcp.tools.rebalancing._get_or_fetch_data",
+                new_callable=AsyncMock,
+                return_value=(sample_xml_data, date(2025, 1, 1), date(2025, 6, 30)),
+            ),
+            patch(
+                "ib_sec_mcp.mcp.tools.rebalancing._parse_account_by_index",
+                return_value=account,
+            ),
+        ):
+            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
+            # Tiny rebalance on BRK.A (target 96% vs current ~95.89%)
+            # Trade value ~$800 / $700,000 mark_price = 0.001 shares → 0
+            result_str = await tool_fn(
+                target_allocation={"BRK.A": 96.0, "AAPL": 4.0},
+                start_date="2025-01-01",
+            )
+
+            result = json.loads(result_str)
+            brk_trades = [t for t in result["rebalancing_trades"] if t["symbol"] == "BRK.A"]
+            # BRK.A trade should be skipped since estimated_shares rounds to 0
+            assert len(brk_trades) == 0
+
 
 class TestSimulateRebalancing:
     """Tests for simulate_rebalancing tool."""
 
     @pytest.mark.asyncio
-    async def test_basic_simulation(self, sample_account, sample_xml_data):
+    async def test_basic_simulation(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test basic rebalancing simulation."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -459,12 +571,11 @@ class TestSimulateRebalancing:
             assert "cash_position" in result
 
     @pytest.mark.asyncio
-    async def test_simulation_tax_impact_with_gain(self, sample_account, sample_xml_data):
+    async def test_simulation_tax_impact_with_gain(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test that simulation correctly calculates tax impact for selling positions with gains."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -492,12 +603,11 @@ class TestSimulateRebalancing:
             assert Decimal(tax["total_estimated_taxable_gain"]) > Decimal("0")
 
     @pytest.mark.asyncio
-    async def test_simulation_warnings_new_positions(self, sample_account, sample_xml_data):
+    async def test_simulation_warnings_new_positions(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test warnings for new positions not in current portfolio."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -522,12 +632,11 @@ class TestSimulateRebalancing:
             assert any("GOOG" in w for w in warnings)
 
     @pytest.mark.asyncio
-    async def test_simulation_warnings_close_positions(self, sample_account, sample_xml_data):
+    async def test_simulation_warnings_close_positions(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test warnings for positions to be fully closed."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -552,12 +661,9 @@ class TestSimulateRebalancing:
             assert any("MSFT" in w for w in warnings)
 
     @pytest.mark.asyncio
-    async def test_simulation_validation_errors(self):
+    async def test_simulation_validation_errors(self, mcp_with_rebalancing_tools):
         """Test that simulation validates inputs properly."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
 
@@ -571,12 +677,11 @@ class TestSimulateRebalancing:
             )
 
     @pytest.mark.asyncio
-    async def test_simulation_commission_percentage(self, sample_account, sample_xml_data):
+    async def test_simulation_commission_percentage(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test that commission as percentage of portfolio is calculated."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -602,12 +707,11 @@ class TestSimulateRebalancing:
             assert pct >= Decimal("0")
 
     @pytest.mark.asyncio
-    async def test_simulation_json_serialization(self, sample_account, sample_xml_data):
+    async def test_simulation_json_serialization(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test that simulation result is valid JSON."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(
@@ -630,12 +734,11 @@ class TestSimulateRebalancing:
             assert isinstance(result, dict)
 
     @pytest.mark.asyncio
-    async def test_simulation_with_custom_portfolio_value(self, sample_account, sample_xml_data):
+    async def test_simulation_with_custom_portfolio_value(
+        self, mcp_with_rebalancing_tools, sample_account, sample_xml_data
+    ):
         """Test simulation with overridden portfolio value."""
-        from fastmcp import FastMCP
-
-        mcp = FastMCP("test")
-        register_rebalancing_tools(mcp)
+        mcp = mcp_with_rebalancing_tools
 
         with (
             patch(

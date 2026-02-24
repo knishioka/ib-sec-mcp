@@ -4,6 +4,7 @@ Calculate rebalancing trades and simulate rebalancing outcomes.
 """
 
 import json
+from datetime import date
 from decimal import ROUND_DOWN, Decimal
 
 from fastmcp import Context, FastMCP
@@ -11,6 +12,7 @@ from fastmcp import Context, FastMCP
 from ib_sec_mcp.mcp.exceptions import ValidationError
 from ib_sec_mcp.mcp.tools.composable_data import _parse_account_by_index
 from ib_sec_mcp.mcp.tools.ib_portfolio import _get_or_fetch_data
+from ib_sec_mcp.models.account import Account
 from ib_sec_mcp.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -57,6 +59,98 @@ def _estimate_commission(
     else:
         # Percentage of trade value
         return abs(trade_value) * rate
+
+
+async def _validate_and_prepare(
+    target_allocation: dict[str, float],
+    start_date: str,
+    end_date: str | None,
+    total_portfolio_value: float | None,
+    account_index: int,
+    use_cache: bool,
+    ctx: Context | None,
+) -> tuple[dict[str, Decimal], Account, Decimal, date, date]:
+    """Validate target allocation and prepare portfolio data for rebalancing.
+
+    Shared logic used by both generate_rebalancing_trades and simulate_rebalancing.
+
+    Args:
+        target_allocation: Target allocation as {symbol: weight_pct}
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format (optional)
+        total_portfolio_value: Override portfolio value (optional)
+        account_index: Account index
+        use_cache: Use cached data if available
+        ctx: MCP context for logging
+
+    Returns:
+        Tuple of (target_weights, account, portfolio_value, from_date, to_date)
+
+    Raises:
+        ValidationError: If inputs are invalid
+    """
+    if not target_allocation:
+        raise ValidationError("target_allocation cannot be empty")
+
+    target_weights: dict[str, Decimal] = {}
+    for symbol, weight in target_allocation.items():
+        if not symbol or not symbol.strip():
+            raise ValidationError("Symbol cannot be empty in target_allocation")
+        w = Decimal(str(weight))
+        if w < Decimal("0"):
+            raise ValidationError(f"Weight for {symbol} must be non-negative, got {weight}")
+        target_weights[symbol.strip().upper()] = w
+
+    total_weight = sum(target_weights.values())
+    if abs(total_weight - Decimal("100")) > Decimal("0.01"):
+        raise ValidationError(f"Target allocation weights must sum to 100, got {total_weight}")
+
+    # Fetch portfolio data
+    data, from_date, to_date = await _get_or_fetch_data(
+        start_date, end_date, account_index, use_cache, ctx
+    )
+    account = _parse_account_by_index(data, from_date, to_date, account_index)
+
+    # Calculate portfolio value
+    portfolio_value: Decimal
+    if total_portfolio_value is not None:
+        portfolio_value = Decimal(str(total_portfolio_value))
+        if portfolio_value <= Decimal("0"):
+            raise ValidationError(
+                f"total_portfolio_value must be positive, got {total_portfolio_value}"
+            )
+    else:
+        portfolio_value = account.total_value
+
+    if portfolio_value <= Decimal("0"):
+        raise ValidationError("Portfolio value must be positive for rebalancing")
+
+    return target_weights, account, portfolio_value, from_date, to_date
+
+
+def _estimate_shares(
+    trade_value: Decimal,
+    mark_price: Decimal,
+    multiplier: Decimal,
+) -> Decimal:
+    """Estimate number of shares/contracts for a rebalancing trade.
+
+    Accounts for contract multipliers (e.g., options represent 100 shares).
+
+    Args:
+        trade_value: Absolute trade value
+        mark_price: Current market price per unit
+        multiplier: Contract multiplier (1 for stocks, 100 for options, etc.)
+
+    Returns:
+        Estimated number of shares/contracts (rounded down)
+    """
+    if mark_price <= Decimal("0"):
+        return Decimal("0")
+    effective_price = mark_price * multiplier
+    if effective_price <= Decimal("0"):
+        return Decimal("0")
+    return (abs(trade_value) / effective_price).quantize(Decimal("1"), rounding=ROUND_DOWN)
 
 
 def register_rebalancing_tools(mcp: FastMCP) -> None:
@@ -107,64 +201,35 @@ def register_rebalancing_tools(mcp: FastMCP) -> None:
         if ctx:
             await ctx.info("Generating rebalancing trades")
 
-        # Validate target allocation
-        if not target_allocation:
-            raise ValidationError("target_allocation cannot be empty")
-
-        target_weights: dict[str, Decimal] = {}
-        for symbol, weight in target_allocation.items():
-            if not symbol or not symbol.strip():
-                raise ValidationError("Symbol cannot be empty in target_allocation")
-            w = Decimal(str(weight))
-            if w < Decimal("0"):
-                raise ValidationError(f"Weight for {symbol} must be non-negative, got {weight}")
-            target_weights[symbol.strip().upper()] = w
-
-        total_weight = sum(target_weights.values())
-        if abs(total_weight - Decimal("100")) > Decimal("0.01"):
-            raise ValidationError(f"Target allocation weights must sum to 100, got {total_weight}")
-
-        # Fetch portfolio data
-        data, from_date, to_date = await _get_or_fetch_data(
-            start_date, end_date, account_index, use_cache, ctx
+        target_weights, account, portfolio_value, from_date, to_date = await _validate_and_prepare(
+            target_allocation,
+            start_date,
+            end_date,
+            total_portfolio_value,
+            account_index,
+            use_cache,
+            ctx,
         )
-        account = _parse_account_by_index(data, from_date, to_date, account_index)
 
-        # Calculate current portfolio value
-        portfolio_value: Decimal
-        if total_portfolio_value is not None:
-            portfolio_value = Decimal(str(total_portfolio_value))
-            if portfolio_value <= Decimal("0"):
-                raise ValidationError(
-                    f"total_portfolio_value must be positive, got {total_portfolio_value}"
-                )
-        else:
-            portfolio_value = account.total_value
-
-        if portfolio_value <= Decimal("0"):
-            raise ValidationError("Portfolio value must be positive for rebalancing")
-
-        # Build current allocation from positions
-        current_positions: dict[str, dict[str, Decimal]] = {}
+        # Build current allocation from positions (single loop)
+        current_positions: dict[str, dict[str, Decimal | str]] = {}
         for pos in account.positions:
             sym = pos.symbol.upper()
             current_positions[sym] = {
                 "value": pos.position_value,
                 "quantity": pos.quantity,
                 "mark_price": pos.mark_price,
-                "asset_class": Decimal("0"),  # placeholder
+                "multiplier": pos.multiplier,
+                "asset_class": pos.asset_class.value,
             }
-
-        # Store asset class strings separately
-        asset_classes: dict[str, str] = {}
-        for pos in account.positions:
-            asset_classes[pos.symbol.upper()] = pos.asset_class.value
 
         # Calculate current weights
         current_weights: dict[str, Decimal] = {}
         for sym, pos_data in current_positions.items():
             if portfolio_value > Decimal("0"):
-                current_weights[sym] = (pos_data["value"] / portfolio_value) * Decimal("100")
+                current_weights[sym] = (
+                    Decimal(str(pos_data["value"])) / portfolio_value
+                ) * Decimal("100")
             else:
                 current_weights[sym] = Decimal("0")
 
@@ -184,7 +249,9 @@ def register_rebalancing_tools(mcp: FastMCP) -> None:
             diff_pct = target_pct - current_pct
 
             target_value = portfolio_value * target_pct / Decimal("100")
-            current_value = current_positions.get(symbol, {}).get("value", Decimal("0"))
+            current_value = Decimal(
+                str(current_positions.get(symbol, {}).get("value", Decimal("0")))
+            )
             trade_value = target_value - current_value
 
             # Skip if trade is negligible (less than $1)
@@ -194,20 +261,21 @@ def register_rebalancing_tools(mcp: FastMCP) -> None:
             # Determine direction
             direction = "BUY" if trade_value > Decimal("0") else "SELL"
 
-            # Calculate shares
-            mark_price = current_positions.get(symbol, {}).get("mark_price", Decimal("0"))
-            estimated_shares = Decimal("0")
+            # Calculate shares accounting for contract multiplier
+            mark_price = Decimal(
+                str(current_positions.get(symbol, {}).get("mark_price", Decimal("0")))
+            )
+            multiplier = Decimal(
+                str(current_positions.get(symbol, {}).get("multiplier", Decimal("1")))
+            )
+            estimated_shares = _estimate_shares(trade_value, mark_price, multiplier)
 
-            if mark_price > Decimal("0"):
-                estimated_shares = (abs(trade_value) / mark_price).quantize(
-                    Decimal("1"), rounding=ROUND_DOWN
-                )
-            else:
-                # No current price available (new position)
-                estimated_shares = Decimal("0")
+            # Skip trades that round down to zero units
+            if estimated_shares == Decimal("0") and mark_price > Decimal("0"):
+                continue
 
             # Estimate commission
-            ac = asset_classes.get(symbol, "STK")
+            ac = str(current_positions.get(symbol, {}).get("asset_class", "STK"))
             commission = _estimate_commission(symbol, ac, abs(trade_value), estimated_shares)
             total_commission += commission
 
@@ -298,42 +366,15 @@ def register_rebalancing_tools(mcp: FastMCP) -> None:
         if ctx:
             await ctx.info("Simulating rebalancing")
 
-        # Validate target allocation
-        if not target_allocation:
-            raise ValidationError("target_allocation cannot be empty")
-
-        target_weights: dict[str, Decimal] = {}
-        for symbol, weight in target_allocation.items():
-            if not symbol or not symbol.strip():
-                raise ValidationError("Symbol cannot be empty in target_allocation")
-            w = Decimal(str(weight))
-            if w < Decimal("0"):
-                raise ValidationError(f"Weight for {symbol} must be non-negative, got {weight}")
-            target_weights[symbol.strip().upper()] = w
-
-        total_weight = sum(target_weights.values())
-        if abs(total_weight - Decimal("100")) > Decimal("0.01"):
-            raise ValidationError(f"Target allocation weights must sum to 100, got {total_weight}")
-
-        # Fetch portfolio data
-        data, from_date, to_date = await _get_or_fetch_data(
-            start_date, end_date, account_index, use_cache, ctx
+        target_weights, account, portfolio_value, from_date, to_date = await _validate_and_prepare(
+            target_allocation,
+            start_date,
+            end_date,
+            total_portfolio_value,
+            account_index,
+            use_cache,
+            ctx,
         )
-        account = _parse_account_by_index(data, from_date, to_date, account_index)
-
-        # Calculate portfolio value
-        portfolio_value: Decimal
-        if total_portfolio_value is not None:
-            portfolio_value = Decimal(str(total_portfolio_value))
-            if portfolio_value <= Decimal("0"):
-                raise ValidationError(
-                    f"total_portfolio_value must be positive, got {total_portfolio_value}"
-                )
-        else:
-            portfolio_value = account.total_value
-
-        if portfolio_value <= Decimal("0"):
-            raise ValidationError("Portfolio value must be positive for rebalancing")
 
         # Build current state
         position_map: dict[str, dict[str, Decimal | str]] = {}
@@ -343,6 +384,7 @@ def register_rebalancing_tools(mcp: FastMCP) -> None:
                 "value": pos.position_value,
                 "quantity": pos.quantity,
                 "mark_price": pos.mark_price,
+                "multiplier": pos.multiplier,
                 "cost_basis": pos.cost_basis,
                 "average_cost": pos.average_cost,
                 "unrealized_pnl": pos.unrealized_pnl,
@@ -392,11 +434,10 @@ def register_rebalancing_tools(mcp: FastMCP) -> None:
                 mark_price = Decimal(
                     str(position_map.get(symbol, {}).get("mark_price", Decimal("0")))
                 )
-                quantity = Decimal("0")
-                if mark_price > Decimal("0"):
-                    quantity = (abs(trade_value) / mark_price).quantize(
-                        Decimal("1"), rounding=ROUND_DOWN
-                    )
+                multiplier = Decimal(
+                    str(position_map.get(symbol, {}).get("multiplier", Decimal("1")))
+                )
+                quantity = _estimate_shares(trade_value, mark_price, multiplier)
 
                 ac = str(position_map.get(symbol, {}).get("asset_class", "STK"))
                 commission = _estimate_commission(symbol, ac, abs(trade_value), quantity)
