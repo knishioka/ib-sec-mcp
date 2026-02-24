@@ -6,6 +6,7 @@ IV metrics, and Max Pain calculations.
 
 import json
 from datetime import datetime
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -253,6 +254,7 @@ def register_options_tools(mcp: FastMCP) -> None:
                 return json.dumps({"error": "Could not fetch current stock price"})
 
             # Calculate time to expiration (in years)
+            assert exp_date is not None  # guaranteed by logic above
             exp_datetime = datetime.strptime(exp_date, "%Y-%m-%d")
             T = (exp_datetime - today).days / 365.0  # noqa: N806
 
@@ -260,7 +262,7 @@ def register_options_tools(mcp: FastMCP) -> None:
                 return json.dumps({"error": f"Expiration date {exp_date} is in the past"})
 
             # Calculate Greeks for calls and puts
-            def calculate_option_greeks(row, option_type):
+            def calculate_option_greeks(row: Any, option_type: str) -> dict[str, float]:
                 K = row["strike"]  # noqa: N806
                 IV = row.get("impliedVolatility", 0.3)  # noqa: N806  # Default to 30% if missing
 
@@ -569,7 +571,7 @@ def register_options_tools(mcp: FastMCP) -> None:
                 pain_by_strike[float(strike)] = call_pain + put_pain
 
             # Find Max Pain (minimum total pain)
-            max_pain_strike = min(pain_by_strike, key=pain_by_strike.get)
+            max_pain_strike = min(pain_by_strike, key=lambda k: pain_by_strike[k])
             max_pain_value = pain_by_strike[max_pain_strike]
 
             # Calculate expected move based on ATM straddle

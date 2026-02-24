@@ -6,6 +6,7 @@ Yahoo Finance news retrieval tools for market intelligence.
 import asyncio
 import json
 from datetime import datetime
+from typing import Any
 
 from fastmcp import Context, FastMCP
 
@@ -58,7 +59,7 @@ def register_stock_news_tools(mcp: FastMCP) -> None:
             import yfinance as yf
 
             # Fetch news with timeout
-            async def fetch_news():
+            async def fetch_news() -> Any:
                 ticker = yf.Ticker(symbol)
                 return ticker.news
 
@@ -78,7 +79,7 @@ def register_stock_news_tools(mcp: FastMCP) -> None:
             # Limit results
             news = news[:limit]
 
-            result = {
+            result: dict[str, Any] = {
                 "symbol": symbol,
                 "news_count": len(news),
                 "fetch_time": datetime.now().isoformat(),

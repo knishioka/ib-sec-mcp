@@ -5,6 +5,7 @@ Stock performance comparison and analyst consensus tools.
 
 import asyncio
 import json
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -60,7 +61,7 @@ def register_market_comparison_tools(mcp: FastMCP) -> None:
             import yfinance as yf
 
             # Fetch data with timeout
-            async def fetch_data():
+            async def fetch_data() -> tuple[Any, Any]:
                 stock = await asyncio.to_thread(lambda: yf.Ticker(symbol).history(period=period))
                 bench = await asyncio.to_thread(lambda: yf.Ticker(benchmark).history(period=period))
                 return stock, bench

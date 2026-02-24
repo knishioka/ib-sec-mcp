@@ -5,6 +5,7 @@ Yahoo Finance stock data retrieval tools for market data and company information
 
 import asyncio
 import json
+from typing import Any, Literal
 
 from fastmcp import Context, FastMCP
 
@@ -26,8 +27,12 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
     @mcp.tool
     async def get_stock_data(
         symbol: str,
-        period: str = "1mo",
-        interval: str = "1d",
+        period: Literal[
+            "1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y", "10y", "ytd", "max"
+        ] = "1mo",
+        interval: Literal[
+            "1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"
+        ] = "1d",
         indicators: str | None = None,
         limit: int | None = None,
         summary_only: bool = False,
@@ -58,8 +63,8 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
         try:
             # Validate inputs
             symbol = validate_symbol(symbol)
-            period = validate_period(period)
-            interval = validate_interval(interval)
+            validate_period(period)
+            validate_interval(interval)
             indicator_list = validate_indicators(indicators) if indicators else None
 
             if ctx:
@@ -74,7 +79,7 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
                 )
 
             # Fetch data with timeout
-            async def fetch_yf_data():
+            async def fetch_yf_data() -> Any:
                 import yfinance as yf
 
                 return await asyncio.to_thread(

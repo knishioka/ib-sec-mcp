@@ -7,6 +7,7 @@ import asyncio
 import json
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -101,7 +102,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
             # Fetch historical data for all positions
             import yfinance as yf
 
-            async def fetch_position_history(symbol: str):
+            async def fetch_position_history(symbol: str) -> tuple[str, Any]:
                 try:
                     ticker = yf.Ticker(symbol)
                     hist = await asyncio.to_thread(lambda: ticker.history(period=period))
@@ -306,7 +307,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
             # Fetch historical data for all positions
             import yfinance as yf
 
-            async def fetch_returns(symbol: str):
+            async def fetch_returns(symbol: str) -> tuple[str, Any]:
                 try:
                     ticker = yf.Ticker(symbol)
                     hist = await asyncio.to_thread(lambda: ticker.history(period=period))
@@ -334,7 +335,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
             corr_matrix = returns_df.corr()
 
             # Convert to dict for JSON
-            corr_dict = {}
+            corr_dict: dict[str, dict[str, float]] = {}
             for symbol1 in corr_matrix.index:
                 corr_dict[symbol1] = {}
                 for symbol2 in corr_matrix.columns:
