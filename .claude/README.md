@@ -49,7 +49,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 │   ├── market-analyst.md
 │   ├── strategy-coordinator.md
 │   └── portfolio-risk-analyst.md  # NEW: Portfolio risk analysis
-└── commands/              # Custom slash commands (12 commands)
+└── commands/              # Custom slash commands (16 commands)
     ├── fetch-latest.md
     ├── debug-api.md
     ├── test.md
@@ -61,7 +61,11 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
     ├── benchmark.md
     ├── validate-data.md
     ├── mcp-status.md
-    └── resolve-gh-issue.md    # NEW: Complete GitHub issue resolution
+    ├── resolve-gh-issue.md
+    ├── dividend-analysis.md   # Dividend income & IE ETF tax efficiency
+    ├── sector-analysis.md     # Sector allocation & HHI concentration
+    ├── wash-sale-check.md     # Wash sale detection & tax loss harvesting
+    └── fx-exposure.md         # Currency exposure & FX risk simulation
 ```
 
 ## 🤖 Sub-Agents (Specialized AI Experts)
@@ -342,6 +346,50 @@ Delegates to: **tax-optimizer** + **market-analyst** sub-agents
 /tax-report                # Current year
 /tax-report --year 2024    # Specific year
 /tax-report --save         # Save to file
+```
+
+#### `/dividend-analysis [--start YYYY-MM-DD] [--account N]`
+
+Analyze dividend income and Ireland-domiciled ETF tax efficiency comparison
+Uses: `analyze_dividend_income` MCP tool
+
+```bash
+/dividend-analysis                    # Default period
+/dividend-analysis --start 2024-01-01 # Custom start date
+/dividend-analysis --account 1        # Second account
+```
+
+#### `/sector-analysis [--start YYYY-MM-DD] [--account N]`
+
+Analyze sector allocation and concentration risk (HHI)
+Uses: `analyze_sector_allocation` MCP tool
+
+```bash
+/sector-analysis                      # Default period
+/sector-analysis --start 2024-01-01   # Custom start date
+/sector-analysis --account 1          # Second account
+```
+
+#### `/wash-sale-check [--start YYYY-MM-DD] [--tax-rate 0.30] [--account N]`
+
+Detect wash sale violations and tax loss harvesting opportunities
+Uses: `calculate_tax_loss_harvesting` MCP tool
+
+```bash
+/wash-sale-check                      # Default (30% tax rate)
+/wash-sale-check --tax-rate 0.20      # Custom tax rate
+/wash-sale-check --start 2024-01-01   # Custom start date
+```
+
+#### `/fx-exposure [--start YYYY-MM-DD] [--scenario-pct 10] [--account N]`
+
+Analyze currency exposure and FX risk with scenario simulation
+Uses: `analyze_fx_exposure` MCP tool
+
+```bash
+/fx-exposure                          # Default +/-10% scenario
+/fx-exposure --scenario-pct 15        # Custom +/-15% scenario
+/fx-exposure --account 1              # Second account
 ```
 
 ### 🔧 Development Commands

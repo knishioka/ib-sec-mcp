@@ -2,21 +2,31 @@
 
 Detailed guide for creating reusable workflow templates in Claude Code.
 
-## Current Slash Commands (12)
+## Current Slash Commands (16)
 
 **Analysis Commands**:
+
 - `/optimize-portfolio` - Comprehensive portfolio analysis
 - `/compare-periods` - Period-over-period comparison
 - `/tax-report` - Tax planning report generation
 - `/validate-data` - Data integrity validation
 
+**Portfolio Commands**:
+
+- `/dividend-analysis` - Dividend income and Ireland ETF tax efficiency
+- `/sector-analysis` - Sector allocation and concentration risk (HHI)
+- `/wash-sale-check` - Wash sale detection and tax loss harvesting
+- `/fx-exposure` - Currency exposure and FX risk simulation
+
 **Development Commands**:
+
 - `/test` - Run pytest test suite
 - `/quality-check` - Full quality gate (black, ruff, mypy, pytest)
 - `/add-test` - Create test file for module
 - `/benchmark` - Performance profiling
 
 **Utility Commands**:
+
 - `/mcp-status` - MCP server health check
 - `/debug-api` - IB API troubleshooting
 - `/resolve-gh-issue` - Complete GitHub issue workflow
@@ -25,6 +35,7 @@ Detailed guide for creating reusable workflow templates in Claude Code.
 ## When to Create New Slash Commands
 
 Create a new slash command when:
+
 - ✅ Workflow is **repeated 3+ times**
 - ✅ Operation has **consistent structure**
 - ✅ Team members would benefit from **standardization**
@@ -32,6 +43,7 @@ Create a new slash command when:
 - ✅ Operation **coordinates multiple tools/sub-agents**
 
 Do NOT create commands for:
+
 - ❌ One-time operations
 - ❌ Highly variable workflows
 - ❌ Tasks requiring human judgment
@@ -42,29 +54,34 @@ Do NOT create commands for:
 **Location**: `.claude/commands/{command-name}.md`
 
 **Required Frontmatter**:
+
 ```yaml
 ---
 description: One-line command description (shows in menu)
-allowed-tools: Read, Write, mcp__ib-sec-mcp__*  # Optional tool permissions
-argument-hint: [expected-args]                   # Optional argument guide
+allowed-tools: Read, Write, mcp__ib-sec-mcp__* # Optional tool permissions
+argument-hint: [expected-args] # Optional argument guide
 ---
 ```
 
 **Command Body Structure**:
+
 ```markdown
 Brief description of what this command does.
 
 **Arguments**: (if applicable)
+
 - `$ARGUMENTS` - Full argument string
 - `$1`, `$2`, `$3` - Positional arguments
 
 **Steps**:
+
 1. First step with tool usage
 2. Second step with sub-agent delegation
 3. Third step with validation
 4. Final step with output format
 
 **Error Handling**:
+
 - If X fails, do Y
 - If no data found, suggest Z
 
@@ -76,7 +93,7 @@ Format of final result
 
 **File**: `.claude/commands/regression-test.md`
 
-```markdown
+````markdown
 ---
 description: Run regression tests with performance comparison
 allowed-tools: Read, Bash(pytest:*), Bash(python3:*), mcp__ib-sec-mcp__get_trades
@@ -86,10 +103,12 @@ argument-hint: [baseline-version]
 Run regression tests comparing current implementation against baseline version.
 
 **Arguments**:
+
 - `$ARGUMENTS` - Baseline git tag or commit hash (e.g., v1.0.0)
 - If no arguments, compare against HEAD~1 (previous commit)
 
 **Prerequisites**:
+
 - [ ] All tests passing on current branch
 - [ ] Baseline version tag exists
 - [ ] Performance benchmark data available
@@ -100,14 +119,18 @@ Run regression tests comparing current implementation against baseline version.
    ```bash
    git rev-parse --verify $ARGUMENTS
    ```
-   If invalid, suggest: `git tag -l` to list available tags
+````
+
+If invalid, suggest: `git tag -l` to list available tags
 
 2. **Run current tests** (delegate to test-runner sub-agent)
+
    ```bash
    pytest --benchmark-only --benchmark-json=current.json
    ```
 
 3. **Checkout baseline and run tests**
+
    ```bash
    git stash
    git checkout $ARGUMENTS
@@ -126,16 +149,18 @@ Run regression tests comparing current implementation against baseline version.
    - ✅ All tests pass on both versions
    - ✅ No regressions >10%
    - ✅ Memory usage not increased >5%
-   - ⚠️  Warn if any regression detected
+   - ⚠️ Warn if any regression detected
    - ❌ Fail if critical regression (>20%)
 
 **Error Handling**:
+
 - If baseline tests fail: Report but continue (may be expected)
 - If current tests fail: Stop immediately, report failures
 - If git operations fail: Suggest clean working directory
 - If benchmark data missing: Run regular tests instead
 
 **Expected Output**:
+
 ```
 Regression Test Report
 ======================
@@ -155,9 +180,11 @@ Result: ⚠️ WARNING - 1 performance regression detected
 ```
 
 **Follow-up Actions**:
+
 - If regressions detected, suggest: `/benchmark analyze_bonds` for profiling
 - Create GitHub issue automatically if regression >20%
-```
+
+````
 
 ## Best Practices
 
@@ -195,9 +222,10 @@ Result: ⚠️ WARNING - 1 performance regression detected
 2. Validate data (must succeed)
 3. Run analysis (proceed even if warnings)
 4. Generate report (must succeed)
-```
+````
 
 ### Parallel Operations (independent)
+
 ```markdown
 1. Launch multiple sub-agents in parallel:
    - test-runner for unit tests
@@ -207,6 +235,7 @@ Result: ⚠️ WARNING - 1 performance regression detected
 ```
 
 ### Conditional Execution
+
 ```markdown
 1. Check if data exists
    - If yes: Use cached data
@@ -220,6 +249,7 @@ Result: ⚠️ WARNING - 1 performance regression detected
 ## Testing
 
 **Manual Testing**:
+
 ```bash
 # Test with arguments
 /regression-test v1.0.0
@@ -232,6 +262,7 @@ Result: ⚠️ WARNING - 1 performance regression detected
 ```
 
 **Verification Checklist**:
+
 - [ ] Command appears in slash command menu
 - [ ] Description is clear and concise
 - [ ] Arguments are parsed correctly
