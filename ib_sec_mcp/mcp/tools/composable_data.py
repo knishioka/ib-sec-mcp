@@ -4,11 +4,13 @@ Provides fine-grained data access tools that sub-agents can compose for
 custom investment analysis and strategy development.
 """
 
+import asyncio
 import json
 from datetime import date
 from decimal import Decimal
 from typing import Any, Literal
 
+import yfinance as yf
 from fastmcp import Context, FastMCP
 
 from ib_sec_mcp.core.calculator import PerformanceCalculator
@@ -20,6 +22,42 @@ from ib_sec_mcp.models.trade import AssetClass
 from ib_sec_mcp.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Withholding tax rates by fund domicile (ISIN country prefix)
+_WITHHOLDING_TAX_RATES: dict[str, Decimal] = {
+    "IE": Decimal("0.15"),  # Ireland-domiciled ETFs: 15% withholding
+}
+_DEFAULT_WITHHOLDING_TAX_RATE = Decimal("0.30")  # Default: 30% (US treatment)
+_IE_WITHHOLDING_RATE = Decimal("0.15")  # Ireland rate for tax savings calculation
+
+# Yahoo Finance fetch timeout in seconds
+_YF_TIMEOUT = 30
+
+
+def _get_domicile_code(isin: str | None) -> str:
+    """Extract country code from ISIN (first 2 characters).
+
+    Args:
+        isin: ISIN string or None
+
+    Returns:
+        Two-letter country code (uppercase) or "UNKNOWN" if ISIN is None/too short
+    """
+    if not isin or len(isin) < 2:
+        return "UNKNOWN"
+    return isin[:2].upper()
+
+
+def _get_withholding_rate(domicile_code: str) -> Decimal:
+    """Get withholding tax rate for a given domicile country code.
+
+    Args:
+        domicile_code: Two-letter country code (e.g., "IE", "US")
+
+    Returns:
+        Withholding tax rate as Decimal (e.g., Decimal("0.15") for 15%)
+    """
+    return _WITHHOLDING_TAX_RATES.get(domicile_code, _DEFAULT_WITHHOLDING_TAX_RATE)
 
 
 def _parse_account_by_index(
@@ -726,5 +764,175 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
 
         return json.dumps(result, indent=2, default=str)
 
+    @mcp.tool
+    async def analyze_dividend_income(
+        start_date: str,
+        end_date: str | None = None,
+        account_index: int = 0,
+        use_cache: bool = True,
+        ctx: Context | None = None,
+    ) -> str:
+        """
+        Analyze dividend income and tax efficiency for held positions
 
-__all__ = ["register_composable_data_tools"]
+        配当収入の分析とアイルランド籍ETF vs US籍ETFの税効率比較。
+        Estimates annual dividend income, applies withholding tax by domicile,
+        and calculates potential tax savings from restructuring to Ireland-domiciled funds.
+
+        Args:
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format (defaults to today)
+            account_index: Account index (0 for first account, 1 for second, etc.)
+            use_cache: Use cached data if available (default: True)
+            ctx: MCP context for logging
+
+        Returns:
+            JSON string with dividend income analysis including:
+            - Per-position: estimated annual dividend, withholding tax, net receipt
+            - Domicile detection via ISIN prefix (IE=15%, others=30% withholding)
+            - Tax savings potential from restructuring US→Ireland domicile
+            - Rankings by dividend yield (descending)
+            - Portfolio totals
+
+        Raises:
+            ValidationError: If input validation fails
+
+        Example:
+            >>> result = await analyze_dividend_income("2025-01-01", "2025-10-31")
+            >>> # Returns dividend analysis ranked by yield with tax efficiency details
+        """
+        if ctx:
+            await ctx.info(f"Analyzing dividend income for {start_date} to {end_date or 'today'}")
+
+        # Get IB data
+        data, from_date, to_date = await _get_or_fetch_data(
+            start_date, end_date, account_index, use_cache, ctx
+        )
+
+        # Parse account
+        account = _parse_account_by_index(data, from_date, to_date, account_index)
+
+        # Focus on equity-like positions (STK asset class)
+        positions = [p for p in account.positions if p.asset_class == AssetClass.STOCK]
+
+        if ctx:
+            await ctx.info(f"Fetching dividend data for {len(positions)} equity positions")
+
+        async def fetch_dividend_info(symbol: str) -> dict[str, Any]:
+            """Fetch dividend yield data from Yahoo Finance with timeout."""
+            try:
+                ticker = yf.Ticker(symbol)
+                info = await asyncio.wait_for(
+                    asyncio.to_thread(lambda: ticker.info),
+                    timeout=_YF_TIMEOUT,
+                )
+                raw_yield = (
+                    info.get("dividendYield") or info.get("trailingAnnualDividendYield") or 0
+                )
+                return {
+                    "symbol": symbol,
+                    "dividend_yield": raw_yield,
+                }
+            except Exception as e:
+                logger.warning(f"Failed to fetch dividend data for {symbol}: {e}")
+                return {
+                    "symbol": symbol,
+                    "dividend_yield": 0,
+                }
+
+        # Fetch all dividend data in parallel
+        dividend_tasks = [fetch_dividend_info(p.symbol) for p in positions]
+        dividend_data_list = await asyncio.gather(*dividend_tasks)
+        dividend_data: dict[str, dict[str, Any]] = {d["symbol"]: d for d in dividend_data_list}
+
+        # Analyze each position
+        total_annual_dividend = Decimal("0")
+        total_withholding_tax = Decimal("0")
+        total_net_receipt = Decimal("0")
+        total_potential_savings = Decimal("0")
+
+        position_analyses = []
+
+        for position in positions:
+            symbol = position.symbol
+            domicile_code = _get_domicile_code(position.isin)
+            withholding_rate = _get_withholding_rate(domicile_code)
+
+            # Convert Yahoo Finance float yield to Decimal safely
+            raw_yield = dividend_data.get(symbol, {}).get("dividend_yield", 0) or 0
+            dividend_yield = Decimal(str(raw_yield))
+
+            # Calculate dividend income with Decimal precision
+            position_value = position.position_value
+            annual_dividend = position_value * dividend_yield
+            withholding_tax = annual_dividend * withholding_rate
+            net_receipt = annual_dividend - withholding_tax
+
+            # Calculate tax savings potential for non-IE positions
+            if domicile_code != "IE" and annual_dividend > Decimal("0"):
+                ie_withholding_tax = annual_dividend * _IE_WITHHOLDING_RATE
+                potential_savings = withholding_tax - ie_withholding_tax
+            else:
+                potential_savings = Decimal("0")
+
+            # Accumulate portfolio totals
+            total_annual_dividend += annual_dividend
+            total_withholding_tax += withholding_tax
+            total_net_receipt += net_receipt
+            total_potential_savings += potential_savings
+
+            if domicile_code == "IE":
+                domicile_description = "Ireland (15% withholding)"
+            elif domicile_code == "UNKNOWN":
+                domicile_description = "Unknown domicile (30% withholding applied)"
+            else:
+                domicile_description = f"{domicile_code} (30% withholding)"
+
+            position_analyses.append(
+                {
+                    "symbol": symbol,
+                    "isin": position.isin,
+                    "domicile": domicile_code,
+                    "domicile_description": domicile_description,
+                    "position_value": str(position_value),
+                    "dividend_yield_pct": str(dividend_yield * 100),
+                    "annual_dividend": str(annual_dividend),
+                    "withholding_rate_pct": str(withholding_rate * 100),
+                    "withholding_tax": str(withholding_tax),
+                    "net_receipt": str(net_receipt),
+                    "potential_ie_savings": str(potential_savings),
+                    "currency": position.currency,
+                }
+            )
+
+        # Rank by dividend yield (descending)
+        position_analyses.sort(
+            key=lambda x: Decimal(str(x["dividend_yield_pct"])),
+            reverse=True,
+        )
+
+        result = {
+            "date_range": {"from": str(from_date), "to": str(to_date)},
+            "position_count": len(position_analyses),
+            "summary": {
+                "total_annual_dividend": str(total_annual_dividend),
+                "total_withholding_tax": str(total_withholding_tax),
+                "total_net_receipt": str(total_net_receipt),
+                "total_potential_ie_savings": str(total_potential_savings),
+            },
+            "positions": position_analyses,
+            "tax_efficiency_note": (
+                "Positions domiciled in Ireland (IE) are taxed at 15% withholding rate vs 30% "
+                "for others. Restructuring to IE-domiciled equivalents could save "
+                f"{str(total_potential_savings)} in annual withholding taxes."
+            ),
+        }
+
+        return json.dumps(result, indent=2, default=str)
+
+
+__all__ = [
+    "register_composable_data_tools",
+    "_get_domicile_code",
+    "_get_withholding_rate",
+]
