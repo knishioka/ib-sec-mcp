@@ -1,6 +1,6 @@
 ---
 description: Calculate portfolio rebalancing trades with target allocation profiles
-allowed-tools: mcp__ib-sec-mcp__generate_rebalancing_trades, mcp__ib-sec-mcp__simulate_rebalancing, mcp__ib-sec-mcp__get_portfolio_summary, ReadMcpResourceTool
+allowed-tools: mcp__ib-sec-mcp__generate_rebalancing_trades, mcp__ib-sec-mcp__simulate_rebalancing, ReadMcpResourceTool
 argument-hint: [--profile balanced|growth|conservative|income] [--dry-run]
 ---
 
@@ -54,11 +54,7 @@ Read the rebalancing context resource to understand current allocation and drift
 ReadMcpResourceTool: ib://strategy/rebalancing-context
 ```
 
-Also call `get_portfolio_summary` for latest position details:
-
-```
-mcp__ib-sec-mcp__get_portfolio_summary(start_date="2025-01-01")
-```
+This resource provides current allocation, drift analysis, position details by asset class, and suggested actions. No additional portfolio summary call is needed since the rebalancing tools fetch portfolio data internally.
 
 **Step 2: Classify Positions by Asset Class**
 
@@ -82,7 +78,7 @@ Map the profile's asset-class targets to per-symbol weights:
 symbol_target_pct = profile_asset_class_pct * (symbol_value / asset_class_total_value)
 ```
 
-Ensure all symbol weights sum to exactly 100 (excluding cash, which is the remainder).
+All symbol weights (including cash positions) must sum to exactly 100. The `target_allocation` dict passed to the MCP tool must include entries for all asset classes. For example, if the balanced profile targets 10% cash, include the cash position symbol (e.g., `"USD.CASH"` or the actual cash symbol from the portfolio) in the target allocation.
 
 **Step 4: Call Rebalancing Tool**
 
@@ -91,7 +87,7 @@ If `--dry-run`:
 ```
 mcp__ib-sec-mcp__simulate_rebalancing(
     target_allocation={symbol: weight for each symbol},
-    start_date="2025-01-01"
+    start_date="YYYY-01-01"  # Use the current year dynamically
 )
 ```
 
@@ -100,7 +96,7 @@ Otherwise:
 ```
 mcp__ib-sec-mcp__generate_rebalancing_trades(
     target_allocation={symbol: weight for each symbol},
-    start_date="2025-01-01"
+    start_date="YYYY-01-01"  # Use the current year dynamically
 )
 ```
 
