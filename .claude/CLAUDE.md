@@ -25,7 +25,7 @@
 
 ---
 
-## Sub-Agents (8 specialized experts)
+## Sub-Agents (11 specialized experts)
 
 ### Quick List
 
@@ -34,9 +34,12 @@
 3. **test-runner** 🧪 - Testing & QA
 4. **code-implementer** 💻 - Feature implementation (TDD)
 5. **code-reviewer** 📝 - Code quality enforcement
-6. **performance-optimizer** ⚡ - Profiling & optimization
+6. **performance-optimizer** ⚡ - Code profiling & optimization
 7. **api-debugger** 🔧 - IB API troubleshooting
 8. **issue-analyzer** 🔍 - GitHub issue analysis
+9. **market-analyst** 📈 - Stock/options market analysis
+10. **strategy-coordinator** 🎯 - Investment strategy orchestration
+11. **portfolio-risk-analyst** ⚠️ - Portfolio risk analysis (concentration, VaR, correlation)
 
 ### When to Create
 

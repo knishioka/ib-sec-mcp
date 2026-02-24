@@ -2,16 +2,19 @@
 
 Detailed guide for creating and managing specialized sub-agents in Claude Code.
 
-## Current Sub-Agents (8)
+## Current Sub-Agents (11)
 
 1. **data-analyzer** 📊 - Financial data analysis specialist
 2. **tax-optimizer** 💰 - Tax optimization for Malaysian tax residents
 3. **test-runner** 🧪 - Testing and quality assurance
 4. **code-implementer** 💻 - Feature implementation with TDD
 5. **code-reviewer** 📝 - Code quality enforcement
-6. **performance-optimizer** ⚡ - Profiling and optimization
+6. **performance-optimizer** ⚡ - Code profiling and optimization
 7. **api-debugger** 🔧 - IB API troubleshooting
 8. **issue-analyzer** 🔍 - GitHub issue analysis
+9. **market-analyst** 📈 - Stock/options market analysis
+10. **strategy-coordinator** 🎯 - Investment strategy orchestration
+11. **portfolio-risk-analyst** ⚠️ - Portfolio risk analysis (concentration risk, VaR, correlation, interest rate sensitivity)
 
 ## When to Create New Sub-Agents
 
@@ -70,6 +73,7 @@ Step-by-step process for common operations
 ```bash
 tool-command --with-flags
 ```
+````
 
 ## Quality Checklist
 
@@ -78,7 +82,8 @@ tool-command --with-flags
 - [ ] Check 3
 
 Always provide [expected output format].
-````
+
+`````
 
 ## Development Example: ML Analyzer
 
@@ -123,7 +128,6 @@ You are a machine learning specialist with expertise in:
 # Get 1 year of trades for model training
 trades = get_trades(start_date="2024-01-01", end_date="2025-01-01")
 ```
-````
 
 **Feature Engineering**:
 
@@ -209,3 +213,5 @@ You: "Predict my next month's win rate"
 - [ ] Context isolation prevents pollution
 - [ ] Error handling is robust
 ```
+````
+`````

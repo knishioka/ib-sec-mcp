@@ -18,7 +18,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 - ✅ **Automated quality gates** (black, ruff, mypy, pytest)
 - 🔄 **Complete TDD workflow** (tests → code → PR)
 - 📝 **Auto-generated PR descriptions** with comprehensive context
-- 🔧 **8 specialized AI agents** for different domains
+- 🔧 **11 specialized AI agents** for different domains
 
 **Time Savings Summary**:
 | Task | Manual | Automated | Savings |
@@ -37,7 +37,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 ├── CLAUDE.md              # Main project context (auto-loaded)
 ├── README.md              # This file
 ├── settings.local.json    # Local settings (gitignored)
-├── agents/                # Specialized sub-agents (8 agents)
+├── agents/                # Specialized sub-agents (11 agents)
 │   ├── test-runner.md
 │   ├── data-analyzer.md
 │   ├── tax-optimizer.md       # NEW: Tax optimization specialist
@@ -45,7 +45,10 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 │   ├── code-reviewer.md
 │   ├── performance-optimizer.md
 │   ├── issue-analyzer.md
-│   └── code-implementer.md
+│   ├── code-implementer.md
+│   ├── market-analyst.md
+│   ├── strategy-coordinator.md
+│   └── portfolio-risk-analyst.md  # NEW: Portfolio risk analysis
 └── commands/              # Custom slash commands (12 commands)
     ├── fetch-latest.md
     ├── debug-api.md
@@ -186,6 +189,23 @@ Specialized AI assistants that handle specific tasks in their own context window
 - Never hallucinates - always uses actual GitHub data
   **Auto-activates**: Via `/resolve-gh-issue` command
   **Time Savings**: 20 minutes analysis → 3 minutes (85% reduction)
+
+#### ⚠️ **Risk Analysis Agents** (NEW!)
+
+##### **portfolio-risk-analyst** ⚠️
+
+**Purpose**: Portfolio risk analysis specialist for investment risk assessment
+**When to use**: Concentration risk, correlation analysis, VaR, interest rate sensitivity, diversification review
+**Tools**: `analyze_risk`, `analyze_portfolio_correlation`, `get_position_statistics`, `calculate_portfolio_metrics`, `analyze_sector_allocation`, `analyze_fx_exposure`
+**Key Features**:
+
+- **Concentration risk**: Sector, currency, and geographic exposure
+- **Correlation analysis**: Portfolio diversification effectiveness
+- **VaR calculation**: Parametric and historical Value at Risk
+- **Interest rate sensitivity**: Duration, convexity, rate scenario analysis
+- **Risk-adjusted metrics**: Sharpe ratio, Sortino ratio, max drawdown
+- **Clear distinction from `performance-optimizer`**: This is investment risk, not code performance
+  **Auto-activates**: On portfolio risk, VaR, concentration risk, diversification queries
 
 ### How Sub-Agents Work
 
