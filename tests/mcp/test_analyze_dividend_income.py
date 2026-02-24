@@ -27,6 +27,7 @@ def _make_position(
     position_value: str,
     asset_class: AssetClass = AssetClass.STOCK,
     currency: str = "USD",
+    quantity: str = "100",
 ) -> Position:
     """Create a minimal Position instance for testing."""
     return Position(
@@ -34,7 +35,7 @@ def _make_position(
         symbol=symbol,
         asset_class=asset_class,
         isin=isin,
-        quantity=Decimal("100"),
+        quantity=Decimal(quantity),
         multiplier=Decimal("1"),
         mark_price=Decimal(position_value) / Decimal("100"),
         position_value=Decimal(position_value),
@@ -551,3 +552,70 @@ class TestAnalyzeDividendIncome:
         assert "summary" in parsed
         assert "date_range" in parsed
         assert "tax_efficiency_note" in parsed
+
+    @pytest.mark.asyncio
+    async def test_nan_dividend_yield_treated_as_zero(
+        self,
+        test_mcp: FastMCP,
+        us_position: Position,
+    ) -> None:
+        """float('nan') from Yahoo Finance must be sanitised to zero, not propagated."""
+        mock_account = _mock_account([us_position])
+        with (
+            patch(
+                "ib_sec_mcp.mcp.tools.composable_data._get_or_fetch_data",
+                new_callable=AsyncMock,
+                return_value=("xml_data", date(2025, 1, 1), date(2025, 10, 31)),
+            ),
+            patch(
+                "ib_sec_mcp.mcp.tools.composable_data._parse_account_by_index",
+                return_value=mock_account,
+            ),
+            patch("yfinance.Ticker") as mock_ticker_cls,
+        ):
+            mock_ticker = MagicMock()
+            # Yahoo Finance can return NaN for missing dividend data
+            mock_ticker.info = {"dividendYield": float("nan")}
+            mock_ticker_cls.return_value = mock_ticker
+
+            tool = await test_mcp.get_tool("analyze_dividend_income")
+            result = await tool.fn(start_date="2025-01-01", ctx=None)
+            data = json.loads(result)
+
+        pos = data["positions"][0]
+        assert Decimal(pos["dividend_yield_pct"]) == Decimal("0")
+        assert Decimal(pos["annual_dividend"]) == Decimal("0")
+
+    @pytest.mark.asyncio
+    async def test_short_positions_excluded(
+        self,
+        test_mcp: FastMCP,
+        ie_position: Position,
+    ) -> None:
+        """Short equity positions must be excluded from dividend analysis."""
+        short_position = _make_position("TSLA", "US88160R1014", "-5000", quantity="-100")
+        mock_account = _mock_account([ie_position, short_position])
+        with (
+            patch(
+                "ib_sec_mcp.mcp.tools.composable_data._get_or_fetch_data",
+                new_callable=AsyncMock,
+                return_value=("xml_data", date(2025, 1, 1), date(2025, 10, 31)),
+            ),
+            patch(
+                "ib_sec_mcp.mcp.tools.composable_data._parse_account_by_index",
+                return_value=mock_account,
+            ),
+            patch("yfinance.Ticker") as mock_ticker_cls,
+        ):
+            mock_ticker = MagicMock()
+            mock_ticker.info = {"dividendYield": 0.02}
+            mock_ticker_cls.return_value = mock_ticker
+
+            tool = await test_mcp.get_tool("analyze_dividend_income")
+            result = await tool.fn(start_date="2025-01-01", ctx=None)
+            data = json.loads(result)
+
+        assert data["position_count"] == 1
+        symbols = [p["symbol"] for p in data["positions"]]
+        assert "CSPX" in symbols
+        assert "TSLA" not in symbols

@@ -6,6 +6,7 @@ custom investment analysis and strategy development.
 
 import asyncio
 import json
+import math
 from datetime import date
 from decimal import Decimal
 from typing import Any, Literal
@@ -812,8 +813,10 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
         # Parse account
         account = _parse_account_by_index(data, from_date, to_date, account_index)
 
-        # Focus on equity-like positions (STK asset class)
-        positions = [p for p in account.positions if p.asset_class == AssetClass.STOCK]
+        # Focus on long equity positions (exclude shorts which owe dividends)
+        positions = [
+            p for p in account.positions if p.asset_class == AssetClass.STOCK and p.is_long
+        ]
 
         if ctx:
             await ctx.info(f"Fetching dividend data for {len(positions)} equity positions")
@@ -826,9 +829,11 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
                     asyncio.to_thread(lambda: ticker.info),
                     timeout=_YF_TIMEOUT,
                 )
-                raw_yield = (
-                    info.get("dividendYield") or info.get("trailingAnnualDividendYield") or 0
-                )
+                # Prefer dividendYield, fall back to trailingAnnualDividendYield
+                raw_yield = info.get("dividendYield") or info.get("trailingAnnualDividendYield")
+                # Guard against NaN: float('nan') is truthy so `or 0` won't catch it
+                if not isinstance(raw_yield, (int, float)) or math.isfinite(raw_yield) is False:
+                    raw_yield = 0
                 return {
                     "symbol": symbol,
                     "dividend_yield": raw_yield,
