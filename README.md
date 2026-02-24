@@ -865,14 +865,19 @@ comparison = compare_periods(
 - Stock analysis: 1-2 hours research → **2-3 minutes** (97% time reduction)
 - Options strategy: 45-60 minutes → **3-5 minutes** (93% time reduction)
 
-#### 🤖 AI-Powered Development (7 Specialized Sub-Agents)
+#### 🤖 AI-Powered Development (8 Specialized Sub-Agents)
 
 **Investment Analysis Agents**:
 
 - **data-analyzer** 📊: Portfolio analysis specialist
   - Consolidated multi-account analysis
-  - Performance, tax, cost, risk, bond analytics
+  - Performance, cost, risk, bond analytics
   - Time-series position tracking
+
+- **tax-optimizer** 💰: Tax optimization specialist for Malaysian tax residents
+  - Wash sale analysis, OID/phantom income calculations
+  - Ireland-domiciled ETF tax advantages (15% vs 30% WHT)
+  - Tax-loss harvesting with alternative securities
 
 - **market-analyst** 📈: Stock and options market specialist (NEW!)
   - Multi-timeframe technical analysis
