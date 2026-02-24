@@ -310,11 +310,11 @@ class TestBondAnalyzer:
         years_to_mat = Decimal(holding["years_to_maturity"])
         assert years_to_mat > Decimal("0")
 
-        # YTM is calculated via PerformanceCalculator.calculate_ytm
-        # face_value=10000, current_price=65.50*10000=655000
-        # Since current_price >> face_value, YTM will be negative
+        # YTM: face_value=10000, current_price=65.50*10000=655000
+        # ((10000/655000)^(1/9.585) - 1) * 100 ≈ -35.36%
         ytm = Decimal(holding["ytm"])
-        assert isinstance(ytm, Decimal)
+        assert ytm < Decimal("0")
+        assert abs(ytm - Decimal("-35.36")) < Decimal("0.1")
 
         # Duration for zero-coupon = years to maturity
         duration = Decimal(holding["duration"])
@@ -336,12 +336,10 @@ class TestBondAnalyzer:
 
         holding = result["current_holdings"][0]
         ytm = Decimal(holding["ytm"])
-        # face_value = 10000, current_price = 65.50 * 10000 = 655000
-        # ytm = ((10000/655000)^(1/years) - 1) * 100
-        # This should be a small positive number since price >> face_value
-        # Actually face_value < current_price here, so ytm might be negative
-        # Let's just verify it's a valid Decimal
-        assert isinstance(ytm, Decimal)
+        # face_value=10000, current_price=65.50*10000=655000
+        # current_price >> face_value, so YTM is negative (~-35.36%)
+        assert ytm < Decimal("0")
+        assert abs(ytm - Decimal("-35.36")) < Decimal("0.1")
 
     def test_bond_without_maturity(self, bond_position_no_maturity):
         """Bond without maturity: ytm=0, duration=0."""
