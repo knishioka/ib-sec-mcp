@@ -744,17 +744,17 @@ Reusable prompt templates for common analysis workflows. Each prompt generates a
 
 Comprehensive portfolio analysis covering performance, costs, bonds, tax, and risk.
 
-| Parameter  | Type  | Description                |
-| ---------- | ----- | -------------------------- |
-| `csv_path` | `str` | Path to IB Flex Query file |
+| Parameter  | Type  | Description                    |
+| ---------- | ----- | ------------------------------ |
+| `csv_path` | `str` | Path to IB Flex Query CSV file |
 
 ### `tax_planning`
 
 Tax analysis focused on realized gains, phantom income (OID), and optimization strategies.
 
-| Parameter  | Type  | Description                |
-| ---------- | ----- | -------------------------- |
-| `csv_path` | `str` | Path to IB Flex Query file |
+| Parameter  | Type  | Description                    |
+| ---------- | ----- | ------------------------------ |
+| `csv_path` | `str` | Path to IB Flex Query CSV file |
 
 ### `risk_assessment`
 
@@ -762,16 +762,16 @@ Portfolio risk assessment with concentration, interest rate, and liquidity analy
 
 | Parameter   | Type  | Description                                         |
 | ----------- | ----- | --------------------------------------------------- |
-| `csv_path`  | `str` | Path to IB Flex Query file                          |
+| `csv_path`  | `str` | Path to IB Flex Query CSV file                      |
 | `scenarios` | `str` | Interest rate scenarios (default: "1% up, 1% down") |
 
 ### `bond_portfolio_analysis`
 
 Specialized zero-coupon bond (STRIPS) portfolio analysis with YTM, maturity profile, and tax impact.
 
-| Parameter  | Type  | Description                |
-| ---------- | ----- | -------------------------- |
-| `csv_path` | `str` | Path to IB Flex Query file |
+| Parameter  | Type  | Description                    |
+| ---------- | ----- | ------------------------------ |
+| `csv_path` | `str` | Path to IB Flex Query CSV file |
 
 ### `monthly_performance_review`
 
@@ -779,7 +779,7 @@ Monthly trading performance review with best/worst trades, metrics, and action i
 
 | Parameter  | Type  | Description                       |
 | ---------- | ----- | --------------------------------- |
-| `csv_path` | `str` | Path to IB Flex Query file        |
+| `csv_path` | `str` | Path to IB Flex Query CSV file    |
 | `month`    | `str` | Month to review (e.g., "2025-01") |
 
 ---
