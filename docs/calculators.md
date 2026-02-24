@@ -2,7 +2,7 @@
 
 This document describes the financial calculation formulas used in IB Analytics, with references to their implementation locations.
 
-All calculations use Python's `Decimal` type for precision. See [architecture.md](architecture.md) for where these fit in the system.
+Calculations use Python's `Decimal` type for inputs, outputs, and most arithmetic. Some operations requiring exponentiation or square roots (YTM, CAGR, Sharpe Ratio) temporarily convert to `float` for `math` library compatibility, then convert the result back to `Decimal`. See [architecture.md](architecture.md) for where these fit in the system.
 
 ## Bond Calculations
 

@@ -250,12 +250,24 @@ erDiagram
         TEXT account_id
         DATE snapshot_date
         TEXT symbol
+        TEXT description
         TEXT asset_class
+        TEXT cusip
+        TEXT isin
         TEXT quantity
+        TEXT multiplier
         TEXT mark_price
         TEXT position_value
+        TEXT average_cost
         TEXT cost_basis
         TEXT unrealized_pnl
+        TEXT realized_pnl
+        TEXT currency
+        TEXT fx_rate_to_base
+        TEXT coupon_rate
+        DATE maturity_date
+        TEXT ytm
+        TEXT duration
         TIMESTAMP created_at
     }
 
@@ -264,6 +276,8 @@ erDiagram
         TEXT account_id
         DATE snapshot_date
         TEXT xml_file_path
+        DATE date_range_from
+        DATE date_range_to
         INTEGER total_positions
         TEXT total_value
         TEXT total_cash

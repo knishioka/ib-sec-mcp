@@ -156,12 +156,12 @@ graph TD
 
 ### CLI Layer (`ib_sec_mcp/cli/`)
 
-| File                | Responsibility                                      |
-| ------------------- | --------------------------------------------------- |
-| `fetch.py`          | `ib-sec-fetch` - Fetch data from IB Flex Query API. |
-| `analyze.py`        | `ib-sec-analyze` - Run analyzers on fetched data.   |
-| `report.py`         | `ib-sec-report` - Generate formatted reports.       |
-| `sync_positions.py` | `ib-sec-sync` - Sync position snapshots to SQLite.  |
+| File                | Responsibility                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `fetch.py`          | `ib-sec-fetch` - Fetch data from IB Flex Query API.                                                                       |
+| `analyze.py`        | `ib-sec-analyze` - Run analyzers on fetched data.                                                                         |
+| `report.py`         | `ib-sec-report` - Generate formatted reports.                                                                             |
+| `sync_positions.py` | Sync position snapshots to SQLite (not registered as CLI entry point; run via `python -m ib_sec_mcp.cli.sync_positions`). |
 
 ### Reports Layer (`ib_sec_mcp/reports/`)
 
