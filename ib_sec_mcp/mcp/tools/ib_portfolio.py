@@ -962,7 +962,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             else 0
         )
         top_3_value = sum(
-            (Decimal(str(h["total_value"])) for h in holdings_by_symbol[:3] if holdings_by_symbol),
+            (Decimal(str(h["total_value"])) for h in holdings_by_symbol[:3]),
             Decimal("0"),
         )
         top_3_pct = round((top_3_value / total_value * 100), 2) if total_value > 0 else 0
