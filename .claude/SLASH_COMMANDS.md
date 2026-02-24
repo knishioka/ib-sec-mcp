@@ -2,7 +2,7 @@
 
 Detailed guide for creating reusable workflow templates in Claude Code.
 
-## Current Slash Commands (16)
+## Current Slash Commands (20)
 
 **Analysis Commands**:
 
@@ -10,6 +10,13 @@ Detailed guide for creating reusable workflow templates in Claude Code.
 - `/compare-periods` - Period-over-period comparison
 - `/tax-report` - Tax planning report generation
 - `/validate-data` - Data integrity validation
+- `/rebalance-portfolio` - Portfolio rebalancing with target profiles
+
+**Investment Commands**:
+
+- `/investment-strategy` - Comprehensive investment strategy planning
+- `/analyze-symbol` - Symbol analysis (stocks, ETFs, crypto, forex)
+- `/options-strategy` - Options strategy analysis with Greeks and IV
 
 **Portfolio Commands**:
 
