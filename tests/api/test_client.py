@@ -1,6 +1,5 @@
 """Tests for FlexQueryClient"""
 
-import asyncio
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -209,14 +208,22 @@ class TestGetStatement:
         with pytest.raises(FlexQueryAPIError, match="GetStatement failed"):
             client._get_statement(single_credential, "123456", None, None)
 
+    @patch("ib_sec_mcp.api.client.date")
     @patch("ib_sec_mcp.api.client.requests.get")
     def test_get_statement_uses_today_when_dates_none(
-        self, mock_get: MagicMock, client: FlexQueryClient, single_credential: APICredentials
+        self,
+        mock_get: MagicMock,
+        mock_date: MagicMock,
+        client: FlexQueryClient,
+        single_credential: APICredentials,
     ) -> None:
+        fixed_today = date(2025, 6, 15)
+        mock_date.today.return_value = fixed_today
+        mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
         mock_get.return_value = make_mock_response(CSV_DATA)
         stmt = client._get_statement(single_credential, "123456", None, None)
-        assert stmt.from_date == date.today()
-        assert stmt.to_date == date.today()
+        assert stmt.from_date == fixed_today
+        assert stmt.to_date == fixed_today
 
 
 # ---------------------------------------------------------------------------
@@ -240,8 +247,8 @@ class TestExtractAccountId:
     def test_extract_csv_skips_non_u_prefixed(self, client: FlexQueryClient) -> None:
         csv = "ClientAccountID,NOTANACCOUNT,Other\n"
         account_id = client._extract_account_id(csv)
-        # Should fall through to XML or UNKNOWN
-        assert account_id in ("UNKNOWN", "NOTANACCOUNT") or account_id.startswith("U")
+        # Non-U-prefixed IDs should be skipped, falling through to UNKNOWN
+        assert account_id == "UNKNOWN"
 
 
 # ---------------------------------------------------------------------------
@@ -454,11 +461,9 @@ class TestFetchStatementAsync:
             stmt = await client.fetch_statement_async(date(2025, 1, 1), date(2025, 1, 31))
             assert isinstance(stmt, FlexStatement)
 
-    def test_fetch_statement_async_invalid_index(self, client: FlexQueryClient) -> None:
+    async def test_fetch_statement_async_invalid_index(self, client: FlexQueryClient) -> None:
         with pytest.raises(ValueError, match="Invalid credential index"):
-            asyncio.get_event_loop().run_until_complete(
-                client.fetch_statement_async(credential_index=99)
-            )
+            await client.fetch_statement_async(credential_index=99)
 
 
 # ---------------------------------------------------------------------------
