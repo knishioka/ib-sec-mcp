@@ -49,7 +49,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 │   ├── market-analyst.md
 │   ├── strategy-coordinator.md
 │   └── portfolio-risk-analyst.md  # NEW: Portfolio risk analysis
-└── commands/              # Custom slash commands (17 commands)
+└── commands/              # Custom slash commands (20 commands)
     ├── fetch-latest.md
     ├── debug-api.md
     ├── test.md
@@ -66,14 +66,17 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
     ├── dividend-analysis.md   # Dividend income & IE ETF tax efficiency
     ├── sector-analysis.md     # Sector allocation & HHI concentration
     ├── wash-sale-check.md     # Wash sale detection & tax loss harvesting
-    └── fx-exposure.md         # Currency exposure & FX risk simulation
+    ├── fx-exposure.md         # Currency exposure & FX risk simulation
+    ├── analyze-symbol.md      # Comprehensive symbol analysis
+    ├── investment-strategy.md # Investment strategy planning
+    └── options-strategy.md    # Options strategy analysis
 ```
 
 ## 🤖 Sub-Agents (Specialized AI Experts)
 
 Specialized AI assistants that handle specific tasks in their own context window, keeping the main conversation focused.
 
-### Available Sub-Agents (10 Total)
+### Available Sub-Agents (11 Total)
 
 #### 📊 **Investment Analysis Agents** (NEW!)
 

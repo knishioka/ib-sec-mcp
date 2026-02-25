@@ -87,11 +87,12 @@ command --flags
 
 ---
 
-## Slash Commands (17 automated workflows)
+## Slash Commands (20 automated workflows)
 
 ### Quick List
 
 **Analysis**: `/optimize-portfolio`, `/compare-periods`, `/tax-report`, `/validate-data`, `/rebalance-portfolio`
+**Investment**: `/investment-strategy`, `/analyze-symbol`, `/options-strategy`
 **Portfolio**: `/dividend-analysis`, `/sector-analysis`, `/wash-sale-check`, `/fx-exposure`
 **Development**: `/test`, `/quality-check`, `/add-test`, `/benchmark`
 **Utility**: `/mcp-status`, `/debug-api`, `/resolve-gh-issue`, `/fetch-latest`
@@ -313,7 +314,7 @@ pytest --cov=ib_sec_mcp
 
 ## Resources
 
-- **.claude/README.md**: Complete feature list (8 sub-agents, 12 commands)
+- **.claude/README.md**: Complete feature list (11 sub-agents, 20 commands)
 - **.claude/SUB_AGENTS.md**: Detailed sub-agent development guide
 - **.claude/SLASH_COMMANDS.md**: Detailed slash command development guide
 - **/CLAUDE.md**: General project development guide
