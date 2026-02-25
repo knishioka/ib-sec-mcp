@@ -83,3 +83,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Tool configuration (machine-specific)
+.mcp.json
+.tool-versions
