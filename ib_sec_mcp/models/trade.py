@@ -33,6 +33,9 @@ class Trade(BaseModel):
     trade_id: str = Field(..., description="Unique trade ID")
     trade_date: date = Field(..., description="Trade execution date")
     settle_date: date | None = Field(None, description="Settlement date")
+    open_date: date | None = Field(
+        None, description="Original open date for closing trades (from IB openDateTime)"
+    )
 
     symbol: str = Field(..., description="Trading symbol")
     description: str | None = Field(None, description="Security description")

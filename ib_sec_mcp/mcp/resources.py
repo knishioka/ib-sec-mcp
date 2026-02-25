@@ -371,19 +371,18 @@ def register_resources(mcp: FastMCP) -> None:
         analyzer = TaxAnalyzer(account=account)
         tax_result = analyzer.analyze()
 
-        # Calculate short-term vs long-term gains from trades
+        # Calculate short-term vs long-term gains from trades using open_date
         today = date.today()
         short_term_gains = Decimal("0")
         long_term_gains = Decimal("0")
 
         for trade in account.trades:
-            if trade.fifo_pnl_realized > 0:
-                # TODO: Holding period calculation requires tracking acquisition dates
-                # Current limitation: Trade model doesn't track original purchase date for SELL trades
-                # Workaround: Classify all realized gains as short-term (conservative approach)
-                # Proper fix: Extend data model to track cost basis lots with acquisition dates
-                short_term_gains += trade.fifo_pnl_realized
-                # Note: long_term_gains will remain 0 until proper holding period tracking is implemented
+            if trade.fifo_pnl_realized > 0 and trade.open_date:
+                holding_days = (trade.trade_date - trade.open_date).days
+                if holding_days >= 365:
+                    long_term_gains += trade.fifo_pnl_realized
+                else:
+                    short_term_gains += trade.fifo_pnl_realized
 
         total_realized_gains = short_term_gains + long_term_gains
 

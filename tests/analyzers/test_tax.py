@@ -14,12 +14,13 @@ from ib_sec_mcp.models.trade import AssetClass, BuySell, Trade
 
 @pytest.fixture
 def short_term_gain_trade():
-    """Trade with short-term gain (settle - trade <= 365 days)."""
+    """Trade with short-term gain (trade_date - open_date < 365 days)."""
     return Trade(
         account_id="U1234567",
         trade_id="ST1",
         trade_date=date(2025, 1, 10),
         settle_date=date(2025, 1, 12),
+        open_date=date(2024, 8, 1),  # ~162 days before trade_date
         symbol="AAPL",
         asset_class=AssetClass.STOCK,
         buy_sell=BuySell.SELL,
@@ -33,12 +34,13 @@ def short_term_gain_trade():
 
 @pytest.fixture
 def long_term_gain_trade():
-    """Trade with long-term gain (settle - trade > 365 days)."""
+    """Trade with long-term gain (trade_date - open_date >= 365 days)."""
     return Trade(
         account_id="U1234567",
         trade_id="LT1",
-        trade_date=date(2024, 1, 10),
-        settle_date=date(2025, 2, 15),
+        trade_date=date(2025, 2, 15),
+        settle_date=date(2025, 2, 18),
+        open_date=date(2024, 1, 10),  # 401 days before trade_date
         symbol="MSFT",
         asset_class=AssetClass.STOCK,
         buy_sell=BuySell.SELL,
@@ -207,27 +209,20 @@ class TestTaxAnalyzer:
         with patch("ib_sec_mcp.analyzers.tax.date", mock_date):
             result = analyzer.analyze()
 
-        # short_term_gain_trade: settle(2025-01-12) - trade(2025-01-10) = 2 days <= 365
-        # and pnl=200 > 0 => short_term
+        # short_term_gain_trade: trade(2025-01-10) - open(2024-08-01) = 162 days < 365
+        # pnl=200 > 0 => short_term
         assert Decimal(result["short_term_gains"]) == Decimal("200")
 
     def test_long_term_gains(self, mixed_tax_account):
-        """Test long-term gain classification using current settle-trade logic.
-
-        NOTE: The TaxAnalyzer uses (settle_date - trade_date) to classify
-        holding periods, which is documented as inaccurate (see TODO in
-        tax.py). This test verifies current behavior, not correct behavior.
-        Update when holding-period calculation is fixed.
-        """
+        """Test long-term gain classification using open_date-based holding period."""
         analyzer = TaxAnalyzer(tax_rate=Decimal("0.30"), account=mixed_tax_account)
         mock_date = _mock_date_today(date(2025, 6, 15))
         with patch("ib_sec_mcp.analyzers.tax.date", mock_date):
             result = analyzer.analyze()
 
-        # Current behavior: settle(2025-02-15) - trade(2024-01-10) = 401 days
-        # This measures settlement delay, NOT actual holding period (see TODO).
-        long_term = Decimal(result["long_term_gains"])
-        assert long_term >= Decimal("0")
+        # long_term_gain_trade: trade(2025-02-15) - open(2024-01-10) = 401 days >= 365
+        # pnl=500 > 0 => long_term
+        assert Decimal(result["long_term_gains"]) == Decimal("500")
 
     def test_capital_gains_tax_positive_pnl(self, mixed_tax_account):
         analyzer = TaxAnalyzer(tax_rate=Decimal("0.30"), account=mixed_tax_account)
@@ -355,13 +350,14 @@ class TestTaxAnalyzer:
         assert "disclaimer" in result
         assert "estimate" in result["disclaimer"].lower()
 
-    def test_trade_without_settle_date(self):
-        """Trade with None settle_date should not count as short or long term."""
+    def test_trade_without_open_date(self):
+        """Trade with None open_date should not count as short or long term."""
         trade = Trade(
             account_id="U1234567",
-            trade_id="NOSETTLE",
+            trade_id="NOOPEN",
             trade_date=date(2025, 1, 10),
-            settle_date=None,
+            settle_date=date(2025, 1, 12),
+            open_date=None,
             symbol="AAPL",
             asset_class=AssetClass.STOCK,
             buy_sell=BuySell.SELL,
@@ -383,7 +379,7 @@ class TestTaxAnalyzer:
 
         # total_realized_pnl includes it
         assert Decimal(result["total_realized_pnl"]) == Decimal("300")
-        # but not classified as short or long term (no settle_date)
+        # but not classified as short or long term (no open_date)
         assert Decimal(result["short_term_gains"]) == Decimal("0")
         assert Decimal(result["long_term_gains"]) == Decimal("0")
 
@@ -458,6 +454,68 @@ class TestTaxAnalyzer:
         assert Decimal(result["estimated_capital_gains_tax"]) == Decimal("0")
         assert Decimal(result["estimated_phantom_income_tax"]) == Decimal("0")
         assert Decimal(result["total_estimated_tax"]) == Decimal("0")
+
+    def test_holding_period_boundary_365_days(self):
+        """Trade held exactly 365 days should be classified as long-term."""
+        trade = Trade(
+            account_id="U1234567",
+            trade_id="BOUNDARY",
+            trade_date=date(2026, 1, 10),
+            settle_date=date(2026, 1, 12),
+            open_date=date(2025, 1, 10),  # exactly 365 days
+            symbol="AAPL",
+            asset_class=AssetClass.STOCK,
+            buy_sell=BuySell.SELL,
+            quantity=Decimal("10"),
+            trade_price=Decimal("180"),
+            trade_money=Decimal("1800"),
+            ib_commission=Decimal("-1.00"),
+            fifo_pnl_realized=Decimal("400"),
+        )
+        account = Account(
+            account_id="U1234567",
+            from_date=date(2026, 1, 1),
+            to_date=date(2026, 1, 31),
+            trades=[trade],
+            positions=[],
+        )
+        analyzer = TaxAnalyzer(tax_rate=Decimal("0.30"), account=account)
+        result = analyzer.analyze()
+
+        # Exactly 365 days >= 365 => long-term
+        assert Decimal(result["short_term_gains"]) == Decimal("0")
+        assert Decimal(result["long_term_gains"]) == Decimal("400")
+
+    def test_holding_period_364_days_short_term(self):
+        """Trade held 364 days should be classified as short-term."""
+        trade = Trade(
+            account_id="U1234567",
+            trade_id="NEAR_BOUNDARY",
+            trade_date=date(2026, 1, 10),
+            settle_date=date(2026, 1, 12),
+            open_date=date(2025, 1, 11),  # 364 days
+            symbol="AAPL",
+            asset_class=AssetClass.STOCK,
+            buy_sell=BuySell.SELL,
+            quantity=Decimal("10"),
+            trade_price=Decimal("180"),
+            trade_money=Decimal("1800"),
+            ib_commission=Decimal("-1.00"),
+            fifo_pnl_realized=Decimal("400"),
+        )
+        account = Account(
+            account_id="U1234567",
+            from_date=date(2026, 1, 1),
+            to_date=date(2026, 1, 31),
+            trades=[trade],
+            positions=[],
+        )
+        analyzer = TaxAnalyzer(tax_rate=Decimal("0.30"), account=account)
+        result = analyzer.analyze()
+
+        # 364 days < 365 => short-term
+        assert Decimal(result["short_term_gains"]) == Decimal("400")
+        assert Decimal(result["long_term_gains"]) == Decimal("0")
 
     def test_no_account_raises(self):
         with pytest.raises(ValueError, match="Either portfolio or account"):
