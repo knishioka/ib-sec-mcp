@@ -254,7 +254,7 @@ def register_options_tools(mcp: FastMCP) -> None:
                 return json.dumps({"error": "Could not fetch current stock price"})
 
             # Calculate time to expiration (in years)
-            assert exp_date is not None  # guaranteed by logic above
+            assert exp_date is not None  # nosec B101 - guaranteed by logic above
             exp_datetime = datetime.strptime(exp_date, "%Y-%m-%d")
             T = (exp_datetime - today).days / 365.0
 
