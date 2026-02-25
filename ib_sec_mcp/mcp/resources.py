@@ -158,11 +158,14 @@ def _get_target_allocation() -> dict[str, Decimal]:
         bonds = allocation_targets.get("bonds")
         cash = allocation_targets.get("cash")
         if stocks is not None and bonds is not None and cash is not None:
-            return {
-                "STK": Decimal(str(stocks)),
-                "BOND": Decimal(str(bonds)),
-                "CASH": Decimal(str(cash)),
-            }
+            try:
+                return {
+                    "STK": Decimal(str(stocks)),
+                    "BOND": Decimal(str(bonds)),
+                    "CASH": Decimal(str(cash)),
+                }
+            except (TypeError, ArithmeticError):
+                pass  # Fall through to profile type lookup
 
     # Priority 2: investment_profile.type mapped to predefined profile
     investment_profile = profile.get("investment_profile")

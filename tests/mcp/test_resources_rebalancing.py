@@ -126,66 +126,6 @@ class TestGetTargetAllocationDefault:
 class TestGetTargetAllocationProfileTypes:
     """Tests for predefined profile type mappings."""
 
-    def test_balanced_profile_type(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile_path: Path
-    ):
-        """balanced profile: STK=50%, BOND=40%, CASH=10%."""
-        monkeypatch.chdir(tmp_path)
-        write_profile(profile_path, {"investment_profile": {"type": "balanced"}})
-
-        from ib_sec_mcp.mcp.resources import _get_target_allocation
-
-        result = _get_target_allocation()
-
-        assert result["STK"] == Decimal("50.0")
-        assert result["BOND"] == Decimal("40.0")
-        assert result["CASH"] == Decimal("10.0")
-
-    def test_growth_profile_type(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile_path: Path
-    ):
-        """growth profile: STK=75%, BOND=15%, CASH=10%."""
-        monkeypatch.chdir(tmp_path)
-        write_profile(profile_path, {"investment_profile": {"type": "growth"}})
-
-        from ib_sec_mcp.mcp.resources import _get_target_allocation
-
-        result = _get_target_allocation()
-
-        assert result["STK"] == Decimal("75.0")
-        assert result["BOND"] == Decimal("15.0")
-        assert result["CASH"] == Decimal("10.0")
-
-    def test_conservative_profile_type(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile_path: Path
-    ):
-        """conservative profile: STK=25%, BOND=60%, CASH=15%."""
-        monkeypatch.chdir(tmp_path)
-        write_profile(profile_path, {"investment_profile": {"type": "conservative"}})
-
-        from ib_sec_mcp.mcp.resources import _get_target_allocation
-
-        result = _get_target_allocation()
-
-        assert result["STK"] == Decimal("25.0")
-        assert result["BOND"] == Decimal("60.0")
-        assert result["CASH"] == Decimal("15.0")
-
-    def test_income_profile_type(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile_path: Path
-    ):
-        """income profile: STK=40%, BOND=50%, CASH=10%."""
-        monkeypatch.chdir(tmp_path)
-        write_profile(profile_path, {"investment_profile": {"type": "income"}})
-
-        from ib_sec_mcp.mcp.resources import _get_target_allocation
-
-        result = _get_target_allocation()
-
-        assert result["STK"] == Decimal("40.0")
-        assert result["BOND"] == Decimal("50.0")
-        assert result["CASH"] == Decimal("10.0")
-
     @pytest.mark.parametrize(
         "profile_type,expected_stk,expected_bond,expected_cash",
         [
@@ -310,6 +250,24 @@ class TestGetTargetAllocationExplicitTargets:
         result = _get_target_allocation()
 
         # Incomplete allocation_targets → fall back to default
+        assert result["BOND"] == DEFAULT_BOND
+        assert result["STK"] == DEFAULT_STK
+        assert result["CASH"] == DEFAULT_CASH
+
+    def test_non_numeric_allocation_targets_falls_back_to_default(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, profile_path: Path
+    ):
+        """Non-numeric values in allocation_targets (e.g. '50%') fall back to default."""
+        monkeypatch.chdir(tmp_path)
+        write_profile(
+            profile_path,
+            {"allocation_targets": {"stocks": "50%", "bonds": 40, "cash": 10}},
+        )
+
+        from ib_sec_mcp.mcp.resources import _get_target_allocation
+
+        result = _get_target_allocation()
+
         assert result["BOND"] == DEFAULT_BOND
         assert result["STK"] == DEFAULT_STK
         assert result["CASH"] == DEFAULT_CASH
