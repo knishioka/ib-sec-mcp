@@ -236,15 +236,17 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"files": [], "message": "No data directory found"})
 
-        files: list[FileInfo] = [
-            {
-                "filename": xml_file.name,
-                "path": str(xml_file),
-                "size_bytes": xml_file.stat().st_size,
-                "modified": xml_file.stat().st_mtime,
-            }
-            for xml_file in data_dir.glob("*.xml")
-        ]
+        files: list[FileInfo] = []
+        for xml_file in data_dir.glob("*.xml"):
+            st = xml_file.stat()
+            files.append(
+                {
+                    "filename": xml_file.name,
+                    "path": str(xml_file),
+                    "size_bytes": st.st_size,
+                    "modified": st.st_mtime,
+                }
+            )
 
         files.sort(key=lambda x: float(x["modified"]), reverse=True)
         return json.dumps({"files": files, "count": len(files)}, indent=2)
