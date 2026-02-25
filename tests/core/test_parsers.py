@@ -37,7 +37,8 @@ MINIMAL_XML = """\
           ibCommission="-1.50" ibCommissionCurrency="USD"
           fifoPnlRealized="0" mtmPnl="3050"
           orderID="O001" executionID="E001"
-          orderTime="20250115;103000"/>
+          orderTime="20250115;103000"
+          openDateTime="20240601;093000"/>
       </Trades>
     </FlexStatement>
   </FlexStatements>
@@ -346,6 +347,33 @@ class TestParseTradesXML:
         assert trade.order_time is not None
         assert trade.order_time.hour == 10
         assert trade.order_time.minute == 30
+
+    def test_open_date_parsing(self) -> None:
+        root = ET.fromstring(MINIMAL_XML)
+        stmt = root.findall(".//FlexStatement")[0]
+        trades = XMLParser._parse_trades_xml(stmt, "U1234567")
+        trade = trades[0]
+        assert trade.open_date == date(2024, 6, 1)
+
+    def test_open_date_missing(self) -> None:
+        xml = """\
+<FlexQueryResponse>
+  <FlexStatements>
+    <FlexStatement accountId="U1234567" fromDate="20250101" toDate="20250131">
+      <Trades>
+        <Trade tradeID="T002" symbol="AAPL" assetCategory="STK" buySell="SELL"
+          quantity="-100" tradePrice="160.00" tradeMoney="16000"
+          tradeDate="20250120" currency="USD" fxRateToBase="1.0"
+          ibCommission="-1.50" fifoPnlRealized="4000" mtmPnl="0"/>
+      </Trades>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>"""
+
+        root = ET.fromstring(xml)
+        stmt = root.findall(".//FlexStatement")[0]
+        trades = XMLParser._parse_trades_xml(stmt, "U1234567")
+        assert trades[0].open_date is None
 
     def test_sell_trade(self) -> None:
         xml = """\

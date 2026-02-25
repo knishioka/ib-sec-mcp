@@ -266,11 +266,19 @@ class XMLParser:
                 with contextlib.suppress(ValueError):
                     order_time = datetime.strptime(order_time_str, "%Y%m%d;%H%M%S")
 
+            # Parse open date for closing trades (format: YYYYMMDD;HHMMSS)
+            open_date = None
+            open_date_str = trade_elem.get("openDateTime")
+            if open_date_str:
+                with contextlib.suppress(ValueError):
+                    open_date = datetime.strptime(open_date_str, "%Y%m%d;%H%M%S").date()
+
             trade = Trade(
                 account_id=account_id,
                 trade_id=trade_elem.get("tradeID", ""),
                 trade_date=trade_date,
                 settle_date=settle_date,
+                open_date=open_date,
                 symbol=trade_elem.get("symbol", ""),
                 description=trade_elem.get("description"),
                 asset_class=asset_class,

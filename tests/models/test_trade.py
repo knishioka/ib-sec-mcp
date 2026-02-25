@@ -97,6 +97,7 @@ class TestTradeCreation:
             trade_money=Decimal("-15000.00"),
         )
         assert trade.settle_date is None
+        assert trade.open_date is None
         assert trade.description is None
         assert trade.cusip is None
         assert trade.isin is None
@@ -104,6 +105,22 @@ class TestTradeCreation:
         assert trade.execution_id is None
         assert trade.order_time is None
         assert trade.notes is None
+
+    def test_open_date_field(self) -> None:
+        trade = Trade(
+            account_id="U1234567",
+            trade_id="T001",
+            trade_date=date(2025, 1, 15),
+            settle_date=date(2025, 1, 17),
+            open_date=date(2024, 6, 1),
+            symbol="AAPL",
+            asset_class=AssetClass.STOCK,
+            buy_sell=BuySell.SELL,
+            quantity=Decimal("100"),
+            trade_price=Decimal("160.00"),
+            trade_money=Decimal("16000.00"),
+        )
+        assert trade.open_date == date(2024, 6, 1)
 
     def test_default_decimal_fields(self) -> None:
         trade = Trade(
