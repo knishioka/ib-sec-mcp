@@ -128,10 +128,10 @@ ignore_missing_imports = true
 module = "ib_sec_mcp.mcp.*"
 disallow_subclassing_any = false
 
-# Skip config.py due to pydantic-settings Python 3.10+ stub syntax
+# pydantic-settings BaseSettings lacks type stubs; allow subclassing Any
 [[tool.mypy.overrides]]
 module = "ib_sec_mcp.utils.config"
-follow_imports = "skip"
+disallow_subclassing_any = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

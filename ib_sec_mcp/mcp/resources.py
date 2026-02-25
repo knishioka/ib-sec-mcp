@@ -7,7 +7,7 @@ import json
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import TypedDict
 
 import yaml
 from fastmcp import FastMCP
@@ -17,6 +17,87 @@ from ib_sec_mcp.analyzers.tax import TaxAnalyzer
 from ib_sec_mcp.core.parsers import XMLParser, detect_format
 from ib_sec_mcp.models.account import Account
 from ib_sec_mcp.models.trade import AssetClass, BuySell
+
+# --- TypedDicts for resource handler return structures ---
+
+
+class FileInfo(TypedDict):
+    filename: str
+    path: str
+    size_bytes: int
+    modified: float
+
+
+class LossHarvestingOpportunity(TypedDict):
+    symbol: str
+    unrealized_loss: str
+    holding_period_days: int
+    potential_tax_savings: str
+
+
+class TaxLotSummary(TypedDict):
+    total_lots: int
+    long_term_lots: int
+    short_term_lots: int
+
+
+class WashSaleWarning(TypedDict):
+    symbol: str
+    message: str
+
+
+class TaxContext(TypedDict):
+    short_term_gains: str
+    long_term_gains: str
+    total_realized_gains: str
+    bond_oid_income: str
+    estimated_tax_liability: str
+    tax_loss_harvesting_opportunities: list[LossHarvestingOpportunity]
+    tax_lot_summary: TaxLotSummary
+    wash_sale_warnings: list[WashSaleWarning]
+
+
+class AllocationEntry(TypedDict):
+    percentage: str
+    value: str
+
+
+class DriftEntry(TypedDict):
+    drift: str
+    status: str
+
+
+class SuggestedAction(TypedDict):
+    action: str
+    asset_class: str
+    amount: str
+    reason: str
+
+
+class TopHolding(TypedDict):
+    symbol: str
+    percentage: str
+
+
+class ConcentrationRisk(TypedDict):
+    top_holdings: list[TopHolding]
+    max_position_size: str
+    diversification_score: str
+
+
+class RebalancingContext(TypedDict):
+    current_allocation: dict[str, AllocationEntry]
+    target_allocation: dict[str, str]
+    drift_analysis: dict[str, DriftEntry]
+    rebalancing_needed: bool
+    suggested_actions: list[SuggestedAction]
+    concentration_risk: ConcentrationRisk
+
+
+class MaturityYearInfo(TypedDict):
+    value: Decimal
+    count: int
+
 
 # Resource URI constants
 RESOURCE_PORTFOLIO_LIST = "ib://portfolio/list"
@@ -89,7 +170,7 @@ def register_resources(mcp: FastMCP) -> None:
         if not data_dir.exists():
             return json.dumps({"files": [], "message": "No data directory found"})
 
-        files: list[dict[str, Any]] = []
+        files: list[FileInfo] = []
         for xml_file in data_dir.glob("*.xml"):
             files.append(
                 {
@@ -307,7 +388,7 @@ def register_resources(mcp: FastMCP) -> None:
         total_realized_gains = short_term_gains + long_term_gains
 
         # Find tax loss harvesting opportunities
-        loss_harvesting_opportunities = []
+        loss_harvesting_opportunities: list[LossHarvestingOpportunity] = []
         for position in account.positions:
             if position.unrealized_pnl < 0:
                 # Find earliest trade for this position to calculate holding period
@@ -346,7 +427,7 @@ def register_resources(mcp: FastMCP) -> None:
         total_lots = long_term_lots + short_term_lots
 
         # Wash sale warnings (simplified - check if any symbol was sold at loss and rebought within 30 days)
-        wash_sale_warnings = []
+        wash_sale_warnings: list[WashSaleWarning] = []
         for symbol in {t.symbol for t in account.trades}:
             symbol_trades = [t for t in account.trades if t.symbol == symbol]
             symbol_trades.sort(key=lambda t: t.trade_date)
@@ -370,7 +451,7 @@ def register_resources(mcp: FastMCP) -> None:
         bond_oid_income = Decimal(tax_result.get("phantom_income_total", "0"))
         estimated_tax_liability = Decimal(tax_result.get("total_estimated_tax", "0"))
 
-        tax_context = {
+        tax_context: TaxContext = {
             "short_term_gains": str(short_term_gains),
             "long_term_gains": str(long_term_gains),
             "total_realized_gains": str(total_realized_gains),
@@ -442,7 +523,7 @@ def register_resources(mcp: FastMCP) -> None:
             else Decimal("0.0")
         )
 
-        current_allocation = {
+        current_allocation: dict[str, AllocationEntry] = {
             "BOND": {"percentage": str(bond_pct), "value": str(bond_value)},
             "STK": {"percentage": str(stock_pct), "value": str(stock_value)},
             "CASH": {"percentage": str(cash_pct), "value": str(cash_value)},
@@ -461,7 +542,7 @@ def register_resources(mcp: FastMCP) -> None:
         stock_drift = stock_pct - target_allocation["STK"]
         cash_drift = cash_pct - target_allocation["CASH"]
 
-        drift_analysis = {
+        drift_analysis: dict[str, DriftEntry] = {
             "BOND": {
                 "drift": str(bond_drift.quantize(Decimal("0.1"))),
                 "status": (
@@ -502,7 +583,7 @@ def register_resources(mcp: FastMCP) -> None:
         )
 
         # Suggested actions
-        suggested_actions = []
+        suggested_actions: list[SuggestedAction] = []
 
         if rebalancing_needed:
             # Calculate target values
@@ -554,7 +635,7 @@ def register_resources(mcp: FastMCP) -> None:
                     )
 
         # Concentration risk
-        top_holdings = []
+        top_holdings: list[TopHolding] = []
         sorted_positions = sorted(account.positions, key=lambda p: p.position_value, reverse=True)
         max_position_size = Decimal("0")
 
@@ -575,7 +656,7 @@ def register_resources(mcp: FastMCP) -> None:
         else:
             diversification_score = "poor"
 
-        rebalancing_context = {
+        rebalancing_context: RebalancingContext = {
             "current_allocation": current_allocation,
             "target_allocation": {
                 "BOND": str(target_allocation["BOND"]),
@@ -791,7 +872,7 @@ def register_resources(mcp: FastMCP) -> None:
 
         # Maturity ladder
         maturity_ladder = []
-        maturity_by_year: dict[int, dict[str, Any]] = {}
+        maturity_by_year: dict[int, MaturityYearInfo] = {}
 
         for position in bond_positions:
             if position.maturity_date:
