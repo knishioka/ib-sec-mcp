@@ -781,13 +781,13 @@ visualization = [
 
 [package.metadata]
 requires-dist = [
-    { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.8.0" },
+    { name = "bandit", extras = ["toml"], marker = "extra == 'dev'", specifier = ">=1.9.0" },
     { name = "defusedxml", specifier = ">=0.7.1" },
     { name = "fastmcp", marker = "extra == 'mcp'", specifier = ">=2.0.0,<3.0" },
     { name = "httpx", specifier = ">=0.27.0" },
     { name = "jinja2", marker = "extra == 'reporting'", specifier = ">=3.1.0" },
     { name = "kaleido", marker = "extra == 'visualization'", specifier = ">=0.2.1" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
+    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.19.0" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "plotly", marker = "extra == 'visualization'", specifier = ">=5.18.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.0.0" },
@@ -799,7 +799,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'mcp'", specifier = ">=6.0.0" },
     { name = "requests", specifier = ">=2.32.5" },
     { name = "rich", specifier = ">=13.7.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.14.0" },
     { name = "scipy", marker = "extra == 'mcp'", specifier = ">=1.14.0" },
     { name = "typer", specifier = ">=0.12.0" },
     { name = "weasyprint", marker = "extra == 'reporting'", specifier = ">=60.0" },

@@ -2,12 +2,12 @@
 
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class FlexQueryStatus(str, Enum):
+class FlexQueryStatus(StrEnum):
     """Flex Query request status"""
 
     SUCCESS = "Success"
