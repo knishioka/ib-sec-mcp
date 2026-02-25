@@ -92,7 +92,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
             )
             if not accounts:
                 raise ValidationError("No accounts found in XML file")
-            account = list(accounts.values())[0]  # Use first account
+            account = next(iter(accounts.values()))  # Use first account
 
             # Get portfolio value history (simplified - use current positions)
             positions = account.positions
@@ -231,8 +231,8 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
             raise
         except Exception as e:
             if ctx:
-                await ctx.error(f"Unexpected error in calculate_portfolio_metrics: {str(e)}")
-            raise FileOperationError(f"Unexpected error: {str(e)}") from e
+                await ctx.error(f"Unexpected error in calculate_portfolio_metrics: {e!s}")
+            raise FileOperationError(f"Unexpected error: {e!s}") from e
 
     @mcp.tool
     async def analyze_portfolio_correlation(
@@ -289,7 +289,7 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
             )
             if not accounts:
                 raise ValidationError("No accounts found in XML file")
-            account = list(accounts.values())[0]  # Use first account
+            account = next(iter(accounts.values()))  # Use first account
 
             # Get positions
             positions = account.positions
@@ -433,8 +433,8 @@ def register_portfolio_analytics_tools(mcp: FastMCP) -> None:
             raise
         except Exception as e:
             if ctx:
-                await ctx.error(f"Unexpected error in analyze_portfolio_correlation: {str(e)}")
-            raise FileOperationError(f"Unexpected error: {str(e)}") from e
+                await ctx.error(f"Unexpected error in analyze_portfolio_correlation: {e!s}")
+            raise FileOperationError(f"Unexpected error: {e!s}") from e
 
 
 __all__ = ["register_portfolio_analytics_tools"]

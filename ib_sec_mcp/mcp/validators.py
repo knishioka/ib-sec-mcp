@@ -84,7 +84,7 @@ def validate_file_path(file_path: str, check_exists: bool = True) -> Path:
     try:
         path = Path(file_path).resolve()
     except (ValueError, OSError) as e:
-        raise ValidationError(f"Invalid file path: {str(e)}", field="file_path") from e
+        raise ValidationError(f"Invalid file path: {e!s}", field="file_path") from e
 
     # Check for path traversal
     try:
@@ -92,7 +92,7 @@ def validate_file_path(file_path: str, check_exists: bool = True) -> Path:
         if not path.is_absolute():
             raise ValidationError("File path must be absolute", field="file_path")
     except (ValueError, OSError) as e:
-        raise ValidationError(f"Path validation failed: {str(e)}", field="file_path") from e
+        raise ValidationError(f"Path validation failed: {e!s}", field="file_path") from e
 
     # Check file extension
     if path.suffix.lower() not in ALLOWED_FILE_EXTENSIONS:

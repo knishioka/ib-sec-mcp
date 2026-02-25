@@ -97,7 +97,7 @@ def fetch(
                 console.print(f"Found {len(accounts)} accounts in query result\n")
 
                 # Save separate files for each account
-                for account_id, _account in accounts.items():
+                for account_id in accounts:
                     filename = f"{account_id}_{from_date}_{to_date}.xml"
                     filepath = out_dir / filename
 
@@ -112,7 +112,7 @@ def fetch(
                 )
             else:
                 # Only one account, save normally
-                account_id = list(accounts.keys())[0]
+                account_id = next(iter(accounts.keys()))
                 filename = f"{account_id}_{from_date}_{to_date}.xml"
                 filepath = out_dir / filename
 

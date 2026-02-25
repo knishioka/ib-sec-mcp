@@ -929,7 +929,7 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
             "tax_efficiency_note": (
                 "Positions domiciled in Ireland (IE) are taxed at 15% withholding rate vs 30% "
                 "for others. Restructuring to IE-domiciled equivalents could save "
-                f"{str(total_potential_savings)} in annual withholding taxes."
+                f"{total_potential_savings!s} in annual withholding taxes."
             ),
         }
 
@@ -937,7 +937,7 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
 
 
 __all__ = [
-    "register_composable_data_tools",
     "_get_domicile_code",
     "_get_withholding_rate",
+    "register_composable_data_tools",
 ]

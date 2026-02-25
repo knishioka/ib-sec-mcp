@@ -4,7 +4,7 @@ import asyncio
 import time
 from datetime import date, datetime
 
-import defusedxml.ElementTree as ET  # noqa: N817
+import defusedxml.ElementTree as ET
 import httpx
 import requests
 from pydantic import ValidationError

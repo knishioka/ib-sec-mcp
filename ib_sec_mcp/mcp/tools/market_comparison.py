@@ -151,8 +151,8 @@ def register_market_comparison_tools(mcp: FastMCP) -> None:
             raise
         except Exception as e:
             if ctx:
-                await ctx.error(f"Unexpected error in compare_with_benchmark: {str(e)}")
-            raise YahooFinanceError(f"Unexpected error: {str(e)}") from e
+                await ctx.error(f"Unexpected error in compare_with_benchmark: {e!s}")
+            raise YahooFinanceError(f"Unexpected error: {e!s}") from e
 
     @mcp.tool
     async def get_analyst_consensus(
@@ -267,8 +267,8 @@ def register_market_comparison_tools(mcp: FastMCP) -> None:
             raise
         except Exception as e:
             if ctx:
-                await ctx.error(f"Unexpected error in get_analyst_consensus: {str(e)}")
-            raise YahooFinanceError(f"Unexpected error: {str(e)}") from e
+                await ctx.error(f"Unexpected error in get_analyst_consensus: {e!s}")
+            raise YahooFinanceError(f"Unexpected error: {e!s}") from e
 
 
 __all__ = ["register_market_comparison_tools"]

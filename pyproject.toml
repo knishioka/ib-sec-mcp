@@ -41,7 +41,7 @@ mcp = [
 ]
 dev = [
     "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
+    "pytest-asyncio>=0.24.0",
     "pytest-cov>=4.1.0",
     "ruff>=0.1.0",
     "mypy>=1.8.0",
@@ -72,15 +72,21 @@ line-length = 100
 target-version = "py312"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "T20", "SIM"]
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "T20", "SIM", "RUF", "PTH", "PERF"]
 ignore = [
     "E501",    # Line too long (handled by formatter)
-    "UP038",   # isinstance with tuple is fine
     "UP024",   # asyncio.TimeoutError is intentional for asyncio.wait_for
+    "RUF001",  # Ambiguous unicode in strings (Japanese text is intentional)
+    "RUF002",  # Ambiguous unicode in docstrings (Japanese text is intentional)
+    "RUF003",  # Ambiguous unicode in comments (Japanese text is intentional)
+    "PTH123",  # open() -> Path.open() migration deferred to separate refactor
+    "RUF012",  # Mutable class defaults are intentional in Pydantic models
+    "N817",    # CamelCase imported as acronym (e.g., ElementTree as ET) is conventional
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"ib_sec_mcp/cli/*.py" = ["T201"]  # Allow print in CLI tools
+"ib_sec_mcp/cli/*.py" = ["T201", "B008"]  # Allow print and typer.Option defaults in CLI tools
+"ib_sec_mcp/mcp/tools/options.py" = ["N806"]  # Black-Scholes variable names (S, T, K, IV) are standard notation
 
 [tool.mypy]
 python_version = "3.12"
@@ -141,6 +147,23 @@ python_functions = ["test_*"]
 addopts = "-v --cov=ib_sec_mcp --cov-report=term-missing"
 asyncio_mode = "auto"
 
+[tool.coverage.run]
+branch = true
+source = ["ib_sec_mcp"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+fail_under = 48
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.",
+]
+
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "venv"]
-skips = ["B101", "B601"]
+skips = ["B601"]
+
+[tool.bandit.assert_used]
+skips = ["tests/*"]

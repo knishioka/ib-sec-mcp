@@ -203,5 +203,5 @@ class OptionsSentimentAnalyzer(BaseSentimentAnalyzer):
                 timestamp=datetime.now(),
                 key_themes=[],
                 risk_factors=["options_analysis_error"],
-                reasoning=f"Failed to analyze options sentiment: {str(e)}",
+                reasoning=f"Failed to analyze options sentiment: {e!s}",
             )

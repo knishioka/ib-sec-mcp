@@ -189,33 +189,32 @@ def register_etf_calculator_tools(mcp: FastMCP) -> None:
         portfolio_result = calculator.calculate_portfolio_swap(swaps_list)
 
         # Format individual results for JSON
-        formatted_results = []
-        for calc in portfolio_result["individual_results"]:
-            formatted_results.append(
-                {
-                    "from_etf": {
-                        "symbol": calc.from_etf.symbol,
-                        "shares": int(calc.from_etf.shares),
-                        "price": float(calc.from_etf.price),
-                        "total_value": float(calc.from_etf.total_value),
-                    },
-                    "to_etf": {
-                        "symbol": calc.to_etf.symbol,
-                        "shares": int(calc.to_etf.shares),
-                        "price": float(calc.to_etf.price),
-                        "total_value": float(calc.to_etf.total_value),
-                    },
-                    "required_shares": calc.required_shares,
-                    "purchase_amount": float(calc.purchase_amount),
-                    "surplus_cash": float(calc.surplus_cash),
-                    "annual_net_benefit": float(calc.annual_net_benefit),
-                    "payback_period_months": (
-                        calc.payback_period_months
-                        if calc.payback_period_months != float("inf")
-                        else None
-                    ),
-                }
-            )
+        formatted_results = [
+            {
+                "from_etf": {
+                    "symbol": calc.from_etf.symbol,
+                    "shares": int(calc.from_etf.shares),
+                    "price": float(calc.from_etf.price),
+                    "total_value": float(calc.from_etf.total_value),
+                },
+                "to_etf": {
+                    "symbol": calc.to_etf.symbol,
+                    "shares": int(calc.to_etf.shares),
+                    "price": float(calc.to_etf.price),
+                    "total_value": float(calc.to_etf.total_value),
+                },
+                "required_shares": calc.required_shares,
+                "purchase_amount": float(calc.purchase_amount),
+                "surplus_cash": float(calc.surplus_cash),
+                "annual_net_benefit": float(calc.annual_net_benefit),
+                "payback_period_months": (
+                    calc.payback_period_months
+                    if calc.payback_period_months != float("inf")
+                    else None
+                ),
+            }
+            for calc in portfolio_result["individual_results"]
+        ]
 
         result = {
             "individual_results": formatted_results,

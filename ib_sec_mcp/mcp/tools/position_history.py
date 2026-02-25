@@ -90,7 +90,7 @@ def register_position_history_tools(mcp: FastMCP) -> None:
             raise ValidationError(f"Invalid date format: {e}") from e
         except Exception as e:
             if ctx:
-                await ctx.error(f"Error fetching position history: {str(e)}")
+                await ctx.error(f"Error fetching position history: {e!s}")
             raise
 
     @mcp.tool
@@ -158,7 +158,7 @@ def register_position_history_tools(mcp: FastMCP) -> None:
             raise ValidationError(f"Invalid date format: {e}") from e
         except Exception as e:
             if ctx:
-                await ctx.error(f"Error fetching portfolio snapshot: {str(e)}")
+                await ctx.error(f"Error fetching portfolio snapshot: {e!s}")
             raise
 
     @mcp.tool
@@ -213,7 +213,7 @@ def register_position_history_tools(mcp: FastMCP) -> None:
             raise ValidationError(f"Invalid date format: {e}") from e
         except Exception as e:
             if ctx:
-                await ctx.error(f"Error comparing portfolio snapshots: {str(e)}")
+                await ctx.error(f"Error comparing portfolio snapshots: {e!s}")
             raise
 
     @mcp.tool
@@ -271,7 +271,7 @@ def register_position_history_tools(mcp: FastMCP) -> None:
             raise ValidationError(f"Invalid date format: {e}") from e
         except Exception as e:
             if ctx:
-                await ctx.error(f"Error calculating position statistics: {str(e)}")
+                await ctx.error(f"Error calculating position statistics: {e!s}")
             raise
 
     @mcp.tool
@@ -319,7 +319,7 @@ def register_position_history_tools(mcp: FastMCP) -> None:
 
         except Exception as e:
             if ctx:
-                await ctx.error(f"Error fetching available dates: {str(e)}")
+                await ctx.error(f"Error fetching available dates: {e!s}")
             raise
 
 

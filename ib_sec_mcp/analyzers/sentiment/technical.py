@@ -200,5 +200,5 @@ class TechnicalSentimentAnalyzer(BaseSentimentAnalyzer):
                 timestamp=datetime.now(),
                 key_themes=[],
                 risk_factors=["technical_analysis_error"],
-                reasoning=f"Failed to analyze technical sentiment: {str(e)}",
+                reasoning=f"Failed to analyze technical sentiment: {e!s}",
             )

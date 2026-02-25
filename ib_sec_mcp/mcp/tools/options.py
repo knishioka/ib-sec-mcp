@@ -248,7 +248,7 @@ def register_options_tools(mcp: FastMCP) -> None:
 
             # Get current price
             info = ticker.info
-            S = info.get("currentPrice") or info.get("regularMarketPrice")  # noqa: N806
+            S = info.get("currentPrice") or info.get("regularMarketPrice")
 
             if not S:
                 return json.dumps({"error": "Could not fetch current stock price"})
@@ -256,18 +256,18 @@ def register_options_tools(mcp: FastMCP) -> None:
             # Calculate time to expiration (in years)
             assert exp_date is not None  # guaranteed by logic above
             exp_datetime = datetime.strptime(exp_date, "%Y-%m-%d")
-            T = (exp_datetime - today).days / 365.0  # noqa: N806
+            T = (exp_datetime - today).days / 365.0
 
             if T <= 0:
                 return json.dumps({"error": f"Expiration date {exp_date} is in the past"})
 
             # Calculate Greeks for calls and puts
             def calculate_option_greeks(row: Any, option_type: str) -> dict[str, float]:
-                K = row["strike"]  # noqa: N806
-                IV = row.get("impliedVolatility", 0.3)  # noqa: N806  # Default to 30% if missing
+                K = row["strike"]
+                IV = row.get("impliedVolatility", 0.3)  # Default to 30% if missing
 
                 if IV == 0 or pd.isna(IV):
-                    IV = 0.3  # noqa: N806
+                    IV = 0.3
 
                 # Black-Scholes calculations
                 d1 = (np.log(S / K) + (risk_free_rate + 0.5 * IV**2) * T) / (IV * np.sqrt(T))

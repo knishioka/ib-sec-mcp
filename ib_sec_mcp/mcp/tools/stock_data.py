@@ -97,8 +97,8 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
                 ) from e
             except Exception as e:
                 if ctx:
-                    await ctx.error(f"Yahoo Finance API error: {str(e)}")
-                raise YahooFinanceError(f"Failed to fetch data for {symbol}: {str(e)}") from e
+                    await ctx.error(f"Yahoo Finance API error: {e!s}")
+                raise YahooFinanceError(f"Failed to fetch data for {symbol}: {e!s}") from e
 
             if hist.empty:
                 if ctx:
@@ -312,10 +312,10 @@ def register_stock_data_tools(mcp: FastMCP) -> None:
             # Catch any unexpected errors
             if ctx:
                 await ctx.error(
-                    f"Unexpected error: {str(e)}",
+                    f"Unexpected error: {e!s}",
                     extra={"error_type": type(e).__name__},
                 )
-            raise YahooFinanceError(f"Unexpected error while fetching stock data: {str(e)}") from e
+            raise YahooFinanceError(f"Unexpected error while fetching stock data: {e!s}") from e
 
     @mcp.tool
     async def get_current_price(

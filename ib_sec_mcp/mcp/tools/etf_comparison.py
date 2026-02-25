@@ -234,7 +234,7 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
                     return symbol, None
                 except Exception as e:
                     if ctx:
-                        await ctx.error(f"Error fetching {symbol}: {str(e)}")
+                        await ctx.error(f"Error fetching {symbol}: {e!s}")
                     return symbol, None
 
             # Fetch all ETF data in parallel
@@ -342,11 +342,11 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
                     )
 
             # Add correlation warnings
-            for pair in high_corr_pairs:
-                recommendations.append(
-                    f"{pair['symbol1']} and {pair['symbol2']}: High correlation "
-                    f"({pair['correlation']:.2f}) - consider diversifying with one or the other"
-                )
+            recommendations.extend(
+                f"{pair['symbol1']} and {pair['symbol2']}: High correlation "
+                f"({pair['correlation']:.2f}) - consider diversifying with one or the other"
+                for pair in high_corr_pairs
+            )
 
             result = {
                 "comparison_summary": {
@@ -416,10 +416,10 @@ def register_etf_comparison_tools(mcp: FastMCP) -> None:
             # Catch any unexpected errors
             if ctx:
                 await ctx.error(
-                    f"Unexpected error: {str(e)}",
+                    f"Unexpected error: {e!s}",
                     extra={"error_type": type(e).__name__},
                 )
-            raise YahooFinanceError(f"Unexpected error while comparing ETFs: {str(e)}") from e
+            raise YahooFinanceError(f"Unexpected error while comparing ETFs: {e!s}") from e
 
 
 __all__ = ["register_etf_comparison_tools"]

@@ -133,4 +133,4 @@ class BaseSentimentAnalyzer(ABC):
         pass
 
 
-__all__ = ["SentimentScore", "BaseSentimentAnalyzer"]
+__all__ = ["BaseSentimentAnalyzer", "SentimentScore"]

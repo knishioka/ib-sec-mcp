@@ -39,7 +39,7 @@ class XMLParser:
         Returns:
             Dict with parsed statements
         """
-        import defusedxml.ElementTree as ET  # noqa: N817
+        import defusedxml.ElementTree as ET
 
         root = ET.fromstring(xml_data)
         statements = root.findall(".//FlexStatement")
@@ -324,7 +324,7 @@ class XMLParser:
         Returns:
             Account instance
         """
-        import defusedxml.ElementTree as ET  # noqa: N817
+        import defusedxml.ElementTree as ET
 
         root = ET.fromstring(xml_data)
         statements = root.findall(".//FlexStatement")
@@ -381,7 +381,7 @@ class XMLParser:
         Returns:
             Dictionary mapping account_id to Account instance
         """
-        import defusedxml.ElementTree as ET  # noqa: N817
+        import defusedxml.ElementTree as ET
 
         root = ET.fromstring(xml_data)
         statements = root.findall(".//FlexStatement")

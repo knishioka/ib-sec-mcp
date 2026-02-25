@@ -161,10 +161,10 @@ def register_technical_analysis_tools(mcp: FastMCP) -> None:
         except Exception as e:
             if ctx:
                 await ctx.error(
-                    f"Unexpected error: {str(e)}",
+                    f"Unexpected error: {e!s}",
                     extra={"error_type": type(e).__name__},
                 )
-            raise YahooFinanceError(f"Unexpected error while analyzing {symbol}: {str(e)}") from e
+            raise YahooFinanceError(f"Unexpected error while analyzing {symbol}: {e!s}") from e
 
     @mcp.tool
     async def get_stock_analysis(
@@ -277,10 +277,8 @@ def register_technical_analysis_tools(mcp: FastMCP) -> None:
 
         except Exception as e:
             if ctx:
-                await ctx.error(f"Multi-timeframe analysis error: {str(e)}")
-            raise YahooFinanceError(
-                f"Multi-timeframe analysis failed for {symbol}: {str(e)}"
-            ) from e
+                await ctx.error(f"Multi-timeframe analysis error: {e!s}")
+            raise YahooFinanceError(f"Multi-timeframe analysis failed for {symbol}: {e!s}") from e
 
 
 def _find_support_resistance(hist: pd.DataFrame, window: int = 20) -> dict[str, Any]:
