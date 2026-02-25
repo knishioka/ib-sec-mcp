@@ -5,11 +5,11 @@
 ### 1. Install Dependencies
 
 ```bash
-# Using pip
-pip install -e .
+# Using uv (recommended)
+uv sync
 
-# Or using requirements.txt
-pip install -r requirements.txt
+# Or using pip
+pip install -e .
 ```
 
 ### 2. Configure Environment
@@ -118,7 +118,7 @@ pip install -e .
 Install missing dependencies:
 
 ```bash
-pip install -r requirements.txt
+uv sync
 ```
 
 ### API Connection Issues
