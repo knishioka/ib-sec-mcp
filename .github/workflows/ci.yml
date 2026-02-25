@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-      - run: uv sync --dev
+      - run: uv sync --extra dev
       - run: uv run ruff check ib_sec_mcp tests
       - run: uv run ruff format --check ib_sec_mcp tests
 
@@ -34,7 +34,7 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-      - run: uv sync --dev --extra mcp
+      - run: uv sync --extra dev --extra mcp
       - run: uv run mypy ib_sec_mcp
 
   test:
@@ -48,5 +48,5 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
-      - run: uv sync --dev --extra mcp
+      - run: uv sync --extra dev --extra mcp
       - run: uv run pytest --cov=ib_sec_mcp --cov-report=xml --cov-report=term-missing

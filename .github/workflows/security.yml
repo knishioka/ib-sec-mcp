@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.12"
           enable-cache: true
-      - run: uv sync --dev
+      - run: uv sync --extra dev
       - run: uv run bandit -c pyproject.toml -r ib_sec_mcp
 
   gitleaks:
@@ -32,3 +32,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
