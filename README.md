@@ -1134,38 +1134,32 @@ dates = await get_available_snapshot_dates(account_id="U1234567")
 
 ## MCP Server Integration
 
-IB Analytics provides a **Model Context Protocol (MCP)** server for integration with Claude Desktop and other MCP clients.
-
-### Quick Start
-
-```bash
-# Install with MCP support
-pip install -e ".[mcp]"
-
-# Run MCP server
-ib-sec-mcp
-```
+IB Analytics provides a **Model Context Protocol (MCP)** server for integration with Claude Desktop and Claude Code.
 
 ### Features
 
-- **22 Tools**:
-  - IB Portfolio: Fetch data, performance/cost/bond/tax/risk analysis, portfolio summary
-  - Position History: Position history, portfolio snapshots, snapshot comparison, statistics, available dates
-  - Stock Analysis: Stock info, current price, historical data, options chain, put/call ratio, news, **market sentiment**
-  - Investment Analysis: Benchmark comparison, portfolio metrics, correlation analysis, analyst consensus
-- **6 Resources**: Access portfolio data, account info, trades, and positions via URI patterns
+- **45 Tools**: Portfolio analysis, market data, risk/tax/cost analytics, rebalancing, dividend/sector/FX analysis
+- **9 Resources**: Portfolio data, account info, trades, positions, and strategy context via URI patterns
 - **5 Prompts**: Pre-configured analysis templates for common workflows
 
-### Claude Desktop Setup
+### Setup Options
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
+#### Option 1: Git リポジトリから直接実行（推奨・クローン不要）
+
+インストール不要。設定ファイルに追記するだけで使用できます。
+
+**Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
     "ib-sec-mcp": {
-      "command": "/path/to/venv/bin/python",
-      "args": ["-m", "ib_sec_mcp.mcp.server"],
+      "command": "uvx",
+      "args": [
+        "--from",
+        "ib-sec-mcp[mcp] @ git+https://github.com/knishioka/ib-sec-mcp",
+        "ib-sec-mcp"
+      ],
       "env": {
         "QUERY_ID": "your_query_id",
         "TOKEN": "your_token"
@@ -1174,6 +1168,65 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
   }
 }
 ```
+
+**Claude Code** (プロジェクトの `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "ib-sec-mcp": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "--from",
+        "ib-sec-mcp[mcp] @ git+https://github.com/knishioka/ib-sec-mcp",
+        "ib-sec-mcp"
+      ],
+      "env": {
+        "QUERY_ID": "${QUERY_ID}",
+        "TOKEN": "${TOKEN}"
+      }
+    }
+  }
+}
+```
+
+> **Note**: `[mcp]` extra の指定が必須です（`fastmcp`, `scipy`, `pyyaml` が含まれます）。
+
+> **キャッシュ**: 初回のみ依存関係をダウンロード（`~/.cache/uv`）。2回目以降は即座に起動します。最新版を取得したい場合は `uvx --refresh` オプションを使用してください。
+
+#### Option 2: ローカルリポジトリから実行（開発者向け）
+
+リポジトリをクローンして開発する場合：
+
+```bash
+git clone https://github.com/knishioka/ib-sec-mcp.git
+cd ib-sec-mcp
+cp .mcp.json.example .mcp.json  # パスを編集
+```
+
+**`.mcp.json`**:
+
+```json
+{
+  "mcpServers": {
+    "ib-sec-mcp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "/path/to/ib-sec-mcp", "run", "ib-sec-mcp"],
+      "env": {
+        "QUERY_ID": "${QUERY_ID}",
+        "TOKEN": "${TOKEN}"
+      }
+    }
+  }
+}
+```
+
+### Prerequisites
+
+- [uv](https://docs.astral.sh/uv/) インストール済み: `brew install uv` または `curl -LsSf https://astral.sh/uv/install.sh | sh`
+- IB Flex Query の `QUERY_ID` と `TOKEN`（IB ポータルで取得）
 
 See [MCP Tools Reference](docs/mcp-tools-reference.md) for complete documentation of all 45 tools, 9 resources, and 5 prompts.
 
