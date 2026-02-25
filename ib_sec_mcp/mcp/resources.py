@@ -371,20 +371,11 @@ def register_resources(mcp: FastMCP) -> None:
         analyzer = TaxAnalyzer(account=account)
         tax_result = analyzer.analyze()
 
-        # Calculate short-term vs long-term gains from trades using open_date
+        # Use TaxAnalyzer results directly to avoid duplicating classification logic
         today = date.today()
-        short_term_gains = Decimal("0")
-        long_term_gains = Decimal("0")
-
-        for trade in account.trades:
-            if trade.fifo_pnl_realized > 0 and trade.open_date:
-                holding_days = (trade.trade_date - trade.open_date).days
-                if holding_days >= 365:
-                    long_term_gains += trade.fifo_pnl_realized
-                else:
-                    short_term_gains += trade.fifo_pnl_realized
-
-        total_realized_gains = short_term_gains + long_term_gains
+        short_term_gains = Decimal(tax_result["short_term_gains"])
+        long_term_gains = Decimal(tax_result["long_term_gains"])
+        total_realized_gains = Decimal(tax_result["total_realized_pnl"])
 
         # Find tax loss harvesting opportunities
         loss_harvesting_opportunities: list[LossHarvestingOpportunity] = []

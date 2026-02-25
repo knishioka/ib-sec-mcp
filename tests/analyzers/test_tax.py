@@ -1,6 +1,6 @@
 """Tests for tax analyzer"""
 
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
@@ -455,14 +455,25 @@ class TestTaxAnalyzer:
         assert Decimal(result["estimated_phantom_income_tax"]) == Decimal("0")
         assert Decimal(result["total_estimated_tax"]) == Decimal("0")
 
-    def test_holding_period_boundary_365_days(self):
-        """Trade held exactly 365 days should be classified as long-term."""
+    @pytest.mark.parametrize(
+        ("holding_days", "expected_short", "expected_long"),
+        [
+            (364, Decimal("400"), Decimal("0")),  # 364 days < 365 => short-term
+            (365, Decimal("0"), Decimal("400")),  # exactly 365 days >= 365 => long-term
+            (366, Decimal("0"), Decimal("400")),  # 366 days >= 365 => long-term
+        ],
+        ids=["364d-short-term", "365d-long-term", "366d-long-term"],
+    )
+    def test_holding_period_boundary(self, holding_days, expected_short, expected_long):
+        """Test holding period boundary classification around 365-day threshold."""
+        trade_date = date(2026, 1, 10)
+        open_date = trade_date - timedelta(days=holding_days)
         trade = Trade(
             account_id="U1234567",
             trade_id="BOUNDARY",
-            trade_date=date(2026, 1, 10),
+            trade_date=trade_date,
             settle_date=date(2026, 1, 12),
-            open_date=date(2025, 1, 10),  # exactly 365 days
+            open_date=open_date,
             symbol="AAPL",
             asset_class=AssetClass.STOCK,
             buy_sell=BuySell.SELL,
@@ -482,40 +493,8 @@ class TestTaxAnalyzer:
         analyzer = TaxAnalyzer(tax_rate=Decimal("0.30"), account=account)
         result = analyzer.analyze()
 
-        # Exactly 365 days >= 365 => long-term
-        assert Decimal(result["short_term_gains"]) == Decimal("0")
-        assert Decimal(result["long_term_gains"]) == Decimal("400")
-
-    def test_holding_period_364_days_short_term(self):
-        """Trade held 364 days should be classified as short-term."""
-        trade = Trade(
-            account_id="U1234567",
-            trade_id="NEAR_BOUNDARY",
-            trade_date=date(2026, 1, 10),
-            settle_date=date(2026, 1, 12),
-            open_date=date(2025, 1, 11),  # 364 days
-            symbol="AAPL",
-            asset_class=AssetClass.STOCK,
-            buy_sell=BuySell.SELL,
-            quantity=Decimal("10"),
-            trade_price=Decimal("180"),
-            trade_money=Decimal("1800"),
-            ib_commission=Decimal("-1.00"),
-            fifo_pnl_realized=Decimal("400"),
-        )
-        account = Account(
-            account_id="U1234567",
-            from_date=date(2026, 1, 1),
-            to_date=date(2026, 1, 31),
-            trades=[trade],
-            positions=[],
-        )
-        analyzer = TaxAnalyzer(tax_rate=Decimal("0.30"), account=account)
-        result = analyzer.analyze()
-
-        # 364 days < 365 => short-term
-        assert Decimal(result["short_term_gains"]) == Decimal("400")
-        assert Decimal(result["long_term_gains"]) == Decimal("0")
+        assert Decimal(result["short_term_gains"]) == expected_short
+        assert Decimal(result["long_term_gains"]) == expected_long
 
     def test_no_account_raises(self):
         with pytest.raises(ValueError, match="Either portfolio or account"):
