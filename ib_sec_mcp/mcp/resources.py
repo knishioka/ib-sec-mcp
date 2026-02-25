@@ -110,6 +110,69 @@ RESOURCE_STRATEGY_REBALANCING = "ib://strategy/rebalancing-context"
 RESOURCE_STRATEGY_RISK = "ib://strategy/risk-context"
 RESOURCE_USER_PROFILE = "ib://user/profile"
 
+# Default target allocation when no user profile is configured (60% BOND / 35% STK / 5% CASH)
+_DEFAULT_TARGET_ALLOCATION: dict[str, Decimal] = {
+    "BOND": Decimal("60.0"),
+    "STK": Decimal("35.0"),
+    "CASH": Decimal("5.0"),
+}
+
+# Predefined allocations for each investor profile type
+_PROFILE_ALLOCATIONS: dict[str, dict[str, Decimal]] = {
+    "balanced": {"STK": Decimal("50.0"), "BOND": Decimal("40.0"), "CASH": Decimal("10.0")},
+    "growth": {"STK": Decimal("75.0"), "BOND": Decimal("15.0"), "CASH": Decimal("10.0")},
+    "conservative": {"STK": Decimal("25.0"), "BOND": Decimal("60.0"), "CASH": Decimal("15.0")},
+    "income": {"STK": Decimal("40.0"), "BOND": Decimal("50.0"), "CASH": Decimal("10.0")},
+}
+
+
+def _get_target_allocation() -> dict[str, Decimal]:
+    """Read target allocation from the user profile, with fallback to defaults.
+
+    Precedence order:
+    1. Explicit ``allocation_targets`` in notes/investor-profile.yaml (stocks/bonds/cash keys)
+    2. ``investment_profile.type`` mapped to a predefined profile (balanced/growth/conservative/income)
+    3. Default 60% BOND / 35% STK / 5% CASH
+
+    Returns:
+        Dict with keys ``"BOND"``, ``"STK"``, ``"CASH"`` and Decimal percentage values.
+    """
+    profile_path = Path("notes/investor-profile.yaml")
+
+    if not profile_path.exists():
+        return dict(_DEFAULT_TARGET_ALLOCATION)
+
+    try:
+        with open(profile_path) as f:
+            profile = yaml.safe_load(f)
+    except yaml.YAMLError:
+        return dict(_DEFAULT_TARGET_ALLOCATION)
+
+    if not isinstance(profile, dict):
+        return dict(_DEFAULT_TARGET_ALLOCATION)
+
+    # Priority 1: explicit allocation_targets with stocks/bonds/cash keys
+    allocation_targets = profile.get("allocation_targets")
+    if isinstance(allocation_targets, dict):
+        stocks = allocation_targets.get("stocks")
+        bonds = allocation_targets.get("bonds")
+        cash = allocation_targets.get("cash")
+        if stocks is not None and bonds is not None and cash is not None:
+            return {
+                "STK": Decimal(str(stocks)),
+                "BOND": Decimal(str(bonds)),
+                "CASH": Decimal(str(cash)),
+            }
+
+    # Priority 2: investment_profile.type mapped to predefined profile
+    investment_profile = profile.get("investment_profile")
+    if isinstance(investment_profile, dict):
+        profile_type = investment_profile.get("type")
+        if isinstance(profile_type, str) and profile_type in _PROFILE_ALLOCATIONS:
+            return dict(_PROFILE_ALLOCATIONS[profile_type])
+
+    return dict(_DEFAULT_TARGET_ALLOCATION)
+
 
 def _parse_xml_file(file_path: Path) -> Account:
     """
@@ -529,13 +592,8 @@ def register_resources(mcp: FastMCP) -> None:
             "CASH": {"percentage": str(cash_pct), "value": str(cash_value)},
         }
 
-        # Target allocation (TODO: Make configurable via config file or tool parameter)
-        # Default conservative allocation (60/35/5)
-        target_allocation = {
-            "BOND": Decimal("60.0"),
-            "STK": Decimal("35.0"),
-            "CASH": Decimal("5.0"),
-        }
+        # Target allocation from user profile, falling back to 60/35/5 default
+        target_allocation = _get_target_allocation()
 
         # Drift analysis
         bond_drift = bond_pct - target_allocation["BOND"]
