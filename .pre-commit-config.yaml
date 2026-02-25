@@ -4,7 +4,7 @@
 repos:
   # Gitleaks - Secret scanning
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.27.2
+    rev: v8.30.0
     hooks:
       - id: gitleaks
         name: Gitleaks - Secret Detection
@@ -15,7 +15,7 @@ repos:
 
   # Python code quality (Ruff handles linting, formatting, and import sorting)
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.15.2
     hooks:
       - id: ruff
         name: Ruff - Linter & Import Sorter
@@ -25,7 +25,7 @@ repos:
 
   # Type checking (warning mode - errors don't block commits)
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.13.0
+    rev: v1.19.1
     hooks:
       - id: mypy
         name: mypy - Type Checker (warnings only)
@@ -54,7 +54,7 @@ repos:
 
   # General file checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
         name: Trim Trailing Whitespace
@@ -79,7 +79,7 @@ repos:
 
   # Security checks
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.8.0
+    rev: 1.9.3
     hooks:
       - id: bandit
         name: Bandit - Security Linter
@@ -100,7 +100,7 @@ repos:
 
 # Configuration for specific hooks
 default_language_version:
-  python: python3.12
+  python: python3.13
 
 # Files to exclude from all hooks
 exclude: |

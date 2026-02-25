@@ -2,19 +2,19 @@
 
 from datetime import date, datetime
 from decimal import Decimal
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class BuySell(str, Enum):
+class BuySell(StrEnum):
     """Buy/Sell indicator"""
 
     BUY = "BUY"
     SELL = "SELL"
 
 
-class AssetClass(str, Enum):
+class AssetClass(StrEnum):
     """Asset class types"""
 
     STOCK = "STK"
