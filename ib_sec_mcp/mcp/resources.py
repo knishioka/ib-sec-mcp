@@ -218,7 +218,7 @@ def _parse_xml_file(file_path: Path) -> Account:
     if not accounts:
         raise ValueError(f"No accounts found in {file_path}")
 
-    return list(accounts.values())[0]
+    return next(iter(accounts.values()))
 
 
 def register_resources(mcp: FastMCP) -> None:
@@ -238,12 +238,13 @@ def register_resources(mcp: FastMCP) -> None:
 
         files: list[FileInfo] = []
         for xml_file in data_dir.glob("*.xml"):
+            st = xml_file.stat()
             files.append(
                 {
                     "filename": xml_file.name,
                     "path": str(xml_file),
-                    "size_bytes": xml_file.stat().st_size,
-                    "modified": xml_file.stat().st_mtime,
+                    "size_bytes": st.st_size,
+                    "modified": st.st_mtime,
                 }
             )
 
@@ -922,7 +923,6 @@ def register_resources(mcp: FastMCP) -> None:
         }
 
         # Maturity ladder
-        maturity_ladder = []
         maturity_by_year: dict[int, MaturityYearInfo] = {}
 
         for position in bond_positions:
@@ -936,14 +936,14 @@ def register_resources(mcp: FastMCP) -> None:
                 maturity_by_year[maturity_year]["value"] += position.position_value
                 maturity_by_year[maturity_year]["count"] += 1
 
-        for year in sorted(maturity_by_year.keys())[:3]:  # Next 3 maturity years
-            maturity_ladder.append(
-                {
-                    "year": year,
-                    "value": str(maturity_by_year[year]["value"]),
-                    "count": maturity_by_year[year]["count"],
-                }
-            )
+        maturity_ladder = [
+            {
+                "year": year,
+                "value": str(maturity_by_year[year]["value"]),
+                "count": maturity_by_year[year]["count"],
+            }
+            for year in sorted(maturity_by_year.keys())[:3]  # Next 3 maturity years
+        ]
 
         risk_context = {
             "portfolio_risk_metrics": {

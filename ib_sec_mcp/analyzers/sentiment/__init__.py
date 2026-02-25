@@ -111,9 +111,9 @@ from ib_sec_mcp.analyzers.sentiment.technical import TechnicalSentimentAnalyzer
 
 __all__ = [
     "BaseSentimentAnalyzer",
-    "SentimentScore",
+    "CompositeSentimentAnalyzer",
     "NewsSentimentAnalyzer",
     "OptionsSentimentAnalyzer",
+    "SentimentScore",
     "TechnicalSentimentAnalyzer",
-    "CompositeSentimentAnalyzer",
 ]

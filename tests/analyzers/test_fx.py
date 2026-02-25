@@ -333,7 +333,7 @@ class TestFXExposureAnalyzer:
         result = analyzer.analyze()
 
         # Check that values can be parsed back to Decimal without precision issues
-        for _currency, data in result["currency_exposures"].items():
+        for data in result["currency_exposures"].values():
             Decimal(data["position_value_base"])
             Decimal(data["percentage"])
             Decimal(data["fx_rate_to_base"])

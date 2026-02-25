@@ -252,7 +252,7 @@ class TestCalculateTotalTradesBySymbol:
         portfolio = Portfolio.from_accounts([account_a, account_b])
 
         result = MultiAccountAggregator.calculate_total_trades_by_symbol(portfolio)
-        count, volume, pnl = result["AAPL"]
+        count, _volume, pnl = result["AAPL"]
         assert count == 2
         assert pnl == Decimal("80")
 

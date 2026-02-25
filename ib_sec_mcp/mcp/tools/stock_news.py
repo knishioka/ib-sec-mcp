@@ -124,8 +124,8 @@ def register_stock_news_tools(mcp: FastMCP) -> None:
             raise IBTimeoutError(f"News fetch timed out after {DEFAULT_TIMEOUT} seconds") from e
         except Exception as e:
             if ctx:
-                await ctx.error(f"Unexpected error in get_stock_news: {str(e)}")
-            raise YahooFinanceError(f"Unexpected error: {str(e)}") from e
+                await ctx.error(f"Unexpected error in get_stock_news: {e!s}")
+            raise YahooFinanceError(f"Unexpected error: {e!s}") from e
 
 
 __all__ = ["register_stock_news_tools"]

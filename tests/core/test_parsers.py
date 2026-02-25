@@ -4,7 +4,7 @@ from datetime import date
 from decimal import Decimal
 from unittest.mock import patch
 
-import defusedxml.ElementTree as ET  # noqa: N817
+import defusedxml.ElementTree as ET
 import pytest
 
 from ib_sec_mcp.core.parsers import XMLParser, detect_format

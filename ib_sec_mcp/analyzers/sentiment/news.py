@@ -98,7 +98,7 @@ class NewsSentimentAnalyzer(BaseSentimentAnalyzer):
                 score=Decimal("0.0"),
                 confidence=Decimal("0.0"),
                 timestamp=datetime.now(),
-                reasoning=f"Analysis failed: {str(e)}",
+                reasoning=f"Analysis failed: {e!s}",
             )
 
     async def _fetch_news(self, symbol: str) -> list[dict[str, Any]]:

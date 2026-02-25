@@ -10,4 +10,4 @@ from ib_sec_mcp.api.client import FlexQueryClient
 from ib_sec_mcp.models.account import Account
 from ib_sec_mcp.models.portfolio import Portfolio
 
-__all__ = ["FlexQueryClient", "Account", "Portfolio"]
+__all__ = ["Account", "FlexQueryClient", "Portfolio"]

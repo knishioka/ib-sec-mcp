@@ -189,9 +189,9 @@ async def _get_or_fetch_data(
             if ctx:
                 await ctx.warning(warning_msg)
     except Exception as e:
-        logger.error(f"Configuration error: {str(e)}", exc_info=True)
+        logger.error(f"Configuration error: {e!s}", exc_info=True)
         if ctx:
-            await ctx.error(f"Configuration error: {str(e)}")
+            await ctx.error(f"Configuration error: {e!s}")
         raise ConfigurationError(
             "Failed to load credentials. Ensure QUERY_ID and TOKEN are set in .env file"
         ) from e
@@ -215,7 +215,7 @@ async def _get_or_fetch_data(
         statement = await asyncio.wait_for(fetch_with_timeout(), timeout=API_FETCH_TIMEOUT)
         logger.info(f"Successfully fetched data from IB API: {len(statement.raw_data)} bytes")
 
-    except asyncio.TimeoutError as e:  # noqa: UP041
+    except TimeoutError as e:
         logger.error(f"API call timed out after {API_FETCH_TIMEOUT}s")
         if ctx:
             await ctx.error(
@@ -228,9 +228,9 @@ async def _get_or_fetch_data(
         ) from e
 
     except FlexQueryAPIError as e:
-        logger.error(f"IB API error: {str(e)}")
+        logger.error(f"IB API error: {e!s}")
         if ctx:
-            await ctx.error(f"IB API error: {str(e)}", extra={"error_type": "FlexQueryAPIError"})
+            await ctx.error(f"IB API error: {e!s}", extra={"error_type": "FlexQueryAPIError"})
         raise APIError(str(e)) from e
 
     # Save to cache
@@ -257,7 +257,7 @@ async def _get_or_fetch_data(
                 },
             )
 
-    except asyncio.TimeoutError as e:  # noqa: UP041
+    except TimeoutError as e:
         logger.error(f"File write timed out after {FILE_OPERATION_TIMEOUT}s")
         if ctx:
             await ctx.error(f"File write timed out after {FILE_OPERATION_TIMEOUT}s")
@@ -267,10 +267,10 @@ async def _get_or_fetch_data(
         ) from e
 
     except Exception as e:
-        logger.error(f"File operation failed: {str(e)}")
+        logger.error(f"File operation failed: {e!s}")
         if ctx:
-            await ctx.error(f"File operation failed: {str(e)}")
-        raise FileOperationError(f"Failed to save data to {filepath}: {str(e)}") from e
+            await ctx.error(f"File operation failed: {e!s}")
+        raise FileOperationError(f"Failed to save data to {filepath}: {e!s}") from e
 
     logger.debug("_get_or_fetch_data completed successfully")
     return statement.raw_data, from_date, to_date
@@ -329,7 +329,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 credentials = config.get_credentials()
             except Exception as e:
                 if ctx:
-                    await ctx.error(f"Configuration error: {str(e)}")
+                    await ctx.error(f"Configuration error: {e!s}")
                 raise ConfigurationError(
                     "Failed to load credentials. Ensure QUERY_ID and TOKEN are set in .env file"
                 ) from e
@@ -351,7 +351,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
                 statement = await asyncio.wait_for(fetch_with_timeout(), timeout=API_FETCH_TIMEOUT)
 
-            except asyncio.TimeoutError as e:  # noqa: UP041
+            except TimeoutError as e:
                 if ctx:
                     await ctx.error(
                         f"API call timed out after {API_FETCH_TIMEOUT}s",
@@ -368,7 +368,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             except FlexQueryAPIError as e:
                 if ctx:
                     await ctx.error(
-                        f"IB API error: {str(e)}",
+                        f"IB API error: {e!s}",
                         extra={"error_type": "FlexQueryAPIError"},
                     )
                 raise APIError(str(e)) from e
@@ -396,7 +396,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                         },
                     )
 
-            except asyncio.TimeoutError as e:  # noqa: UP041
+            except TimeoutError as e:
                 if ctx:
                     await ctx.error(f"File write timed out after {FILE_OPERATION_TIMEOUT}s")
                 raise IBTimeoutError(
@@ -406,8 +406,8 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
             except Exception as e:
                 if ctx:
-                    await ctx.error(f"File operation failed: {str(e)}")
-                raise FileOperationError(f"Failed to save data to {filepath}: {str(e)}") from e
+                    await ctx.error(f"File operation failed: {e!s}")
+                raise FileOperationError(f"Failed to save data to {filepath}: {e!s}") from e
 
             # Auto-sync to SQLite storage
             try:
@@ -423,7 +423,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
                 # Save each account to SQLite
                 store = PositionStore()
                 total_positions_saved = 0
-                for _account_id, account in accounts.items():
+                for account in accounts.values():
                     positions_saved = store.save_snapshot(
                         account=account, snapshot_date=to_date, xml_file_path=str(filepath)
                     )
@@ -443,10 +443,10 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             except Exception as e:
                 # Log error but don't fail the entire operation
                 # The XML file has been saved successfully
-                logger.warning(f"Auto-sync to SQLite failed: {str(e)}", exc_info=True)
+                logger.warning(f"Auto-sync to SQLite failed: {e!s}", exc_info=True)
                 if ctx:
                     await ctx.warning(
-                        f"Auto-sync to SQLite failed: {str(e)}. XML file saved successfully."
+                        f"Auto-sync to SQLite failed: {e!s}. XML file saved successfully."
                     )
 
             return {
@@ -470,10 +470,10 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             # Catch any unexpected errors
             if ctx:
                 await ctx.error(
-                    f"Unexpected error: {str(e)}",
+                    f"Unexpected error: {e!s}",
                     extra={"error_type": type(e).__name__},
                 )
-            raise APIError(f"Unexpected error while fetching IB data: {str(e)}") from e
+            raise APIError(f"Unexpected error while fetching IB data: {e!s}") from e
 
     @mcp.tool
     async def analyze_performance(
@@ -963,7 +963,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         bonds_value = Decimal("0")
         bonds_by_country: defaultdict[str, Decimal] = defaultdict(Decimal)  # Track bonds by country
 
-        for _symbol, pos_data in consolidated_positions_by_symbol.items():
+        for pos_data in consolidated_positions_by_symbol.values():
             # Use metadata for accurate classification
             metadata = pos_data.get("position_metadata")
             if metadata and metadata.get("asset_class") == "BOND":
@@ -1371,7 +1371,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
 
             account_details = []
 
-            for _acc_id, account in accounts.items():
+            for account in accounts.values():
                 total_cash += account.total_cash
                 total_value += account.total_value
                 total_positions += len(account.positions)
@@ -1403,7 +1403,7 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             }
         else:
             # Single account
-            account = list(accounts.values())[0]
+            account = next(iter(accounts.values()))
             summary = {
                 "num_accounts": 1,
                 "account_id": account.account_id,

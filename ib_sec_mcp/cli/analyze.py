@@ -21,7 +21,7 @@ console = Console()
 @app.command()
 def analyze(
     data_file: str = typer.Argument(..., help="Path to XML data file"),
-    analyzers: list[str] | None = typer.Option(  # noqa: B008
+    analyzers: list[str] | None = typer.Option(
         None,
         "--analyzer",
         "-a",
@@ -89,7 +89,7 @@ def analyze(
         if not accounts:
             raise ValueError("No accounts found in XML file")
 
-        account = list(accounts.values())[0]  # Use first account
+        account = next(iter(accounts.values()))  # Use first account
         console.print(f"✓ Loaded account {account.account_id}\n", style="green")
     except Exception as e:
         console.print(f"✗ Error parsing data: {e}", style="bold red")

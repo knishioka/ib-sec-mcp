@@ -137,7 +137,7 @@ class TestGetOrFetchData:
             mock_client_class.return_value = mock_client
 
             # Fetch with use_cache=False should call API
-            data, from_date, to_date = await _get_or_fetch_data(
+            data, _from_date, _to_date = await _get_or_fetch_data(
                 start_date="2025-01-01", end_date="2025-01-31", use_cache=False
             )
 
@@ -210,7 +210,7 @@ class TestGetOrFetchData:
             mock_client_class.return_value = mock_client
 
             # Fetch without end_date
-            data, from_date, to_date = await _get_or_fetch_data(
+            _data, _from_date, to_date = await _get_or_fetch_data(
                 start_date="2025-01-01", use_cache=False
             )
 
@@ -287,7 +287,7 @@ class TestConsolidatedPortfolioCurrency:
         data = SAMPLE_XML_MULTI_CURRENCY
         detect_format(data)
         accounts = XMLParser.to_accounts(data, date(2025, 1, 1), date(2025, 1, 31))
-        account = list(accounts.values())[0]
+        account = next(iter(accounts.values()))
 
         # Verify all positions have currency info
         for pos in account.positions:
@@ -316,7 +316,7 @@ class TestConsolidatedPortfolioCurrency:
         data = SAMPLE_XML_MULTI_CURRENCY
         detect_format(data)
         accounts = XMLParser.to_accounts(data, date(2025, 1, 1), date(2025, 1, 31))
-        account = list(accounts.values())[0]
+        account = next(iter(accounts.values()))
 
         jpy_position = next(p for p in account.positions if p.symbol == "9433.T")
         assert jpy_position.currency == "JPY"
@@ -383,7 +383,7 @@ class TestConsolidatedPortfolioCurrency:
         data = SAMPLE_XML_MULTI_CURRENCY
         detect_format(data)
         accounts = XMLParser.to_accounts(data, date(2025, 1, 1), date(2025, 1, 31))
-        account = list(accounts.values())[0]
+        account = next(iter(accounts.values()))
 
         usd_position = next(p for p in account.positions if p.symbol == "CSPX")
         assert usd_position.currency == "USD"

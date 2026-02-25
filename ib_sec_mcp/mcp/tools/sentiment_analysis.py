@@ -172,7 +172,7 @@ def register_sentiment_analysis_tools(mcp: FastMCP) -> None:
             ) from e
         except Exception as e:
             if ctx:
-                await ctx.error(f"Unexpected error in analyze_market_sentiment: {str(e)}")
+                await ctx.error(f"Unexpected error in analyze_market_sentiment: {e!s}")
             # Don't expose internal errors to users
             raise ValidationError(f"Sentiment analysis failed for {symbol}") from e
 
@@ -241,7 +241,7 @@ def register_sentiment_analysis_tools(mcp: FastMCP) -> None:
             ) from e
         except Exception as e:
             if ctx:
-                await ctx.error(f"Unexpected error in get_news_sentiment: {str(e)}")
+                await ctx.error(f"Unexpected error in get_news_sentiment: {e!s}")
             raise ValidationError(f"News sentiment analysis failed for {symbol}") from e
 
 

@@ -104,7 +104,7 @@ class TaxAnalyzer(BaseAnalyzer):
         current_year = date.today().year
 
         for position in bond_positions:
-            if not position.maturity_date or position.coupon_rate and position.coupon_rate > 0:
+            if not position.maturity_date or (position.coupon_rate and position.coupon_rate > 0):
                 # Not a zero-coupon bond
                 continue
 

@@ -209,7 +209,7 @@ class TestCalculateMaxDrawdown:
         assert trough_idx == 0
 
     def test_empty_values(self) -> None:
-        dd, peak_idx, trough_idx = PerformanceCalculator.calculate_max_drawdown([])
+        dd, _peak_idx, _trough_idx = PerformanceCalculator.calculate_max_drawdown([])
         assert dd == Decimal("0")
 
     def test_multiple_drawdowns(self) -> None:
