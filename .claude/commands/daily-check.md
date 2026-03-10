@@ -1,6 +1,6 @@
 ---
 description: Daily portfolio monitoring with memory file auto-updates
-allowed-tools: Read, Write, Edit, mcp__ib-sec-mcp__sync_daily_snapshot, mcp__ib-sec-mcp__get_sync_status, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__get_portfolio_summary, mcp__ib-sec-mcp__analyze_market_sentiment
+allowed-tools: Read, Write, Edit, mcp__ib-sec-mcp__sync_daily_snapshot, mcp__ib-sec-mcp__get_sync_status, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__analyze_consolidated_portfolio, mcp__ib-sec-mcp__analyze_market_sentiment
 argument-hint: [--skip-sync|--manual]
 ---
 
@@ -8,7 +8,7 @@ argument-hint: [--skip-sync|--manual]
 
 Fetch latest portfolio data, update memory files per auto-update rules, and flag actionable alerts.
 
-**Memory File Path**: `~/.claude/projects/-Users-ken-Developer-private-ib-sec-mcp/memory/`
+**Memory File Path**: Auto-detected from the current project's `memory/` directory (Claude Code resolves this automatically).
 
 ## Arguments
 
@@ -38,8 +38,8 @@ Extract from `investment-strategy.md`:
 
 Unless `--skip-sync` is specified:
 
-1. Call `sync_daily_snapshot` MCP tool to fetch latest IB data
-2. Call `get_portfolio_summary` for current positions and values
+1. Call `sync_daily_snapshot` MCP tool to fetch latest IB data. Capture the returned `xml_file_path` from the result.
+2. Call `analyze_consolidated_portfolio` with the `file_path` from step 1 for current positions and values. (Note: `get_portfolio_summary` is deprecated; use `analyze_consolidated_portfolio` instead.)
 
 Then for each symbol with a pending limit order, call `get_current_price` to get real-time prices.
 
