@@ -147,20 +147,36 @@ Format description
 - **Docstrings**: Google-style, required for public APIs
 - **Financial Math**: Always use `Decimal` (never `float`)
 
+### Command Execution
+
+**IMPORTANT**: Always use `uv run` to execute Python commands. Never use `.venv/bin/python` directly.
+
+```bash
+# ✅ Correct
+uv run pytest tests/
+uv run ruff check ib_sec_mcp
+uv run mypy ib_sec_mcp
+
+# ❌ Wrong - do not use .venv directly
+.venv/bin/python -m pytest tests/
+```
+
+This applies to all contexts including worktrees and sub-agents.
+
 ### Code Quality
 
 ```bash
 # Format
-ruff format ib_sec_mcp tests
+uv run ruff format ib_sec_mcp tests
 
 # Lint
-ruff check ib_sec_mcp tests --fix
+uv run ruff check ib_sec_mcp tests --fix
 
 # Type check
-mypy ib_sec_mcp
+uv run mypy ib_sec_mcp
 
 # Test
-pytest --cov=ib_sec_mcp
+uv run pytest --cov=ib_sec_mcp
 ```
 
 ### Repository Etiquette
@@ -248,7 +264,8 @@ pytest --cov=ib_sec_mcp
 ### Testing
 
 - Tests not yet fully implemented (TODO)
-- Use `pytest` with fixtures in `tests/fixtures/`
+- Always run tests via `uv run pytest` (never `.venv/bin/python -m pytest`)
+- Use fixtures in `tests/fixtures/`
 - Mock API calls with `pytest-asyncio`
 
 ---
