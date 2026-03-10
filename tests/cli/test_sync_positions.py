@@ -62,8 +62,8 @@ SAMPLE_XML_MULTI_ACCOUNT = """<?xml version="1.0" encoding="UTF-8"?>
       </OpenPositions>
       <Trades />
     </FlexStatement>
-    <FlexStatement accountId="U2222222" fromDate="20250201" toDate="20250228">
-      <AccountInformation accountId="U2222222" acctAlias="Account 2" />
+    <FlexStatement accountId="U7654321" fromDate="20250201" toDate="20250228">
+      <AccountInformation accountId="U7654321" acctAlias="Account 2" />
       <CashReport>
         <CashReportCurrency currency="BASE_SUMMARY"
           startingCash="3000" endingCash="3000" endingSettledCash="3000"
@@ -99,7 +99,7 @@ class TestExtractSnapshotDates:
         dates = _extract_snapshot_dates(SAMPLE_XML_MULTI_ACCOUNT)
         assert dates == {
             "U1111111": date(2025, 2, 28),
-            "U2222222": date(2025, 2, 28),
+            "U7654321": date(2025, 2, 28),
         }
 
     def test_raises_on_invalid_xml(self) -> None:
@@ -163,7 +163,7 @@ class TestSyncXmlFile:
 
         store = PositionStore(db_path)
         assert store.get_available_dates("U1111111") == ["2025-02-28"]
-        assert store.get_available_dates("U2222222") == ["2025-02-28"]
+        assert store.get_available_dates("U7654321") == ["2025-02-28"]
         store.close()
 
     def test_sync_file_not_found_raises(self, tmp_path: Path) -> None:
