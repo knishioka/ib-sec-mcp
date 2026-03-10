@@ -82,18 +82,18 @@ Classification logic:
 - Use `day_change_percent` from `get_current_price` results for volatility alerts
 - If current price is at or below the buy limit price, flag as FILL CHECK
 
-### Step 6: Memory Update
+### Step 6: Memory Update — daily-snapshot.md (OVERWRITE — every run)
 
 **Always** overwrite `memory/daily-snapshot.md` with the output using the `Write` tool.
 
-The file path is the auto-memory directory: find it by reading the current memory path from context (typically `~/.claude/projects/-Users-ken-Developer-private-ib-sec-mcp/memory/daily-snapshot.md`).
+The file path is the auto-memory directory (Claude Code resolves this automatically from the project context).
 
 Write in this format:
 
 ```markdown
 # Daily Snapshot - {YYYY-MM-DD}
 
-Updated: {timestamp}
+Updated: {YYYY-MM-DDTHH:mm} {timezone}
 Source: /daily-check (automated)
 Sync Status: {status from Step 1}
 
@@ -119,16 +119,63 @@ Sync Status: {status from Step 1}
 {Open/Closed}. Prices as of {time/date}.
 ```
 
-### Step 7: Strategy Review (Conditional)
+### Step 7: Memory Update — investment-strategy.md (CONDITIONAL — only on triggers)
+
+**Method**: Use `Edit` tool for surgical updates. NEVER rewrite the whole file.
 
 **Only if** URGENT ALERT or FILL CHECK alerts exist:
 
 1. Read `memory/investment-strategy.md`
-2. Check if any triggered alerts affect the current strategy (e.g., a limit order that may have filled)
-3. If updates are needed, use `Edit` to update the relevant section of `memory/investment-strategy.md`
-4. Add a note: `> Strategy updated by /daily-check on {date}: {reason}`
+2. Check if any triggered alerts affect the current strategy
 
-If only APPROACHING or VOLATILITY alerts exist, do NOT update strategy file.
+**Trigger 1: Order Filled** (`FILL CHECK` detected)
+
+When `current_price <= limit_price` for a BUY order:
+
+1. Remove the filled order line from the "Pending Limit Orders" section
+2. Add a row to the "Completed Purchases" table:
+   ```
+   | {YYYY-MM-DD} | {SYMBOL} | {shares} | ~${limit_price} | ~${amount} |
+   ```
+3. Update "Last Updated" date at top of file
+
+**Trigger 2: Order Approaching** (`URGENT` only, not APPROACHING)
+
+1. Update the "Current:" price line under the relevant symbol in Pending Limit Orders
+2. Update "Last Updated" date at top of file
+
+**Trigger 3: All Orders Filled for a Tranche**
+
+1. Update the relevant row in "Deployment Plan" from "Pending" to "Completed"
+2. Update "Last Updated" date at top of file
+
+**If only APPROACHING or VOLATILITY alerts**: Do NOT update strategy file.
+
+### Step 8: Memory Update — portfolio-decisions.md (APPEND — only on triggers)
+
+**Method**: Read current content, then use `Write` tool to write back with new entry appended.
+
+**CRITICAL**: NEVER overwrite existing entries. Always append to the end.
+
+**Only if** FILL CHECK alerts exist:
+
+Append:
+
+```markdown
+## {YYYY-MM-DD}: Order Filled — {SYMBOL}
+
+- **Action**: BUY {shares} shares at ~${price}
+- **Amount**: ~${total}
+- **Tranche**: {tranche info, e.g., "Tranche 1 of 4"}
+- **Context**: {market conditions at time of fill}
+```
+
+**If no FILL CHECK**: Do NOT modify this file.
+
+### Step 9: Files NEVER Modified
+
+- `memory/investment-policy.md` — NEVER touched by automated process
+- `memory/MEMORY.md` — RARELY touched (only on new file creation or protocol changes)
 
 ## Output Format
 
@@ -160,7 +207,18 @@ Display the following to the conversation:
 ### Memory Updated
 - daily-snapshot.md: Updated
 - investment-strategy.md: {Updated / No change needed}
+- portfolio-decisions.md: {Appended / No change needed}
 ```
+
+## Auto-Update Rules Reference
+
+| File                     | Mode        | Tool       | When                                                 |
+| ------------------------ | ----------- | ---------- | ---------------------------------------------------- |
+| `daily-snapshot.md`      | OVERWRITE   | Write      | Every run                                            |
+| `investment-strategy.md` | CONDITIONAL | Edit       | Order filled, urgent (<3%), tranche complete         |
+| `portfolio-decisions.md` | APPEND      | Read+Write | Order filled                                         |
+| `investment-policy.md`   | NEVER       | —          | Only explicit user request                           |
+| `MEMORY.md`              | RARELY      | Edit       | New memory file created, protocol/preference changes |
 
 ## Verbose Mode
 
@@ -178,6 +236,13 @@ If $ARGUMENTS contains `--verbose`:
 - **Market closed**: Proceed normally; note "Market closed" in Market Status section. Prices will reflect last close.
 - **No pending orders**: Skip Steps 4-5 order proximity checks, still do price checks
 - **Partial failures**: Continue with available data, note failures in output
+- **Edit conflict**: If `Edit` tool fails (non-unique string), read file again and retry with more context
+
+## Timestamp Format
+
+All timestamps use ISO 8601: `YYYY-MM-DDTHH:mm` with timezone (e.g., `2026-03-10T09:30 JST`).
+
+"Last Updated" fields in file headers use date only: `YYYY-MM-DD`.
 
 ## Examples
 
