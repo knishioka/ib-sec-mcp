@@ -16,6 +16,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     )
     from ib_sec_mcp.mcp.tools.etf_comparison import register_etf_comparison_tools
     from ib_sec_mcp.mcp.tools.ib_portfolio import register_ib_portfolio_tools
+    from ib_sec_mcp.mcp.tools.limit_orders import register_limit_order_tools
     from ib_sec_mcp.mcp.tools.market_comparison import register_market_comparison_tools
     from ib_sec_mcp.mcp.tools.options import register_options_tools
     from ib_sec_mcp.mcp.tools.portfolio_analytics import (
@@ -48,6 +49,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     register_sentiment_analysis_tools(mcp)  # Add sentiment analysis tools
     register_rebalancing_tools(mcp)  # Add rebalancing tools
     register_sector_fx_tools(mcp)  # Add sector allocation and FX exposure tools
+    register_limit_order_tools(mcp)  # Add limit order management tools
 
 
 __all__ = ["register_all_tools"]
