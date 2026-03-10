@@ -49,7 +49,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 │   ├── market-analyst.md
 │   ├── strategy-coordinator.md
 │   └── portfolio-risk-analyst.md  # NEW: Portfolio risk analysis
-└── commands/              # Custom slash commands (20 commands)
+└── commands/              # Custom slash commands (21 commands)
     ├── fetch-latest.md
     ├── debug-api.md
     ├── test.md
@@ -63,6 +63,7 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
     ├── mcp-status.md
     ├── rebalance-portfolio.md # Portfolio rebalancing with target profiles
     ├── resolve-gh-issue.md
+    ├── daily-check.md         # Daily portfolio monitoring with auto-updates
     ├── dividend-analysis.md   # Dividend income & IE ETF tax efficiency
     ├── sector-analysis.md     # Sector allocation & HHI concentration
     ├── wash-sale-check.md     # Wash sale detection & tax loss harvesting
@@ -960,12 +961,13 @@ flowchart TD
 
 ### Data and Utility Commands
 
-| Command          | Description                                      | Use Case                                |
-| ---------------- | ------------------------------------------------ | --------------------------------------- |
-| `/fetch-latest`  | Fetch latest trading data from IB Flex Query API | Before running analysis with fresh data |
-| `/validate-data` | Validate data integrity and format               | After fetching data or troubleshooting  |
-| `/debug-api`     | Troubleshoot API connection issues               | When API calls fail                     |
-| `/mcp-status`    | Check MCP server health                          | When tools are not responding           |
+| Command          | Description                                         | Use Case                                |
+| ---------------- | --------------------------------------------------- | --------------------------------------- |
+| `/daily-check`   | Daily portfolio monitoring with memory auto-updates | Daily price check, limit order tracking |
+| `/fetch-latest`  | Fetch latest trading data from IB Flex Query API    | Before running analysis with fresh data |
+| `/validate-data` | Validate data integrity and format                  | After fetching data or troubleshooting  |
+| `/debug-api`     | Troubleshoot API connection issues                  | When API calls fail                     |
+| `/mcp-status`    | Check MCP server health                             | When tools are not responding           |
 
 ### Development Commands
 
