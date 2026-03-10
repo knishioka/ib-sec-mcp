@@ -89,6 +89,9 @@ EXPECTED_TOOLS = {
     "get_pending_orders",
     "check_order_proximity",
     "get_order_history",
+    # daily_monitor
+    "sync_daily_snapshot",
+    "get_sync_status",
 }
 
 # Non-template resources
