@@ -1,118 +1,134 @@
 ---
-description: Daily portfolio monitoring with memory file auto-updates
-allowed-tools: Read, Write, Edit, mcp__ib-sec-mcp__sync_daily_snapshot, mcp__ib-sec-mcp__get_sync_status, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__analyze_consolidated_portfolio, mcp__ib-sec-mcp__analyze_market_sentiment
-argument-hint: [--skip-sync|--manual]
+description: Daily portfolio monitoring for scheduled tasks (no user interaction)
+allowed-tools: Read, Write, Edit, mcp__ib-sec-mcp__sync_daily_snapshot, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__check_order_proximity, mcp__ib-sec-mcp__get_pending_orders, mcp__ib-sec-mcp__analyze_consolidated_portfolio
+argument-hint: [--verbose]
 ---
 
 # Daily Portfolio Check
 
-Fetch latest portfolio data, update memory files per auto-update rules, and flag actionable alerts.
+Automated daily monitoring designed for Claude Desktop scheduled tasks. Completes in under 3 minutes with no user interaction.
 
-**Memory File Path**: Auto-detected from the current project's `memory/` directory (Claude Code resolves this automatically).
-
-## Arguments
-
-- `$ARGUMENTS` may contain:
-  - `--skip-sync`: Skip IB API sync, use cached data only
-  - `--manual`: Tag update source as "manual" instead of "scheduled"
+**CRITICAL**: Do NOT use `AskUserQuestion` at any point. This command runs unattended.
 
 ## Steps
 
-### Step 1: Read Current Memory Files
+### Step 1: Data Sync
 
-Read the following files to understand current state:
+Call `sync_daily_snapshot` to fetch latest data and sync to SQLite.
 
-1. `memory/investment-strategy.md` — current limit orders and holdings
-2. `memory/daily-snapshot.md` — previous snapshot for comparison
-3. `memory/portfolio-decisions.md` — existing decision log (for append)
-4. `memory/investment-policy.md` — read-only reference (NEVER modify)
-
-Extract from `investment-strategy.md`:
-
-- All pending limit orders (symbol, limit price, shares, tranche info)
-- Completed purchases table
-- Deployment plan status
-- Key holdings list
-
-### Step 2: Fetch Current Data
-
-Unless `--skip-sync` is specified:
-
-1. Call `sync_daily_snapshot` MCP tool to fetch latest IB data. Capture the returned `xml_file_path` from the result.
-2. Call `analyze_consolidated_portfolio` with the `file_path` from step 1 for current positions and values. (Note: `get_portfolio_summary` is deprecated; use `analyze_consolidated_portfolio` instead.)
-
-Then for each symbol with a pending limit order, call `get_current_price` to get real-time prices.
-
-If sync fails, proceed with `get_current_price` calls only and note "API sync failed" in snapshot.
-
-### Step 3: Generate Alerts
-
-For each pending limit order, calculate distance to current price and assign alert flags:
-
-| Condition                               | Flag          | Meaning                                  |
-| --------------------------------------- | ------------- | ---------------------------------------- |
-| `current_price <= limit_price` (BUY)    | `FILL_CHECK`  | Order may have filled — verify in broker |
-| `distance < 1%` above limit             | `URGENT`      | Very close to filling                    |
-| `distance < 3%` above limit             | `APPROACHING` | Getting close, monitor                   |
-| `abs(daily_change) > 5%` on any holding | `VOLATILITY`  | Significant move on a holding            |
-
-**Fill detection logic** (BUY orders):
-
-- If `current_price < limit_price`: flag `FILL_CHECK`
-- If `current_price == limit_price`: flag `FILL_CHECK`
-- Distance formula: `((current_price - limit_price) / limit_price) * 100`
-
-Optionally call `analyze_market_sentiment` for SPY to get market context.
-
-### Step 4: Update daily-snapshot.md (OVERWRITE — every run)
-
-**Method**: Use `Write` tool to overwrite the entire file.
-
-**Format**:
-
-```markdown
-# Daily Snapshot
-
-**Last Updated**: {YYYY-MM-DDTHH:mm} {timezone}
-**Updated By**: {scheduled|manual}
-
-## Price Check
-
-| Symbol   | Price   | Prev Close   | Change    | vs Limit Order      |
-| -------- | ------- | ------------ | --------- | ------------------- |
-| {symbol} | {price} | {prev_close} | {change%} | {alert_or_distance} |
-
-...
-
-## Alerts
-
-{If any FILL_CHECK, URGENT, APPROACHING, or VOLATILITY flags:}
-
-- **FILL_CHECK**: {symbol} at {price} — limit was {limit_price}. Verify fill in broker.
-- **URGENT**: {symbol} at {price} — only {distance}% above limit {limit_price}
-- **APPROACHING**: {symbol} at {price} — {distance}% above limit {limit_price}
-- **VOLATILITY**: {symbol} moved {change}% today
-
-{If no alerts:}
-
-- None currently. All limit orders still above current prices.
-
-## Market Sentiment
-
-- SPY: {sentiment_description} ({score})
-- {Other relevant context}
-
-## Next Actions
-
-- {Prioritized list based on alerts}
-- {Standing items: monitor limit orders, research tasks, etc.}
+```
+sync_daily_snapshot()
 ```
 
-### Step 5: Update investment-strategy.md (CONDITIONAL — only on triggers)
+Record the `sync_date`, `status`, and `comparison_summary` from the result. If status is `failure`, note the error but continue with cached data.
+
+### Step 2: Get Portfolio Positions
+
+Call `analyze_consolidated_portfolio` to get current holdings list. Use a rolling 1-year lookback for `start_date` to ensure comprehensive position coverage.
+
+```
+analyze_consolidated_portfolio(use_cache=true, start_date="{one year ago in YYYY-MM-DD format}")
+```
+
+Compute the start_date as today minus 1 year (e.g., if today is 2026-03-10, use "2025-03-10").
+
+Extract the list of symbols from positions. These are needed for price checks.
+
+### Step 3: Price Check (Parallel)
+
+Call `get_current_price` for ALL portfolio symbols in parallel (multiple tool calls in one message).
+
+```
+get_current_price(symbol="CSPX.L")
+get_current_price(symbol="NDIA.L")
+get_current_price(symbol="VUAG.L")
+... (all symbols from Step 2)
+```
+
+Record for each symbol: `current_price`, `previous_close`, `day_change_percent`.
+
+If a price fetch fails (e.g., delisted symbol), note as "N/A" and continue.
+
+### Step 4: Limit Order Status
+
+Call `get_pending_orders` to get all pending limit orders.
+
+```
+get_pending_orders()
+```
+
+Then call `check_order_proximity` with default 5% threshold to get proximity alerts.
+
+```
+check_order_proximity(threshold_pct=5.0)
+```
+
+For any symbols in pending orders that were NOT in portfolio positions, fetch their current prices too (parallel `get_current_price` calls).
+
+### Step 5: Alert Generation
+
+Generate alerts based on these thresholds:
+
+| Condition                                    | Alert Level      | Label       |
+| -------------------------------------------- | ---------------- | ----------- |
+| Limit order distance <= 3%                   | URGENT ALERT     | URGENT      |
+| Limit order distance <= 5% (but > 3%)        | ALERT            | APPROACHING |
+| Daily price change > +/-3%                   | VOLATILITY ALERT | VOLATILE    |
+| Current price <= limit price (likely filled) | FILL CHECK       | FILL CHECK  |
+
+Classification logic:
+
+- Use `distance_pct` from `check_order_proximity` results for order alerts
+- Use `day_change_percent` from `get_current_price` results for volatility alerts
+- If current price is at or below the buy limit price, flag as FILL CHECK
+
+### Step 6: Memory Update — daily-snapshot.md (OVERWRITE — every run)
+
+**Always** overwrite `memory/daily-snapshot.md` with the output using the `Write` tool.
+
+The file path is the auto-memory directory (Claude Code resolves this automatically from the project context).
+
+Write in this format:
+
+```markdown
+# Daily Snapshot - {YYYY-MM-DD}
+
+Updated: {YYYY-MM-DDTHH:mm} {timezone}
+Source: /daily-check (automated)
+Sync Status: {status from Step 1}
+
+## Price Summary
+
+| Symbol | Current  | Prev Close | Change     | Alert        |
+| ------ | -------- | ---------- | ---------- | ------------ |
+| {sym}  | ${price} | ${prev}    | {+/-X.XX%} | {alert or —} |
+
+## Limit Order Status
+
+| Symbol | Limit    | Current    | Distance | Alert        |
+| ------ | -------- | ---------- | -------- | ------------ |
+| {sym}  | ${limit} | ${current} | {X.X%}   | {level or —} |
+
+## Active Alerts
+
+- {ALERT_LEVEL}: {description}
+  (or "None" if no alerts)
+
+## Market Status
+
+{Open/Closed}. Prices as of {time/date}.
+```
+
+### Step 7: Memory Update — investment-strategy.md (CONDITIONAL — only on triggers)
 
 **Method**: Use `Edit` tool for surgical updates. NEVER rewrite the whole file.
 
-**Trigger 1: Order Filled** (`FILL_CHECK` detected)
+**Only if** URGENT ALERT or FILL CHECK alerts exist:
+
+1. Read `memory/investment-strategy.md`
+2. Check if any triggered alerts affect the current strategy
+
+**Trigger 1: Order Filled** (`FILL CHECK` detected)
 
 When `current_price <= limit_price` for a BUY order:
 
@@ -123,33 +139,25 @@ When `current_price <= limit_price` for a BUY order:
    ```
 3. Update "Last Updated" date at top of file
 
-**Trigger 2: Order Approaching** (`APPROACHING` or `URGENT`)
+**Trigger 2: Order Approaching** (`URGENT` only, not APPROACHING)
 
 1. Update the "Current:" price line under the relevant symbol in Pending Limit Orders
 2. Update "Last Updated" date at top of file
 
-**Trigger 3: Significant Market Move** (`VOLATILITY` on a holding)
-
-1. Add a note to the "Strategy Notes" section:
-   ```
-   - {YYYY-MM-DD}: {SYMBOL} moved {change}% — {brief context}
-   ```
-2. Update "Last Updated" date at top of file
-
-**Trigger 4: All Orders Filled for a Tranche**
+**Trigger 3: All Orders Filled for a Tranche**
 
 1. Update the relevant row in "Deployment Plan" from "Pending" to "Completed"
 2. Update "Last Updated" date at top of file
 
-**If no triggers fire**: Do NOT modify this file.
+**If only APPROACHING or VOLATILITY alerts**: Do NOT update strategy file.
 
-### Step 6: Update portfolio-decisions.md (APPEND — only on triggers)
+### Step 8: Memory Update — portfolio-decisions.md (APPEND — only on triggers)
 
 **Method**: Read current content, then use `Write` tool to write back with new entry appended.
 
 **CRITICAL**: NEVER overwrite existing entries. Always append to the end.
 
-**Trigger 1: Order Filled** (`FILL_CHECK` detected)
+**Only if** FILL CHECK alerts exist:
 
 Append:
 
@@ -162,55 +170,73 @@ Append:
 - **Context**: {market conditions at time of fill}
 ```
 
-**Trigger 2: Strategy Change Recommended**
+**If no FILL CHECK**: Do NOT modify this file.
 
-Append when a significant market event warrants strategy discussion:
+### Step 9: Files NEVER Modified
 
-```markdown
-## {YYYY-MM-DD}: Strategy Note — {topic}
+- `memory/investment-policy.md` — NEVER touched by automated process
+- `memory/MEMORY.md` — RARELY touched (only on new file creation or protocol changes)
 
-- **Trigger**: {what happened, e.g., "CSPX dropped 5% in one day"}
-- **Suggestion**: {recommended action}
-- **Status**: Pending review
-```
+## Output Format
 
-**If no triggers fire**: Do NOT modify this file.
-
-### Step 7: Verify Updates
-
-After all updates, verify:
-
-1. `daily-snapshot.md` was written with current timestamp
-2. `investment-strategy.md` was only modified if triggers fired
-3. `portfolio-decisions.md` was only appended to if triggers fired
-4. `investment-policy.md` was NOT touched (confirm by not reading/writing it after Step 1)
-5. `MEMORY.md` was NOT touched
-
-### Step 8: Output Summary
-
-Display a summary to the user:
+Display the following to the conversation:
 
 ```
-Daily Check Complete ({timestamp})
-Source: {scheduled|manual}
+## Daily Portfolio Check - {YYYY-MM-DD}
 
-Prices: {count} symbols checked
-Alerts: {count} ({list of flags})
-Files Updated: {list of files that were modified}
+### Sync Status
+{status} - {positions_count} positions across {accounts_synced} accounts
 
-{If alerts exist, show them prominently}
-{If FILL_CHECK, emphasize: "ACTION REQUIRED: Verify order fill in broker"}
+### Price Summary
+| Symbol | Current | Prev Close | Change | Alert |
+|--------|---------|------------|--------|-------|
+| ... | ... | ... | ... | ... |
+
+### Limit Order Status
+| Symbol | Limit | Current | Distance | Alert |
+|--------|-------|---------|----------|-------|
+| ... | ... | ... | ... | ... |
+
+### Alerts
+- {ALERT_LEVEL}: {description}
+(or "No alerts today")
+
+### Recommended Actions
+- {action items based on alerts, or "No action required today"}
+
+### Memory Updated
+- daily-snapshot.md: Updated
+- investment-strategy.md: {Updated / No change needed}
+- portfolio-decisions.md: {Appended / No change needed}
 ```
 
 ## Auto-Update Rules Reference
 
-| File                     | Mode        | Tool       | When                                                                |
-| ------------------------ | ----------- | ---------- | ------------------------------------------------------------------- |
-| `daily-snapshot.md`      | OVERWRITE   | Write      | Every run                                                           |
-| `investment-strategy.md` | CONDITIONAL | Edit       | Order filled, approaching (<3%), volatility (>5%), tranche complete |
-| `portfolio-decisions.md` | APPEND      | Read+Write | Order filled, strategy change recommended                           |
-| `investment-policy.md`   | NEVER       | —          | Only explicit user request                                          |
-| `MEMORY.md`              | RARELY      | Edit       | New memory file created, protocol/preference changes                |
+| File                     | Mode        | Tool       | When                                                 |
+| ------------------------ | ----------- | ---------- | ---------------------------------------------------- |
+| `daily-snapshot.md`      | OVERWRITE   | Write      | Every run                                            |
+| `investment-strategy.md` | CONDITIONAL | Edit       | Order filled, urgent (<3%), tranche complete         |
+| `portfolio-decisions.md` | APPEND      | Read+Write | Order filled                                         |
+| `investment-policy.md`   | NEVER       | —          | Only explicit user request                           |
+| `MEMORY.md`              | RARELY      | Edit       | New memory file created, protocol/preference changes |
+
+## Verbose Mode
+
+If $ARGUMENTS contains `--verbose`:
+
+- Include full portfolio breakdown from `analyze_consolidated_portfolio`
+- Show detailed sync comparison (positions added/removed, value changes)
+- Show all limit order details including rationale
+- Show 52-week high/low for each symbol from `get_current_price` results
+
+## Error Handling
+
+- **MCP server unavailable**: Report error in output, write "ALERT: MCP server down" to daily-snapshot.md
+- **API rate limit**: Use cached data, note staleness in output
+- **Market closed**: Proceed normally; note "Market closed" in Market Status section. Prices will reflect last close.
+- **No pending orders**: Skip Steps 4-5 order proximity checks, still do price checks
+- **Partial failures**: Continue with available data, note failures in output
+- **Edit conflict**: If `Edit` tool fails (non-unique string), read file again and retry with more context
 
 ## Timestamp Format
 
@@ -218,28 +244,9 @@ All timestamps use ISO 8601: `YYYY-MM-DDTHH:mm` with timezone (e.g., `2026-03-10
 
 "Last Updated" fields in file headers use date only: `YYYY-MM-DD`.
 
-## Error Handling
+## Examples
 
-- **MCP sync fails**: Continue with `get_current_price` calls. Note in snapshot.
-- **Price fetch fails for a symbol**: Show "N/A" in price column, skip alert calc for that symbol.
-- **Memory file not found**: Create it with default template (except `investment-policy.md`).
-- **Edit conflict**: If `Edit` tool fails (non-unique string), read file again and retry with more context.
-
-## Example Scenarios
-
-### Normal Day (no alerts)
-
-- Only `daily-snapshot.md` updated
-- Other files untouched
-
-### Order Approaching
-
-- `daily-snapshot.md` updated with APPROACHING flag
-- `investment-strategy.md` updated with current price
-- `portfolio-decisions.md` untouched
-
-### Order Filled
-
-- `daily-snapshot.md` updated with FILL_CHECK flag
-- `investment-strategy.md` updated: order moved to Completed, deployment plan updated
-- `portfolio-decisions.md` appended: new fill entry
+```
+/daily-check
+/daily-check --verbose
+```
