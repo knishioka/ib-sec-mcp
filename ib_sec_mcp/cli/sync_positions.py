@@ -2,61 +2,104 @@
 
 import argparse
 import sys
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
+
+import defusedxml.ElementTree as ET
 
 from ib_sec_mcp.core.parsers import XMLParser
 from ib_sec_mcp.storage import PositionStore
 
 
-def sync_xml_file(xml_path: Path, db_path: Path, snapshot_date: date | None = None) -> None:
+class SyncError(Exception):
+    """Raised when a sync operation fails"""
+
+
+def _extract_snapshot_dates(xml_data: str) -> dict[str, date]:
+    """
+    Extract toDate per account from XML FlexStatement attributes.
+
+    Args:
+        xml_data: Raw XML string
+
+    Returns:
+        Dict mapping account_id to toDate from the FlexStatement
+    """
+    root = ET.fromstring(xml_data)
+    dates: dict[str, date] = {}
+    for stmt in root.findall(".//FlexStatement"):
+        account_id = stmt.get("accountId", "")
+        to_date_str = stmt.get("toDate", "")
+        if account_id and to_date_str:
+            dates[account_id] = datetime.strptime(to_date_str, "%Y%m%d").date()
+    return dates
+
+
+def sync_xml_file(xml_path: Path, db_path: Path, snapshot_date: date | None = None) -> int:
     """
     Sync single XML file to SQLite
 
     Args:
         xml_path: Path to XML file
         db_path: Path to SQLite database
-        snapshot_date: Date for snapshot (defaults to file's to_date)
+        snapshot_date: Date for snapshot (defaults to file's toDate from XML)
+
+    Returns:
+        Number of positions saved
+
+    Raises:
+        SyncError: If file not found or parsing fails
     """
     if not xml_path.exists():
-        print(f"Error: XML file not found: {xml_path}", file=sys.stderr)
-        sys.exit(1)
+        raise SyncError(f"XML file not found: {xml_path}")
 
     print(f"Processing: {xml_path.name}")
 
     # Read XML file
     xml_data = xml_path.read_text()
 
+    # Extract per-account snapshot dates from XML before parsing
+    try:
+        xml_dates = _extract_snapshot_dates(xml_data)
+    except Exception:
+        xml_dates = {}
+
     # Parse to Account models
     try:
         accounts = XMLParser.to_accounts(xml_data, date(2000, 1, 1), date.today())
     except Exception as e:
-        print(f"Error parsing XML: {e}", file=sys.stderr)
-        sys.exit(1)
+        raise SyncError(f"Error parsing {xml_path.name}: {e}") from e
+
+    if not accounts:
+        print("  No accounts found in file")
+        return 0
 
     # Initialize store
     store = PositionStore(db_path)
 
     # Save each account
     total_positions = 0
-    for account_id, account in accounts.items():
-        # Use provided snapshot_date or file's to_date
-        snap_date = snapshot_date or account.to_date
+    try:
+        for account_id, account in accounts.items():
+            # Priority: CLI --date > XML toDate > fallback to today
+            snap_date = snapshot_date or xml_dates.get(account_id) or account.to_date
 
-        positions_saved = store.save_snapshot(
-            account=account, snapshot_date=snap_date, xml_file_path=str(xml_path)
-        )
+            positions_saved = store.save_snapshot(
+                account=account, snapshot_date=snap_date, xml_file_path=str(xml_path)
+            )
 
-        print(f"  Account {account_id}: {positions_saved} positions saved for {snap_date}")
-        total_positions += positions_saved
+            print(f"  Account {account_id}: {positions_saved} positions saved for {snap_date}")
+            total_positions += positions_saved
+    finally:
+        store.close()
 
-    store.close()
     print(f"Total: {total_positions} positions saved")
+    return total_positions
 
 
 def sync_directory(
     directory: Path, db_path: Path, pattern: str = "*.xml", snapshot_date: date | None = None
-) -> None:
+) -> tuple[int, int, int]:
     """
     Sync all XML files in directory to SQLite
 
@@ -65,6 +108,9 @@ def sync_directory(
         db_path: Path to SQLite database
         pattern: Glob pattern for XML files (default: *.xml)
         snapshot_date: Date for snapshots (defaults to each file's to_date)
+
+    Returns:
+        Tuple of (files_succeeded, files_failed, total_positions)
     """
     if not directory.exists():
         print(f"Error: Directory not found: {directory}", file=sys.stderr)
@@ -74,13 +120,36 @@ def sync_directory(
 
     if not xml_files:
         print(f"No XML files found in {directory} matching {pattern}")
-        return
+        return (0, 0, 0)
 
     print(f"Found {len(xml_files)} XML files")
 
+    files_succeeded = 0
+    files_failed = 0
+    total_positions = 0
+    errors: list[str] = []
+
     for xml_file in sorted(xml_files):
-        sync_xml_file(xml_file, db_path, snapshot_date)
+        try:
+            positions = sync_xml_file(xml_file, db_path, snapshot_date)
+            total_positions += positions
+            files_succeeded += 1
+        except SyncError as e:
+            print(f"  SKIPPED: {e}", file=sys.stderr)
+            files_failed += 1
+            errors.append(str(e))
         print()
+
+    # Print summary
+    print("=" * 50)
+    print(f"Summary: {files_succeeded}/{len(xml_files)} files synced successfully")
+    print(f"Total positions saved: {total_positions}")
+    if errors:
+        print(f"\nFailed files ({files_failed}):")
+        for error in errors:
+            print(f"  - {error}")
+
+    return (files_succeeded, files_failed, total_positions)
 
 
 def main() -> None:
@@ -151,9 +220,17 @@ Examples:
 
     # Execute sync
     if args.xml_file:
-        sync_xml_file(args.xml_file, args.db_path, snapshot_date)
+        try:
+            sync_xml_file(args.xml_file, args.db_path, snapshot_date)
+        except SyncError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
     else:
-        sync_directory(args.directory, args.db_path, args.pattern, snapshot_date)
+        succeeded, failed, _ = sync_directory(
+            args.directory, args.db_path, args.pattern, snapshot_date
+        )
+        if succeeded == 0 and failed > 0:
+            sys.exit(1)
 
     print("\nSync complete!")
 
