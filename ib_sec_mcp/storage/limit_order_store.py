@@ -219,7 +219,7 @@ class LimitOrderStore:
 
         with self.db.transaction() as conn:
             conn.execute(
-                f"UPDATE limit_orders SET {', '.join(updates)} WHERE id = ?",
+                f"UPDATE limit_orders SET {', '.join(updates)} WHERE id = ?",  # nosec B608
                 tuple(params),
             )
 

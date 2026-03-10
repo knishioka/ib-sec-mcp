@@ -83,6 +83,12 @@ EXPECTED_TOOLS = {
     # sector_fx
     "analyze_sector_allocation",
     "analyze_fx_exposure",
+    # limit_orders
+    "add_limit_order",
+    "update_limit_order",
+    "get_pending_orders",
+    "check_order_proximity",
+    "get_order_history",
 }
 
 # Non-template resources
