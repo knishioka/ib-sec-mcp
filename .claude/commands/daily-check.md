@@ -24,11 +24,13 @@ Record the `sync_date`, `status`, and `comparison_summary` from the result. If s
 
 ### Step 2: Get Portfolio Positions
 
-Call `analyze_consolidated_portfolio` to get current holdings list.
+Call `analyze_consolidated_portfolio` to get current holdings list. Use a rolling 1-year lookback for `start_date` to ensure comprehensive position coverage.
 
 ```
-analyze_consolidated_portfolio(use_cache=true)
+analyze_consolidated_portfolio(use_cache=true, start_date="{one year ago in YYYY-MM-DD format}")
 ```
+
+Compute the start_date as today minus 1 year (e.g., if today is 2026-03-10, use "2025-03-10").
 
 Extract the list of symbols from positions. These are needed for price checks.
 
