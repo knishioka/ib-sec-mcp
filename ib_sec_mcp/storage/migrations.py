@@ -123,6 +123,45 @@ def create_schema(db: DatabaseConnection) -> None:
         )
 
 
+def create_sync_log_table(db: DatabaseConnection) -> None:
+    """
+    Create sync_log table for tracking daily sync attempts.
+
+    Records each sync attempt with status, source, and metrics.
+    """
+    with db.transaction() as conn:
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS sync_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sync_date DATE NOT NULL,
+                status TEXT NOT NULL,
+                source TEXT NOT NULL,
+                accounts_synced INTEGER DEFAULT 0,
+                positions_count INTEGER DEFAULT 0,
+                error_message TEXT,
+                xml_file_path TEXT,
+                duration_seconds REAL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sync_log_date
+            ON sync_log(sync_date)
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_sync_log_status
+            ON sync_log(status)
+            """
+        )
+
+
 def drop_schema(db: DatabaseConnection) -> None:
     """
     Drop all tables (for testing purposes)
@@ -132,6 +171,7 @@ def drop_schema(db: DatabaseConnection) -> None:
     with db.transaction() as conn:
         conn.execute("DROP TABLE IF EXISTS position_snapshots")
         conn.execute("DROP TABLE IF EXISTS snapshot_metadata")
+        conn.execute("DROP TABLE IF EXISTS sync_log")
 
 
 def verify_schema(db: DatabaseConnection) -> bool:
@@ -151,7 +191,7 @@ def verify_schema(db: DatabaseConnection) -> bool:
         )
         tables = {row[0] for row in cur.fetchall()}
 
-        if tables != {"position_snapshots", "snapshot_metadata"}:
+        if not {"position_snapshots", "snapshot_metadata"}.issubset(tables):
             return False
 
         # Check if indexes exist

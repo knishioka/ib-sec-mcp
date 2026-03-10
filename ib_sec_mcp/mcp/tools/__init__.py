@@ -11,6 +11,7 @@ def register_all_tools(mcp: FastMCP) -> None:
 
     # Import and register tools from each module
     from ib_sec_mcp.mcp.tools.composable_data import register_composable_data_tools
+    from ib_sec_mcp.mcp.tools.daily_monitor import register_daily_monitor_tools
     from ib_sec_mcp.mcp.tools.etf_calculator_tools import (
         register_etf_calculator_tools,
     )
@@ -50,6 +51,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     register_rebalancing_tools(mcp)  # Add rebalancing tools
     register_sector_fx_tools(mcp)  # Add sector allocation and FX exposure tools
     register_limit_order_tools(mcp)  # Add limit order management tools
+    register_daily_monitor_tools(mcp)  # Add daily monitor tools
 
 
 __all__ = ["register_all_tools"]
