@@ -87,13 +87,14 @@ command --flags
 
 ---
 
-## Slash Commands (20 automated workflows)
+## Slash Commands (21 automated workflows)
 
 ### Quick List
 
 **Analysis**: `/optimize-portfolio`, `/compare-periods`, `/tax-report`, `/validate-data`, `/rebalance-portfolio`
 **Investment**: `/investment-strategy`, `/analyze-symbol`, `/options-strategy`
 **Portfolio**: `/dividend-analysis`, `/sector-analysis`, `/wash-sale-check`, `/fx-exposure`
+**Monitoring**: `/daily-check`
 **Development**: `/test`, `/quality-check`, `/add-test`, `/benchmark`
 **Utility**: `/mcp-status`, `/debug-api`, `/resolve-gh-issue`, `/fetch-latest`
 

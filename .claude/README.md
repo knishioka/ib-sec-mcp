@@ -49,7 +49,8 @@ This directory powers **Mode 3** of IB Analytics: **Development Automation** wit
 │   ├── market-analyst.md
 │   ├── strategy-coordinator.md
 │   └── portfolio-risk-analyst.md  # NEW: Portfolio risk analysis
-└── commands/              # Custom slash commands (20 commands)
+└── commands/              # Custom slash commands (21 commands)
+    ├── daily-check.md         # Daily portfolio monitoring (scheduled tasks)
     ├── fetch-latest.md
     ├── debug-api.md
     ├── test.md
@@ -508,6 +509,27 @@ Data integrity and format validation
 /validate-data data/raw/file.csv     # Specific file
 ```
 
+### Monitoring Commands
+
+#### `/daily-check [--verbose]`
+
+Automated daily portfolio monitoring for Claude Desktop scheduled tasks
+No user interaction required (runs unattended)
+
+**What it does**:
+
+- Syncs latest data via `sync_daily_snapshot`
+- Fetches current prices for all portfolio symbols (parallel)
+- Checks limit order proximity for all pending orders
+- Generates alerts (APPROACHING, URGENT, VOLATILITY, FILL CHECK)
+- Updates `memory/daily-snapshot.md` with current state
+- Reviews investment strategy if urgent alerts exist
+
+```bash
+/daily-check             # Standard daily check
+/daily-check --verbose   # Include full portfolio breakdown
+```
+
 ### Utility Commands
 
 #### `/mcp-status [--verbose|--test]`
@@ -957,6 +979,12 @@ flowchart TD
 | `/optimize-portfolio`      | Portfolio-level optimization recommendations                        | 3-4 hrs to 5 min     | `/optimize-portfolio`                                          |
 | `/tax-report`              | Tax planning and optimization strategies                            | 2-3 hrs to 5 min     | `/tax-report --save`                                           |
 | `/compare-periods`         | Compare performance across two time periods                         | 1-2 hrs to 5 min     | `/compare-periods 2025-01-01 2025-03-31 2025-04-01 2025-06-30` |
+
+### Monitoring Commands
+
+| Command        | Description                                      | Use Case                                |
+| -------------- | ------------------------------------------------ | --------------------------------------- |
+| `/daily-check` | Automated daily portfolio monitoring (scheduled) | Daily scheduled task via Claude Desktop |
 
 ### Data and Utility Commands
 
