@@ -337,6 +337,7 @@ uv run pytest --cov=ib_sec_mcp
 - **.claude/SLASH_COMMANDS.md**: Detailed slash command development guide
 - **/CLAUDE.md**: General project development guide
 - **README.md**: User documentation and usage modes
+- **docs/scheduled-tasks.md**: Claude Desktop scheduled task setup guide
 
 ---
 
