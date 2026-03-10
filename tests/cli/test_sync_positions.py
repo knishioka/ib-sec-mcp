@@ -102,6 +102,34 @@ class TestExtractSnapshotDates:
             "U7654321": date(2025, 2, 28),
         }
 
+    def test_skips_malformed_todate_per_statement(self) -> None:
+        """A single malformed toDate should not discard valid dates from other statements."""
+        xml_with_bad_date = """<?xml version="1.0" encoding="UTF-8"?>
+<FlexQueryResponse queryName="test" type="AF">
+  <FlexStatements count="2">
+    <FlexStatement accountId="U1234567" fromDate="20250101" toDate="BADDATE">
+      <AccountInformation accountId="U1234567" acctAlias="Bad Date Account" />
+      <CashReport><CashReportCurrency currency="BASE_SUMMARY"
+        startingCash="0" endingCash="0" endingSettledCash="0"
+        deposits="0" withdrawals="0" dividends="0" brokerInterest="0"
+        commissions="0" otherFees="0" netTradesSales="0" netTradesPurchases="0" /></CashReport>
+      <OpenPositions /><Trades />
+    </FlexStatement>
+    <FlexStatement accountId="U7654321" fromDate="20250201" toDate="20250228">
+      <AccountInformation accountId="U7654321" acctAlias="Good Date Account" />
+      <CashReport><CashReportCurrency currency="BASE_SUMMARY"
+        startingCash="0" endingCash="0" endingSettledCash="0"
+        deposits="0" withdrawals="0" dividends="0" brokerInterest="0"
+        commissions="0" otherFees="0" netTradesSales="0" netTradesPurchases="0" /></CashReport>
+      <OpenPositions /><Trades />
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>"""
+        dates = _extract_snapshot_dates(xml_with_bad_date)
+        # Bad toDate for U1234567 should be skipped, U7654321 should still be extracted
+        assert "U1234567" not in dates
+        assert dates == {"U7654321": date(2025, 2, 28)}
+
     def test_raises_on_invalid_xml(self) -> None:
         with pytest.raises(ET.ParseError):
             _extract_snapshot_dates(CSV_NOT_XML)

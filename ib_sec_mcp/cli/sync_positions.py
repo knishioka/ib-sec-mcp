@@ -1,6 +1,7 @@
 """CLI tool to sync XML position data to SQLite"""
 
 import argparse
+import contextlib
 import sys
 from datetime import date, datetime
 from pathlib import Path
@@ -31,7 +32,8 @@ def _extract_snapshot_dates(xml_data: str) -> dict[str, date]:
         account_id = stmt.get("accountId", "")
         to_date_str = stmt.get("toDate", "")
         if account_id and to_date_str:
-            dates[account_id] = datetime.strptime(to_date_str, "%Y%m%d").date()
+            with contextlib.suppress(ValueError):
+                dates[account_id] = datetime.strptime(to_date_str, "%Y%m%d").date()
     return dates
 
 
