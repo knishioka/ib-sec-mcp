@@ -8,11 +8,11 @@ Quick reference for MCP tool development in IB Analytics.
 
 ## Tool Design Decision
 
-| If you need... | Use... | Example |
-|----------------|--------|---------|
-| Complete analysis | Coarse-grained | `analyze_performance` |
-| Composable operations | Fine-grained | `get_trades`, `calculate_metric` |
-| Data filtering | Fine-grained | `get_positions(symbol="AAPL")` |
+| If you need...        | Use...         | Example                          |
+| --------------------- | -------------- | -------------------------------- |
+| Complete analysis     | Coarse-grained | `analyze_performance`            |
+| Composable operations | Fine-grained   | `get_trades`, `calculate_metric` |
+| Data filtering        | Fine-grained   | `get_positions(symbol="AAPL")`   |
 
 ## Tool Decorator Pattern
 
@@ -23,42 +23,28 @@ async def tool_name(
     optional_param: str | None = None,
     ctx: Context | None = None,
 ) -> str:
-    """
-    One-line description.
+    """One-line description.
 
     Args:
         required_param: Description
         optional_param: Description (optional)
         ctx: MCP context for logging
-
     Returns:
         JSON string with results
-
-    Raises:
-        ValidationError: If validation fails
-
-    Example:
-        >>> result = await tool_name("value")
     """
 ```
 
 ## Decimal JSON Serialization
 
 ```python
-# Decimal must be converted for JSON
 result = {
-    "price": str(price),  # Convert to string
-    "formatted": f"${price:.2f}",  # Or format
+    "price": str(price),  # Convert Decimal to string
+    "formatted": f"${price:.2f}",
 }
-return json.dumps(result)
-
-# For complex objects, use custom encoder
-class DecimalEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Decimal):
-            return str(obj)
-        return super().default(obj)
+return json.dumps(result, default=str, indent=2)
 ```
+
+See `financial-code.md` for Decimal rules and `DecimalEncoder` pattern.
 
 ## Error Handling
 
@@ -87,21 +73,28 @@ if ctx:
     await ctx.warning(f"Missing data for {date}")
 ```
 
-## Caching Pattern
+## Caching
+
+Use `use_cache: bool = True` parameter. Check cache before computation.
+
+## External Dependency Pattern
+
+Extract external API logic to module-level for testability:
 
 ```python
-@mcp.tool
-async def analyze_data(
-    start_date: str,
-    use_cache: bool = True,
-    ctx: Context | None = None,
-) -> str:
-    # Check cache first
-    if use_cache:
-        cached = await get_cached_data(start_date)
-        if cached:
-            return cached
+# Module-level constants and functions (testable)
+MARKET_SUFFIX: dict[str, str] = {"4": ".TO", "8": ".T"}
+
+def resolve_symbol(symbol: str) -> str:
+    """Resolve IB symbol to Yahoo Finance symbol."""
     ...
 ```
+
+**Anti-pattern**: `MARKET_SUFFIX` or symbol resolution inside `register_*_tools` closure (untestable).
+
+## Testing Requirement
+
+New tool module → must create `tests/mcp/test_{module}.py`.
+See `.claude/rules/testing.md` for patterns and checklist.
 
 See `/CLAUDE.md` for coarse-grained vs fine-grained design philosophy.

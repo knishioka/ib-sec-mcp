@@ -222,11 +222,13 @@ uv run pytest --cov=ib_sec_mcp
 
 ### Adding MCP Tool
 
-1. Add function in `ib_sec_mcp/mcp/tools.py`
-2. Use `@mcp.tool()` decorator
+1. Create or edit `ib_sec_mcp/mcp/tools/{module}.py`
+2. Use `register_*_tools(mcp)` pattern with `@mcp.tool` decorator
 3. Type hints + docstring required
-4. Return JSON-serializable data
-5. Test with Claude Desktop
+4. Return JSON string via `json.dumps(result, default=str, indent=2)`
+5. Add to `ib_sec_mcp/mcp/tools/__init__.py` imports
+6. Add tool name to `tests/mcp/test_server.py` `EXPECTED_TOOLS`
+7. Create `tests/mcp/test_{module}.py` (see `.claude/rules/testing.md`)
 
 ### Creating Sub-Agent
 
