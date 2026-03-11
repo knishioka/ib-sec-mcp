@@ -489,6 +489,51 @@ class TestCheckOrderProximity:
 
         assert Decimal(data["results"][0]["current_price"]) == Decimal("202")
 
+    @pytest.mark.asyncio
+    async def test_symbol_already_has_suffix_no_double_append(
+        self, test_mcp: FastMCP, tmp_path
+    ) -> None:
+        """Symbol stored with suffix (e.g., '1329.T') should not get double suffix."""
+        db_path = str(tmp_path / "test.db")
+        await _add_order(test_mcp, db_path, symbol="1329.T", market="TSE", limit_price="2500.00")
+
+        with patch("yfinance.Ticker") as mock_ticker_cls:
+            mock_ticker = MagicMock()
+            mock_ticker.info = {"currentPrice": 2550.0}
+            mock_ticker_cls.return_value = mock_ticker
+
+            tool = await test_mcp.get_tool("check_order_proximity")
+            await tool.fn(threshold_pct=5.0, db_path=db_path, ctx=None)
+
+        # Should be called with "1329.T", NOT "1329.T.T"
+        mock_ticker_cls.assert_called_once_with("1329.T")
+
+    @pytest.mark.asyncio
+    async def test_same_symbol_different_markets(self, test_mcp: FastMCP, tmp_path) -> None:
+        """Same symbol on different markets should make separate API calls."""
+        db_path = str(tmp_path / "test.db")
+        await _add_order(test_mcp, db_path, symbol="FOO", market="NYSE", limit_price="100.00")
+        await _add_order(test_mcp, db_path, symbol="FOO", market="LSE", limit_price="80.00")
+
+        call_args_list = []
+
+        def make_ticker(symbol: str) -> MagicMock:
+            call_args_list.append(symbol)
+            ticker = MagicMock()
+            ticker.info = {"currentPrice": 105.0}
+            return ticker
+
+        with patch("yfinance.Ticker", side_effect=make_ticker):
+            tool = await test_mcp.get_tool("check_order_proximity")
+            result = await tool.fn(threshold_pct=10.0, db_path=db_path, ctx=None)
+            data = json.loads(result)
+
+        # Two separate API calls: "FOO" (NYSE) and "FOO.L" (LSE)
+        assert len(call_args_list) == 2
+        assert "FOO" in call_args_list
+        assert "FOO.L" in call_args_list
+        assert data["total_orders"] == 2
+
 
 # ---------------------------------------------------------------------------
 # Tests: get_order_history

@@ -20,6 +20,8 @@ MARKET_SUFFIX_MAP: dict[str, str] = {
 def _get_yfinance_symbol(symbol: str, market: str) -> str:
     """Return the yfinance-compatible ticker for a given symbol and market."""
     suffix = MARKET_SUFFIX_MAP.get(market, "")
+    if suffix and symbol.endswith(suffix):
+        return symbol
     return f"{symbol}{suffix}"
 
 
@@ -314,20 +316,19 @@ def register_limit_order_tools(mcp: FastMCP) -> None:
         results = []
         alerts = []
 
-        # Group orders by symbol to minimize API calls
-        symbols: dict[str, list[dict[str, Any]]] = {}
+        # Group orders by (symbol, market) to minimize API calls
+        symbol_groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
         for order in orders:
-            sym = order["symbol"]
-            if sym not in symbols:
-                symbols[sym] = []
-            symbols[sym].append(order)
+            key = (order["symbol"], order["market"])
+            if key not in symbol_groups:
+                symbol_groups[key] = []
+            symbol_groups[key].append(order)
 
-        for sym, sym_orders in symbols.items():
+        for (sym, market), sym_orders in symbol_groups.items():
             current_price = None
             error_msg = None
 
             try:
-                market = sym_orders[0]["market"]
                 yf_symbol = _get_yfinance_symbol(sym, market)
                 ticker = yf.Ticker(yf_symbol)
                 info = ticker.info
