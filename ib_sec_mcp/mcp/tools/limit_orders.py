@@ -13,6 +13,10 @@ from ib_sec_mcp.storage.limit_order_store import LimitOrderStore
 MARKET_SUFFIX_MAP: dict[str, str] = {
     "LSE": ".L",
     "TSE": ".T",
+    "HKG": ".HK",
+    "SGX": ".SI",
+    "ASX": ".AX",
+    "FRA": ".F",
 }
 """Map market identifiers to yfinance ticker suffixes."""
 
@@ -20,7 +24,7 @@ MARKET_SUFFIX_MAP: dict[str, str] = {
 def _get_yfinance_symbol(symbol: str, market: str) -> str:
     """Return the yfinance-compatible ticker for a given symbol and market."""
     suffix = MARKET_SUFFIX_MAP.get(market, "")
-    if suffix and symbol.endswith(suffix):
+    if suffix and symbol.upper().endswith(suffix.upper()):
         return symbol
     return f"{symbol}{suffix}"
 
@@ -328,17 +332,19 @@ def register_limit_order_tools(mcp: FastMCP) -> None:
             current_price = None
             error_msg = None
 
+            # Resolve Yahoo Finance ticker with market suffix
+            yf_symbol = _get_yfinance_symbol(sym, market)
+
             try:
-                yf_symbol = _get_yfinance_symbol(sym, market)
                 ticker = yf.Ticker(yf_symbol)
                 info = ticker.info
                 raw_price = info.get("currentPrice") or info.get("regularMarketPrice")
                 if raw_price is not None:
                     current_price = Decimal(str(raw_price))
                 else:
-                    error_msg = f"No price data available for {sym}"
+                    error_msg = f"No price data available for {yf_symbol}"
             except Exception as e:
-                error_msg = f"Failed to fetch price for {sym}: {e!s}"
+                error_msg = f"Failed to fetch price for {yf_symbol}: {e!s}"
 
             for order in sym_orders:
                 limit_price = order["limit_price"]
