@@ -10,6 +10,20 @@ from fastmcp import Context, FastMCP
 from ib_sec_mcp.mcp.exceptions import ValidationError
 from ib_sec_mcp.storage.limit_order_store import LimitOrderStore
 
+MARKET_SUFFIX_MAP: dict[str, str] = {
+    "LSE": ".L",
+    "TSE": ".T",
+}
+"""Map market identifiers to yfinance ticker suffixes."""
+
+
+def _get_yfinance_symbol(symbol: str, market: str) -> str:
+    """Return the yfinance-compatible ticker for a given symbol and market."""
+    suffix = MARKET_SUFFIX_MAP.get(market, "")
+    if suffix and symbol.endswith(suffix):
+        return symbol
+    return f"{symbol}{suffix}"
+
 
 def register_limit_order_tools(mcp: FastMCP) -> None:
     """Register limit order management tools"""
@@ -302,20 +316,21 @@ def register_limit_order_tools(mcp: FastMCP) -> None:
         results = []
         alerts = []
 
-        # Group orders by symbol to minimize API calls
-        symbols: dict[str, list[dict[str, Any]]] = {}
+        # Group orders by (symbol, market) to minimize API calls
+        symbol_groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
         for order in orders:
-            sym = order["symbol"]
-            if sym not in symbols:
-                symbols[sym] = []
-            symbols[sym].append(order)
+            key = (order["symbol"], order["market"])
+            if key not in symbol_groups:
+                symbol_groups[key] = []
+            symbol_groups[key].append(order)
 
-        for sym, sym_orders in symbols.items():
+        for (sym, market), sym_orders in symbol_groups.items():
             current_price = None
             error_msg = None
 
             try:
-                ticker = yf.Ticker(sym)
+                yf_symbol = _get_yfinance_symbol(sym, market)
+                ticker = yf.Ticker(yf_symbol)
                 info = ticker.info
                 raw_price = info.get("currentPrice") or info.get("regularMarketPrice")
                 if raw_price is not None:
