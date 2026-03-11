@@ -10,6 +10,18 @@ from fastmcp import Context, FastMCP
 from ib_sec_mcp.mcp.exceptions import ValidationError
 from ib_sec_mcp.storage.limit_order_store import LimitOrderStore
 
+MARKET_SUFFIX_MAP: dict[str, str] = {
+    "LSE": ".L",
+    "TSE": ".T",
+}
+"""Map market identifiers to yfinance ticker suffixes."""
+
+
+def _get_yfinance_symbol(symbol: str, market: str) -> str:
+    """Return the yfinance-compatible ticker for a given symbol and market."""
+    suffix = MARKET_SUFFIX_MAP.get(market, "")
+    return f"{symbol}{suffix}"
+
 
 def register_limit_order_tools(mcp: FastMCP) -> None:
     """Register limit order management tools"""
@@ -315,7 +327,9 @@ def register_limit_order_tools(mcp: FastMCP) -> None:
             error_msg = None
 
             try:
-                ticker = yf.Ticker(sym)
+                market = sym_orders[0]["market"]
+                yf_symbol = _get_yfinance_symbol(sym, market)
+                ticker = yf.Ticker(yf_symbol)
                 info = ticker.info
                 raw_price = info.get("currentPrice") or info.get("regularMarketPrice")
                 if raw_price is not None:
