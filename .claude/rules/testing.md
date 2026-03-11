@@ -8,10 +8,10 @@ Standards for testing MCP tools and analyzers in IB Analytics.
 
 ## File Naming
 
-| Source                             | Test                            |
-| ---------------------------------- | ------------------------------- |
-| `ib_sec_mcp/mcp/tools/{module}.py` | `tests/mcp/test_{module}.py`    |
-| `ib_sec_mcp/analyzers/{name}.py`   | `tests/test_{name}_analyzer.py` |
+| Source                             | Test                             |
+| ---------------------------------- | -------------------------------- |
+| `ib_sec_mcp/mcp/tools/{module}.py` | `tests/mcp/test_{module}.py`     |
+| `ib_sec_mcp/analyzers/{name}.py`   | `tests/analyzers/test_{name}.py` |
 
 **Rule**: New tool module → must create corresponding test file.
 
