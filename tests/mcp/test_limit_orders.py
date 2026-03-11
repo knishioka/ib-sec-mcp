@@ -509,6 +509,25 @@ class TestCheckOrderProximity:
         mock_ticker_cls.assert_called_once_with("1329.T")
 
     @pytest.mark.asyncio
+    async def test_symbol_lowercase_suffix_no_double_append(
+        self, test_mcp: FastMCP, tmp_path
+    ) -> None:
+        """Symbol with lowercase suffix (e.g., '1329.t') should not get double suffix."""
+        db_path = str(tmp_path / "test.db")
+        await _add_order(test_mcp, db_path, symbol="1329.t", market="TSE", limit_price="2500.00")
+
+        with patch("yfinance.Ticker") as mock_ticker_cls:
+            mock_ticker = MagicMock()
+            mock_ticker.info = {"currentPrice": 2550.0}
+            mock_ticker_cls.return_value = mock_ticker
+
+            tool = await test_mcp.get_tool("check_order_proximity")
+            await tool.fn(threshold_pct=5.0, db_path=db_path, ctx=None)
+
+        # Should be called with "1329.t", NOT "1329.t.T"
+        mock_ticker_cls.assert_called_once_with("1329.t")
+
+    @pytest.mark.asyncio
     async def test_same_symbol_different_markets(self, test_mcp: FastMCP, tmp_path) -> None:
         """Same symbol on different markets should make separate API calls."""
         db_path = str(tmp_path / "test.db")
