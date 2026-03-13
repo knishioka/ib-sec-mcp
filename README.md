@@ -20,7 +20,7 @@ IB Analytics enables systematic analysis of trading performance across multiple 
 - **90% faster issue resolution** (80 minutes → 8 minutes via `/resolve-gh-issue`)
 - **Automated quality gates** (black, ruff, mypy, pytest)
 - **Complete TDD workflow** (tests → code → PR automation)
-- **11 specialized AI agents** + **20 slash commands**
+- **11 specialized AI agents** + **21 slash commands**
 
 | Task                | Manual    | Automated | Savings |
 | ------------------- | --------- | --------- | ------- |
@@ -33,17 +33,17 @@ IB Analytics enables systematic analysis of trading performance across multiple 
 ## Installation
 
 ```bash
-# Install with pip
-pip install -e .
+# Install with uv (recommended)
+uv pip install -e .
 
 # Install with MCP server support
-pip install -e ".[mcp]"
+uv pip install -e ".[mcp]"
 
 # Install with development dependencies
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 
 # Install all optional dependencies
-pip install -e ".[dev,mcp,visualization,reporting]"
+uv pip install -e ".[dev,mcp,visualization,reporting]"
 ```
 
 ## Quick Start
@@ -168,46 +168,7 @@ ib-sec/
 └─────────────────────────────────────┘
 ```
 
-### Design Patterns
-
-**Template Method** (BaseAnalyzer):
-
-```python
-class BaseAnalyzer(ABC):
-    @abstractmethod
-    def analyze(self) -> AnalysisResult:
-        pass
-
-    def _create_result(self, **kwargs) -> AnalysisResult:
-        """Shared result creation with metadata"""
-        result = AnalysisResult(self.analyzer_name, **kwargs)
-        result["timestamp"] = datetime.now().isoformat()
-        return result
-
-class PerformanceAnalyzer(BaseAnalyzer):
-    def analyze(self) -> AnalysisResult:
-        trades = self.get_trades()
-        # ... compute metrics ...
-        return self._create_result(win_rate=win_rate, profit_factor=pf)
-```
-
-**Strategy** (Reports):
-
-```python
-class BaseReport(ABC):
-    @abstractmethod
-    def render(self) -> str:
-        pass
-```
-
-**Factory Method** (Parsers, Portfolio):
-
-```python
-account = CSVParser.to_account(csv_data, from_date, to_date)
-portfolio = Portfolio.from_accounts(accounts, base_currency="USD")
-```
-
-See [docs/architecture.md](docs/architecture.md) for data flow diagrams, layer responsibilities, and new feature decision guide.
+See [docs/architecture.md](docs/architecture.md) for design patterns, data flow diagrams, layer responsibilities, and new feature decision guide.
 
 ## Available Analyzers
 
@@ -269,7 +230,7 @@ IB Analytics supports three distinct usage modes optimized for different user ty
 
 Detailed architecture, workflow examples, and implementation guide: [CLAUDE.md](CLAUDE.md)
 
-See [.claude/README.md](.claude/README.md) for all 11 sub-agents and 20 slash commands.
+See [.claude/README.md](.claude/README.md) for all 11 sub-agents and 21 slash commands.
 
 ## Feature Comparison
 
@@ -423,30 +384,31 @@ See [.claude/CLAUDE.md](.claude/CLAUDE.md) for development guide and usage patte
 | [Docker Usage](docs/docker.md)                                                | Docker and docker-compose setup                                            |
 | [Troubleshooting](docs/troubleshooting.md)                                    | Common errors and solutions                                                |
 | [Calculation Error Prevention](docs/calculation_error_prevention_strategy.md) | ETF calculation accuracy strategy                                          |
+| [Scheduled Tasks](docs/scheduled-tasks.md)                                    | Claude Desktop scheduled task setup (daily monitoring)                     |
 
 ## Development
 
 ```bash
 # Install development dependencies
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 
 # Run tests
-pytest
+uv run pytest
 
 # Run tests with coverage
-pytest --cov=ib_sec_mcp --cov-report=html
+uv run pytest --cov=ib_sec_mcp --cov-report=html
 
 # Code formatting with Ruff
-ruff format ib_sec_mcp tests
+uv run ruff format ib_sec_mcp tests
 
 # Linting with Ruff
-ruff check --fix ib_sec_mcp tests
+uv run ruff check --fix ib_sec_mcp tests
 
 # Type checking with mypy
-mypy ib_sec_mcp
+uv run mypy ib_sec_mcp
 
 # Run all pre-commit hooks manually
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ## Requirements
@@ -507,9 +469,8 @@ For an interactive decision flowchart and full command reference table, see [.cl
 ### Testing
 
 ```bash
-pip install -e ".[dev]"
-pytest
-pytest --cov=ib_sec_mcp --cov-report=html
+uv run pytest
+uv run pytest --cov=ib_sec_mcp --cov-report=html
 ```
 
 ### MCP Server Testing

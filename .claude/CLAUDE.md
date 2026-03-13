@@ -191,21 +191,7 @@ uv run pytest --cov=ib_sec_mcp
 
 ## MCP Server Quick Reference
 
-### Analysis Tools (7 coarse-grained)
-
-`fetch_ib_data`, `analyze_performance`, `analyze_costs`, `analyze_bonds`, `analyze_tax`, `analyze_risk`, `get_portfolio_summary`
-
-### Composable Tools (5 fine-grained)
-
-`get_trades`, `get_positions`, `get_account_summary`, `calculate_metric`, `compare_periods`
-
-### Resources (6 URI patterns)
-
-`ib://portfolio/list`, `ib://portfolio/latest`, `ib://accounts/{id}`, `ib://trades/recent`, `ib://positions/current`
-
-### Strategy Resources (3 URI patterns)
-
-`ib://strategy/tax-context`, `ib://strategy/rebalancing-context`, `ib://strategy/risk-context`
+45 tools, 9 resources, 5 prompts. Full reference: [docs/mcp-tools-reference.md](../docs/mcp-tools-reference.md)
 
 ---
 
@@ -266,10 +252,10 @@ uv run pytest --cov=ib_sec_mcp
 
 ### Testing
 
-- Tests not yet fully implemented (TODO)
 - Always run tests via `uv run pytest` (never `.venv/bin/python -m pytest`)
 - Use fixtures in `tests/fixtures/`
 - Mock API calls with `pytest-asyncio`
+- See `.claude/rules/testing.md` for detailed conventions
 
 ---
 
@@ -330,11 +316,9 @@ uv run pytest --cov=ib_sec_mcp
 
 ---
 
----
-
 ## Resources
 
-- **.claude/README.md**: Complete feature list (11 sub-agents, 20 commands)
+- **.claude/README.md**: Feature catalog (11 sub-agents, 21 commands)
 - **.claude/SUB_AGENTS.md**: Detailed sub-agent development guide
 - **.claude/SLASH_COMMANDS.md**: Detailed slash command development guide
 - **/CLAUDE.md**: General project development guide

@@ -77,8 +77,8 @@ comparison = compare_periods("2025-01-01", "2025-03-31", "2025-04-01", "2025-06-
 
 **Characteristics**:
 
-- Specialized sub-agents (8 experts)
-- Custom slash commands (12 workflows)
+- Specialized sub-agents (11 experts)
+- Custom slash commands (21 workflows)
 - GitHub integration (Issue → PR)
 - Automated quality gates
 
@@ -156,70 +156,9 @@ When adding new features, consider which usage modes it supports:
 
 ## Implementation Guidelines
 
-### MCP Tools
-
-**Coarse-Grained (Mode 1)**:
-
-```python
-@mcp.tool()
-def analyze_performance(start_date: str, end_date: str = None) -> str:
-    """Complete analysis with interpretation"""
-    # Fetch, analyze, format → rich human-readable report
-```
-
-**Fine-Grained (Mode 2)**:
-
-```python
-@mcp.tool()
-def calculate_metric(metric_name: str, start_date: str, symbol: str = None) -> str:
-    """Single metric calculation"""
-    # Return structured JSON for programmatic use
-```
-
-### Sub-Agents (Mode 3)
-
-**File**: `.claude/agents/{name}.md`
-
-```yaml
----
-name: agent-name
-description: When to use (be specific)
-tools: Minimal required tools only
-model: sonnet  # sonnet | opus | haiku
----
-
-You are a [role] with expertise in:
-- Domain knowledge
-
-## Responsibilities
-[List primary tasks]
-
-## Workflow
-[Step-by-step process]
-
-## Quality Checklist
-- [ ] Standards to enforce
-```
-
-### Slash Commands (Mode 3)
-
-**File**: `.claude/commands/{name}.md`
-
-```yaml
----
-description: One-line description
-allowed-tools: Required tools
-argument-hint: [expected-args]
----
-
-**Steps**:
-1. Action with tool
-2. Delegate to sub-agent
-3. Validate results
-
-**Error Handling**:
-[Recovery strategies]
-```
+- **MCP Tools**: See `.claude/CLAUDE.md` → "Adding MCP Tool" for step-by-step
+- **Sub-Agents**: See `.claude/CLAUDE.md` → "Creating Sub-Agent" and `.claude/SUB_AGENTS.md`
+- **Slash Commands**: See `.claude/CLAUDE.md` → "Creating Slash Command" and `.claude/SLASH_COMMANDS.md`
 
 ---
 
