@@ -406,6 +406,9 @@ uv run ruff check --fix ib_sec_mcp tests
 
 # Type checking with mypy
 uv run mypy ib_sec_mcp
+
+# Run all pre-commit hooks manually
+uv run pre-commit run --all-files
 ```
 
 ## Requirements
