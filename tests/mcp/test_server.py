@@ -89,6 +89,7 @@ EXPECTED_TOOLS = {
     "get_pending_orders",
     "check_order_proximity",
     "get_order_history",
+    "sync_limit_orders",
     # daily_monitor
     "sync_daily_snapshot",
     "get_sync_status",
