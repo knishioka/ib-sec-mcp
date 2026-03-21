@@ -64,21 +64,20 @@ def _map_ib_status(status: CPOrderStatus) -> str | None:
     return None
 
 
-def _find_matching_order(
-    pending_orders: list[dict[str, object]],
-    symbol: str,
-    limit_price: Decimal,
-    order_type: str,
-) -> dict[str, object] | None:
-    """Find a matching local order by symbol + limit_price + order_type"""
-    for order in pending_orders:
-        if (
-            order["symbol"] == symbol
-            and order["limit_price"] == limit_price
-            and order["order_type"] == order_type
-        ):
-            return order
-    return None
+OrderKey = tuple[object, Decimal, object]
+"""Match key: (symbol, limit_price, order_type)"""
+
+
+def _build_order_map(
+    orders: list[dict[str, object]],
+) -> dict[OrderKey, dict[str, object]]:
+    """Build a dict map keyed by (symbol, limit_price, order_type) for O(1) lookup"""
+    result: dict[OrderKey, dict[str, object]] = {}
+    for order in orders:
+        key: OrderKey = (order["symbol"], Decimal(str(order["limit_price"])), order["order_type"])
+        if key not in result:
+            result[key] = order
+    return result
 
 
 async def sync_orders_from_ib(
@@ -111,9 +110,13 @@ async def sync_orders_from_ib(
     all_local_orders = store.get_order_history()
     pending_orders = [o for o in all_local_orders if o["status"] == "PENDING"]
 
+    # Build dict maps for O(1) lookup instead of O(N) list iteration
+    pending_map = _build_order_map(pending_orders)
+    all_orders_map = _build_order_map(all_local_orders)
+
     for ib_order in ib_orders:
         try:
-            _process_single_order(ib_order, pending_orders, all_local_orders, store, result)
+            _process_single_order(ib_order, pending_map, all_orders_map, store, result)
         except Exception as e:
             result.errors.append(f"Error processing order {ib_order.symbol}: {e}")
 
@@ -129,8 +132,8 @@ async def sync_orders_from_ib(
 
 def _process_single_order(
     ib_order: CPOrder,
-    pending_orders: list[dict[str, object]],
-    all_local_orders: list[dict[str, object]],
+    pending_map: dict[OrderKey, dict[str, object]],
+    all_orders_map: dict[OrderKey, dict[str, object]],
     store: LimitOrderStore,
     result: SyncResult,
 ) -> None:
@@ -140,13 +143,14 @@ def _process_single_order(
     order_type = _map_ib_side(ib_order.side)
     db_status = _map_ib_status(ib_order.status)
 
+    key: OrderKey = (symbol, limit_price, order_type)
+
     # Try to find matching order in pending orders first
-    matched = _find_matching_order(pending_orders, symbol, limit_price, order_type)
+    matched = pending_map.get(key)
 
     if matched is None:
         # Also check all orders (including terminal) to avoid re-adding
-        matched_any = _find_matching_order(all_local_orders, symbol, limit_price, order_type)
-        if matched_any is not None:
+        if key in all_orders_map:
             # Already exists (possibly already filled/cancelled)
             result.skipped += 1
             return
@@ -164,11 +168,14 @@ def _process_single_order(
                 notes="Synced from IB",
             )
             # If the order is already filled on IB, update status
-            if db_status == "FILLED" and ib_order.avg_price > Decimal("0"):
+            if db_status == "FILLED":
+                filled_price = (
+                    ib_order.avg_price if ib_order.avg_price > Decimal("0") else limit_price
+                )
                 store.update_order(
                     order_id=order_id,
                     status="FILLED",
-                    filled_price=ib_order.avg_price,
+                    filled_price=filled_price,
                     filled_date=date.today(),
                 )
             result.added += 1

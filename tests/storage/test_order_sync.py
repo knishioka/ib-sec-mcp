@@ -148,6 +148,28 @@ class TestSyncNewOrders:
         assert history[0]["status"] == "FILLED"
         assert history[0]["filled_price"] == Decimal("695.50")
 
+    @pytest.mark.asyncio
+    async def test_new_filled_order_fallback_to_limit_price(
+        self, mock_cp_client: AsyncMock, store: LimitOrderStore
+    ) -> None:
+        """New filled order with avg_price=0 should use limit_price as filled_price"""
+        mock_cp_client.get_orders.return_value = [
+            _make_ib_order(
+                symbol="CSPX",
+                price="700.00",
+                status=CPOrderStatus.FILLED,
+                avg_price="0",
+            )
+        ]
+
+        result = await sync_orders_from_ib(mock_cp_client, store)
+
+        assert result.added == 1
+        history = store.get_order_history(symbol="CSPX")
+        assert len(history) == 1
+        assert history[0]["status"] == "FILLED"
+        assert history[0]["filled_price"] == Decimal("700.00")
+
 
 # ---------------------------------------------------------------------------
 # Tests: sync_orders_from_ib — filled orders
