@@ -8,6 +8,7 @@ Requires IB Gateway running locally with HTTPS enabled.
 
 import asyncio
 import os
+from decimal import Decimal
 
 import httpx
 
@@ -15,6 +16,8 @@ from ib_sec_mcp.api.cp_models import (
     CPAccountBalance,
     CPAuthStatus,
     CPOrder,
+    CPOrderReply,
+    CPOrderRequest,
     CPPosition,
 )
 from ib_sec_mcp.utils.logger import get_logger, mask_sensitive
@@ -261,6 +264,159 @@ class CPClient:
         if isinstance(data, list):
             return [CPPosition.model_validate(p) for p in data]
         return []
+
+    async def place_order(
+        self,
+        order: CPOrderRequest,
+    ) -> list[CPOrderReply]:
+        """
+        Place an order via Client Portal Gateway
+
+        IB uses a 2-step process: submit order, then confirm replies.
+
+        Args:
+            order: Order request details
+
+        Returns:
+            List of CPOrderReply with order status
+
+        Raises:
+            CPClientError: If order placement fails
+        """
+        await self._ensure_authenticated()
+        account_id = order.account_id
+        logger.info(
+            "Placing %s order for account %s: %s qty %s",
+            order.order_type.value,
+            mask_sensitive(account_id, show_chars=3),
+            order.side.value,
+            order.quantity,
+        )
+
+        payload = {"orders": [order.to_api_dict()]}
+        data = await self._request(
+            "POST",
+            f"/v1/api/iserver/account/{account_id}/orders",
+            json=payload,
+        )
+
+        return await self._parse_order_replies(data)
+
+    async def modify_order(
+        self,
+        account_id: str,
+        order_id: int,
+        quantity: Decimal | None = None,
+        limit_price: Decimal | None = None,
+    ) -> list[CPOrderReply]:
+        """
+        Modify an existing order
+
+        Args:
+            account_id: IB account ID
+            order_id: Order ID to modify
+            quantity: New quantity (optional)
+            limit_price: New limit price (optional)
+
+        Returns:
+            List of CPOrderReply with modification status
+
+        Raises:
+            CPClientError: If modification fails
+        """
+        await self._ensure_authenticated()
+        logger.info(
+            "Modifying order %d for account %s",
+            order_id,
+            mask_sensitive(account_id, show_chars=3),
+        )
+
+        payload: dict[str, object] = {}
+        if quantity is not None:
+            payload["quantity"] = str(quantity)
+        if limit_price is not None:
+            payload["price"] = str(limit_price)
+
+        data = await self._request(
+            "POST",
+            f"/v1/api/iserver/account/{account_id}/order/{order_id}",
+            json=payload,
+        )
+
+        return await self._parse_order_replies(data)
+
+    async def cancel_order(self, account_id: str, order_id: int) -> dict[str, object]:
+        """
+        Cancel an existing order
+
+        Args:
+            account_id: IB account ID
+            order_id: Order ID to cancel
+
+        Returns:
+            Cancellation response dict
+
+        Raises:
+            CPClientError: If cancellation fails
+        """
+        await self._ensure_authenticated()
+        logger.info(
+            "Cancelling order %d for account %s",
+            order_id,
+            mask_sensitive(account_id, show_chars=3),
+        )
+        data = await self._request(
+            "DELETE",
+            f"/v1/api/iserver/account/{account_id}/order/{order_id}",
+        )
+        return data
+
+    async def _parse_order_replies(
+        self,
+        data: dict | list,  # type: ignore[type-arg]
+    ) -> list[CPOrderReply]:
+        """Parse and auto-confirm IB order replies.
+
+        IB may return reply questions that need confirmation via a 2-step flow.
+        This method handles both direct responses and confirmation-required replies.
+
+        Args:
+            data: Raw API response (dict or list)
+
+        Returns:
+            List of CPOrderReply after processing/confirmation
+        """
+        replies = data if isinstance(data, list) else [data]
+        result: list[CPOrderReply] = []
+
+        for reply in replies:
+            parsed = CPOrderReply.model_validate(reply)
+            if parsed.reply_id and not parsed.order_id:
+                confirmed = await self._confirm_order_reply(parsed.reply_id)
+                result.extend(confirmed)
+            else:
+                result.append(parsed)
+
+        return result
+
+    async def _confirm_order_reply(self, reply_id: str) -> list[CPOrderReply]:
+        """
+        Confirm an order reply (IB 2-step confirmation)
+
+        Args:
+            reply_id: Reply ID to confirm
+
+        Returns:
+            List of CPOrderReply after confirmation
+        """
+        logger.debug("Confirming order reply %s", reply_id)
+        data = await self._request(
+            "POST",
+            f"/v1/api/iserver/reply/{reply_id}",
+            json={"confirmed": True},
+        )
+        replies = data if isinstance(data, list) else [data]
+        return [CPOrderReply.model_validate(r) for r in replies]
 
     async def _ensure_authenticated(self) -> None:
         """

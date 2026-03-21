@@ -98,3 +98,53 @@ class CPPosition(BaseModel):
         description="Unrealized P&L",
     )
     currency: str = Field("USD", description="Currency")
+
+
+class CPOrderType(StrEnum):
+    """Order type enumeration"""
+
+    MARKET = "MKT"
+    LIMIT = "LMT"
+    STOP = "STP"
+    STOP_LIMIT = "STP_LMT"
+
+
+class CPOrderRequest(BaseModel):
+    """Order placement request for Client Portal Gateway"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    account_id: str = Field(..., alias="acctId", description="Account ID")
+    contract_id: int = Field(..., alias="conid", description="Contract ID")
+    side: CPOrderSide = Field(..., description="Order side (BUY/SELL)")
+    quantity: Decimal = Field(..., description="Order quantity")
+    order_type: CPOrderType = Field(..., alias="orderType", description="Order type")
+    price: Decimal | None = Field(None, description="Limit price (required for LMT/STP_LMT)")
+    tif: str = Field("GTC", description="Time in force (GTC, DAY, IOC)")
+
+    def to_api_dict(self) -> dict[str, object]:
+        """Convert to IB CP API request format."""
+        d: dict[str, object] = {
+            "acctId": self.account_id,
+            "conid": self.contract_id,
+            "side": self.side.value,
+            "quantity": str(self.quantity),
+            "orderType": self.order_type.value,
+            "tif": self.tif,
+        }
+        if self.price is not None:
+            d["price"] = str(self.price)
+        return d
+
+
+class CPOrderReply(BaseModel):
+    """Order reply from Client Portal Gateway (confirmation step)"""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    order_id: str | None = Field(None, alias="order_id", description="Order ID after placement")
+    order_status: str | None = Field(
+        None, alias="order_status", description="Order status after placement"
+    )
+    message: list[str] | None = Field(None, description="Confirmation messages")
+    reply_id: str | None = Field(None, alias="id", description="Reply ID for confirmation")

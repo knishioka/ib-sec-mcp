@@ -21,6 +21,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     from ib_sec_mcp.mcp.tools.live_trading import register_live_trading_tools
     from ib_sec_mcp.mcp.tools.market_comparison import register_market_comparison_tools
     from ib_sec_mcp.mcp.tools.options import register_options_tools
+    from ib_sec_mcp.mcp.tools.order_management import register_order_management_tools
     from ib_sec_mcp.mcp.tools.portfolio_analytics import (
         register_portfolio_analytics_tools,
     )
@@ -53,6 +54,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     register_sector_fx_tools(mcp)  # Add sector allocation and FX exposure tools
     register_limit_order_tools(mcp)  # Add limit order management tools
     register_live_trading_tools(mcp)  # Add live trading tools via CP Gateway
+    register_order_management_tools(mcp)  # Add order management tools (place/modify/cancel)
     register_daily_monitor_tools(mcp)  # Add daily monitor tools
 
 
