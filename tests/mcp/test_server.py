@@ -95,6 +95,11 @@ EXPECTED_TOOLS = {
     "get_live_account_balance",
     "get_live_positions",
     "check_gateway_status",
+    # order_management
+    "place_order",
+    "modify_order",
+    "cancel_order",
+    "cancel_all_orders",
     # daily_monitor
     "sync_daily_snapshot",
     "get_sync_status",
