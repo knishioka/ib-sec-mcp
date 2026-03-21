@@ -438,5 +438,74 @@ def register_limit_order_tools(mcp: FastMCP) -> None:
             default=str,
         )
 
+    @mcp.tool
+    async def sync_limit_orders(
+        db_path: str = "data/processed/limit_orders.db",
+        gateway_url: str | None = None,
+        ctx: Context | None = None,
+    ) -> str:
+        """
+        Sync limit orders from IB Client Portal Gateway to local DB
+
+        Fetches live orders from IB and synchronizes with local limit_orders.db:
+        - New IB orders not in DB → added
+        - IB filled orders → DB status updated to FILLED
+        - IB cancelled orders → DB status updated to CANCELLED
+        - Existing matches → skipped
+
+        Requires IB Client Portal Gateway to be running. If Gateway is not
+        reachable, returns a skip message (no error).
+
+        Args:
+            db_path: Path to SQLite database
+            gateway_url: IB Gateway URL override (default: from env or https://localhost:5000)
+            ctx: MCP context for logging
+
+        Returns:
+            JSON string with sync results (added, updated, skipped, errors)
+
+        Example:
+            >>> result = await sync_limit_orders()
+        """
+        from ib_sec_mcp.storage.order_sync import try_sync_from_ib
+
+        if ctx:
+            await ctx.info("Starting limit order sync from IB Gateway")
+
+        store = LimitOrderStore(db_path)
+        try:
+            sync_result = await try_sync_from_ib(
+                store=store,
+                gateway_url=gateway_url,
+            )
+
+            if sync_result is None:
+                if ctx:
+                    await ctx.info("IB Gateway not available, sync skipped")
+                return json.dumps(
+                    {
+                        "status": "skipped",
+                        "message": "IB Gateway not available or not authenticated",
+                    },
+                    indent=2,
+                )
+
+            if ctx:
+                await ctx.info(
+                    f"Sync complete: {sync_result.added} added, "
+                    f"{sync_result.updated} updated, "
+                    f"{sync_result.skipped} skipped"
+                )
+
+            return json.dumps(
+                {
+                    "status": "completed",
+                    "sync_result": sync_result.to_dict(),
+                },
+                indent=2,
+            )
+        finally:
+            store.close()
+
 
 __all__ = ["register_limit_order_tools"]

@@ -616,3 +616,78 @@ class TestGetOrderHistory:
         assert data["total_orders"] == 0
         assert data["status_summary"] == {}
         assert data["orders"] == []
+
+
+# ---------------------------------------------------------------------------
+# Tests: sync_limit_orders
+# ---------------------------------------------------------------------------
+
+
+class TestSyncLimitOrders:
+    """Tests for the sync_limit_orders MCP tool."""
+
+    @pytest.mark.asyncio
+    async def test_gateway_not_available_returns_skipped(self, test_mcp: FastMCP, tmp_path) -> None:
+        """When Gateway is not running, should return skipped status."""
+        from unittest.mock import AsyncMock, patch
+
+        db_path = str(tmp_path / "test.db")
+
+        with patch(
+            "ib_sec_mcp.storage.order_sync.try_sync_from_ib",
+            new_callable=AsyncMock,
+            return_value=None,
+        ):
+            tool = await test_mcp.get_tool("sync_limit_orders")
+            result = await tool.fn(db_path=db_path, ctx=None)
+            data = json.loads(result)
+
+        assert data["status"] == "skipped"
+        assert "not available" in data["message"]
+
+    @pytest.mark.asyncio
+    async def test_successful_sync(self, test_mcp: FastMCP, tmp_path) -> None:
+        """Successful sync should return completed status with counts."""
+        from unittest.mock import AsyncMock, patch
+
+        from ib_sec_mcp.storage.order_sync import SyncResult
+
+        db_path = str(tmp_path / "test.db")
+        mock_result = SyncResult(added=2, updated=1, skipped=3)
+
+        with patch(
+            "ib_sec_mcp.storage.order_sync.try_sync_from_ib",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            tool = await test_mcp.get_tool("sync_limit_orders")
+            result = await tool.fn(db_path=db_path, ctx=None)
+            data = json.loads(result)
+
+        assert data["status"] == "completed"
+        assert data["sync_result"]["added"] == 2
+        assert data["sync_result"]["updated"] == 1
+        assert data["sync_result"]["skipped"] == 3
+        assert data["sync_result"]["total_processed"] == 6
+
+    @pytest.mark.asyncio
+    async def test_sync_with_errors(self, test_mcp: FastMCP, tmp_path) -> None:
+        """Sync with errors should include error details."""
+        from unittest.mock import AsyncMock, patch
+
+        from ib_sec_mcp.storage.order_sync import SyncResult
+
+        db_path = str(tmp_path / "test.db")
+        mock_result = SyncResult(added=1, errors=["Failed to process AAPL"])
+
+        with patch(
+            "ib_sec_mcp.storage.order_sync.try_sync_from_ib",
+            new_callable=AsyncMock,
+            return_value=mock_result,
+        ):
+            tool = await test_mcp.get_tool("sync_limit_orders")
+            result = await tool.fn(db_path=db_path, ctx=None)
+            data = json.loads(result)
+
+        assert data["status"] == "completed"
+        assert data["sync_result"]["errors"] == ["Failed to process AAPL"]

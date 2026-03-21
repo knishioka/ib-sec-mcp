@@ -89,6 +89,7 @@ EXPECTED_TOOLS = {
     "get_pending_orders",
     "check_order_proximity",
     "get_order_history",
+    "sync_limit_orders",
     # live_trading
     "get_live_orders",
     "get_live_account_balance",
