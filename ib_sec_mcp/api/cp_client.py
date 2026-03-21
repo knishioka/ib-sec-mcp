@@ -194,7 +194,7 @@ class CPClient:
             account_ids = []
             for item in data:
                 if isinstance(item, dict):
-                    acct_id = item.get("id", item.get("accountId", ""))
+                    acct_id = item.get("id") or item.get("accountId")
                     if acct_id:
                         account_ids.append(acct_id)
                 elif isinstance(item, str):

@@ -3,21 +3,18 @@
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CPAuthStatus(BaseModel):
     """Authentication status from Client Portal Gateway"""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     authenticated: bool = Field(..., description="Whether session is authenticated")
     competing: bool = Field(False, description="Whether competing session exists")
     connected: bool = Field(False, description="Whether connected to server")
     message: str = Field("", description="Status message")
-
-    class Config:
-        """Pydantic config"""
-
-        populate_by_name = True
 
 
 class CPOrderSide(StrEnum):
@@ -42,24 +39,23 @@ class CPOrderStatus(StrEnum):
 class CPOrder(BaseModel):
     """Order from Client Portal Gateway"""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     order_id: int = Field(..., alias="orderId", description="Order ID")
     symbol: str = Field(..., description="Trading symbol")
-    side: str = Field(..., description="Order side (BUY/SELL)")
+    side: CPOrderSide = Field(..., description="Order side (BUY/SELL)")
     quantity: Decimal = Field(..., alias="totalSize", description="Order quantity")
     price: Decimal = Field(Decimal("0"), alias="price", description="Limit price")
     avg_price: Decimal = Field(Decimal("0"), alias="avgPrice", description="Average fill price")
-    status: str = Field(..., description="Order status")
+    status: CPOrderStatus = Field(..., description="Order status")
     order_type: str = Field("", alias="orderType", description="Order type")
     account_id: str = Field("", alias="acct", description="Account ID")
-
-    class Config:
-        """Pydantic config"""
-
-        populate_by_name = True
 
 
 class CPAccountBalance(BaseModel):
     """Account balance summary from Client Portal Gateway"""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     account_id: str = Field(..., description="Account ID")
     net_liquidation: Decimal = Field(
@@ -83,14 +79,11 @@ class CPAccountBalance(BaseModel):
         description="Gross position value",
     )
 
-    class Config:
-        """Pydantic config"""
-
-        populate_by_name = True
-
 
 class CPPosition(BaseModel):
     """Position from Client Portal Gateway"""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     account_id: str = Field(..., alias="acctId", description="Account ID")
     contract_id: int = Field(..., alias="conid", description="Contract ID")
@@ -105,8 +98,3 @@ class CPPosition(BaseModel):
         description="Unrealized P&L",
     )
     currency: str = Field("USD", description="Currency")
-
-    class Config:
-        """Pydantic config"""
-
-        populate_by_name = True
