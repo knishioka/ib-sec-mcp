@@ -144,8 +144,13 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=ib_sec_mcp --cov-report=term-missing"
+addopts = "-v --cov=ib_sec_mcp --cov-report=term-missing --ignore=tests/integration"
 asyncio_mode = "auto"
+markers = [
+    "integration: Integration tests requiring external services",
+    "manual: Manual-only tests (not run in CI)",
+    "paper_trading: Tests requiring IB Paper Trading account and Gateway",
+]
 
 [tool.coverage.run]
 branch = true
