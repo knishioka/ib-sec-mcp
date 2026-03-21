@@ -132,7 +132,7 @@ def get_daily_total(log_path: Path) -> Decimal:
     today = datetime.now(UTC).strftime("%Y-%m-%d")
     total = Decimal("0")
 
-    with open(log_path) as f:
+    with open(log_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -212,7 +212,7 @@ def write_order_log(
     }
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(log_path, "a") as f:
+    with open(log_path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, default=str) + "\n")
 
     return record
@@ -434,7 +434,7 @@ def register_order_management_tools(mcp: FastMCP) -> None:
     async def modify_order(
         account_id: str,
         order_id: int,
-        symbol: str = "",
+        symbol: str,
         quantity: str | None = None,
         limit_price: str | None = None,
         ctx: Context | None = None,
@@ -447,7 +447,7 @@ def register_order_management_tools(mcp: FastMCP) -> None:
         Args:
             account_id: IB account ID
             order_id: Order ID to modify
-            symbol: Trading symbol (for logging)
+            symbol: Trading symbol (for audit logging)
             quantity: New quantity (optional)
             limit_price: New limit price (optional)
             ctx: MCP context for logging
@@ -473,7 +473,12 @@ def register_order_management_tools(mcp: FastMCP) -> None:
             if amount_error:
                 return _error_response(amount_error)
 
+        # Safety check: daily limit (if both qty and price available)
         log_path = get_order_log_path()
+        if qty and price:
+            daily_error = check_daily_limit(qty, price, log_path)
+            if daily_error:
+                return _error_response(daily_error)
         dry_run = is_dry_run()
 
         if dry_run:
@@ -569,7 +574,7 @@ def register_order_management_tools(mcp: FastMCP) -> None:
     async def cancel_order(
         account_id: str,
         order_id: int,
-        symbol: str = "",
+        symbol: str,
         ctx: Context | None = None,
     ) -> str:
         """

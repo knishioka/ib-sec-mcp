@@ -761,6 +761,7 @@ class TestModifyOrder:
             result = await tool.fn(
                 account_id="U1234567",
                 order_id=12345,
+                symbol="AAPL",
                 quantity="50",
                 limit_price="155.00",
                 ctx=None,
@@ -786,6 +787,7 @@ class TestModifyOrder:
             result = await tool.fn(
                 account_id="U1234567",
                 order_id=12345,
+                symbol="AAPL",
                 limit_price="160.00",
                 ctx=None,
             )
@@ -801,6 +803,7 @@ class TestModifyOrder:
             result = await tool.fn(
                 account_id="U1234567",
                 order_id=12345,
+                symbol="AAPL",
                 quantity="50",
                 ctx=None,
             )
@@ -816,6 +819,7 @@ class TestModifyOrder:
             result = await tool.fn(
                 account_id="U1234567",
                 order_id=12345,
+                symbol="AAPL",
                 ctx=None,
             )
             data = json.loads(result)
@@ -836,6 +840,7 @@ class TestModifyOrder:
             result = await tool.fn(
                 account_id="U1234567",
                 order_id=12345,
+                symbol="AAPL",
                 quantity="100",
                 limit_price="20.00",
                 ctx=None,
@@ -887,6 +892,7 @@ class TestCancelOrder:
             result = await tool.fn(
                 account_id="U1234567",
                 order_id=12345,
+                symbol="AAPL",
                 ctx=None,
             )
             data = json.loads(result)
@@ -901,6 +907,7 @@ class TestCancelOrder:
             result = await tool.fn(
                 account_id="U1234567",
                 order_id=12345,
+                symbol="AAPL",
                 ctx=None,
             )
             data = json.loads(result)

@@ -128,12 +128,12 @@ class CPOrderRequest(BaseModel):
             "acctId": self.account_id,
             "conid": self.contract_id,
             "side": self.side.value,
-            "quantity": float(self.quantity),
+            "quantity": str(self.quantity),
             "orderType": self.order_type.value,
             "tif": self.tif,
         }
         if self.price is not None:
-            d["price"] = float(self.price)
+            d["price"] = str(self.price)
         return d
 
 

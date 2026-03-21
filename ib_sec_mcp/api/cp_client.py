@@ -300,20 +300,7 @@ class CPClient:
             json=payload,
         )
 
-        # IB may return reply questions that need confirmation
-        replies = data if isinstance(data, list) else [data]
-        result: list[CPOrderReply] = []
-
-        for reply in replies:
-            parsed = CPOrderReply.model_validate(reply)
-            # If reply has an ID but no order_id, it needs confirmation
-            if parsed.reply_id and not parsed.order_id:
-                confirmed = await self._confirm_order_reply(parsed.reply_id)
-                result.extend(confirmed)
-            else:
-                result.append(parsed)
-
-        return result
+        return await self._parse_order_replies(data)
 
     async def modify_order(
         self,
@@ -346,9 +333,9 @@ class CPClient:
 
         payload: dict[str, object] = {}
         if quantity is not None:
-            payload["quantity"] = float(quantity)
+            payload["quantity"] = str(quantity)
         if limit_price is not None:
-            payload["price"] = float(limit_price)
+            payload["price"] = str(limit_price)
 
         data = await self._request(
             "POST",
@@ -356,16 +343,7 @@ class CPClient:
             json=payload,
         )
 
-        replies = data if isinstance(data, list) else [data]
-        result: list[CPOrderReply] = []
-        for reply in replies:
-            parsed = CPOrderReply.model_validate(reply)
-            if parsed.reply_id and not parsed.order_id:
-                confirmed = await self._confirm_order_reply(parsed.reply_id)
-                result.extend(confirmed)
-            else:
-                result.append(parsed)
-        return result
+        return await self._parse_order_replies(data)
 
     async def cancel_order(self, account_id: str, order_id: int) -> dict[str, object]:
         """
@@ -392,6 +370,34 @@ class CPClient:
             f"/v1/api/iserver/account/{account_id}/order/{order_id}",
         )
         return data
+
+    async def _parse_order_replies(
+        self,
+        data: dict | list,  # type: ignore[type-arg]
+    ) -> list[CPOrderReply]:
+        """Parse and auto-confirm IB order replies.
+
+        IB may return reply questions that need confirmation via a 2-step flow.
+        This method handles both direct responses and confirmation-required replies.
+
+        Args:
+            data: Raw API response (dict or list)
+
+        Returns:
+            List of CPOrderReply after processing/confirmation
+        """
+        replies = data if isinstance(data, list) else [data]
+        result: list[CPOrderReply] = []
+
+        for reply in replies:
+            parsed = CPOrderReply.model_validate(reply)
+            if parsed.reply_id and not parsed.order_id:
+                confirmed = await self._confirm_order_reply(parsed.reply_id)
+                result.extend(confirmed)
+            else:
+                result.append(parsed)
+
+        return result
 
     async def _confirm_order_reply(self, reply_id: str) -> list[CPOrderReply]:
         """
