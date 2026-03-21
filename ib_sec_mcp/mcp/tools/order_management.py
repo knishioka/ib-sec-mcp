@@ -146,7 +146,7 @@ def get_daily_total(log_path: Path) -> Decimal:
                 continue
             if record.get("action") != "place":
                 continue
-            if record.get("status") != "submitted":
+            if record.get("status", "").lower() != "submitted":
                 continue
             ts = record.get("timestamp", "")
             if not ts.startswith(today):
@@ -307,11 +307,19 @@ def register_order_management_tools(mcp: FastMCP) -> None:
                 f"Invalid order type: {order_type}. Use 'LMT', 'MKT', 'STP', or 'STP_LMT'"
             )
 
-        qty = Decimal(quantity)
+        try:
+            qty = Decimal(quantity)
+        except Exception:
+            return _error_response(f"Invalid quantity: {quantity!r}. Must be a numeric value.")
         if qty <= Decimal("0"):
             return _error_response("Quantity must be positive")
 
-        price = Decimal(limit_price) if limit_price else None
+        try:
+            price = Decimal(limit_price) if limit_price else None
+        except Exception:
+            return _error_response(
+                f"Invalid limit_price: {limit_price!r}. Must be a numeric value."
+            )
 
         if order_type_enum in (CPOrderType.LIMIT, CPOrderType.STOP_LIMIT) and price is None:
             return _error_response(f"Limit price is required for {order_type} orders")
@@ -461,8 +469,16 @@ def register_order_management_tools(mcp: FastMCP) -> None:
         if quantity is None and limit_price is None:
             return _error_response("At least one of quantity or limit_price must be provided")
 
-        qty = Decimal(quantity) if quantity else None
-        price = Decimal(limit_price) if limit_price else None
+        try:
+            qty = Decimal(quantity) if quantity else None
+        except Exception:
+            return _error_response(f"Invalid quantity: {quantity!r}. Must be a numeric value.")
+        try:
+            price = Decimal(limit_price) if limit_price else None
+        except Exception:
+            return _error_response(
+                f"Invalid limit_price: {limit_price!r}. Must be a numeric value."
+            )
 
         if qty is not None and qty <= Decimal("0"):
             return _error_response("Quantity must be positive")
