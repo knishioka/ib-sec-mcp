@@ -102,6 +102,7 @@ regexes = [
     '''U7654321''',
     '''U1111111''',
     '''U2222222''',
+    '''U9999999''',
     '''U1234567''',  # Documentation example account ID
     '''U1234567''',  # Documentation example account ID
 
