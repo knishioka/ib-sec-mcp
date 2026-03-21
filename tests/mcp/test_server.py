@@ -90,6 +90,11 @@ EXPECTED_TOOLS = {
     "check_order_proximity",
     "get_order_history",
     "sync_limit_orders",
+    # live_trading
+    "get_live_orders",
+    "get_live_account_balance",
+    "get_live_positions",
+    "check_gateway_status",
     # daily_monitor
     "sync_daily_snapshot",
     "get_sync_status",
