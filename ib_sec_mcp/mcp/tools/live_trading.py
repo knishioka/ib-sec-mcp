@@ -10,7 +10,13 @@ from ib_sec_mcp.api.cp_client import (
     CPClient,
     CPConnectionError,
 )
-from ib_sec_mcp.api.cp_models import CPOrderSide, CPOrderStatus
+from ib_sec_mcp.api.cp_models import (
+    CPAccountBalance,
+    CPOrder,
+    CPOrderSide,
+    CPOrderStatus,
+    CPPosition,
+)
 
 GATEWAY_NOT_RUNNING_MSG = (
     "IB Client Portal Gateway is not running. Start the gateway and login at https://localhost:5000"
@@ -26,7 +32,7 @@ def _error_response(error: str) -> str:
     return json.dumps({"error": error}, indent=2)
 
 
-def _order_to_dict(order: Any) -> dict[str, Any]:
+def _order_to_dict(order: CPOrder) -> dict[str, Any]:
     """Convert a CPOrder to a serializable dict preserving Decimal as string."""
     return {
         "order_id": order.order_id,
@@ -41,7 +47,7 @@ def _order_to_dict(order: Any) -> dict[str, Any]:
     }
 
 
-def _position_to_dict(pos: Any) -> dict[str, Any]:
+def _position_to_dict(pos: CPPosition) -> dict[str, Any]:
     """Convert a CPPosition to a serializable dict preserving Decimal as string."""
     return {
         "account_id": pos.account_id,
@@ -56,7 +62,7 @@ def _position_to_dict(pos: Any) -> dict[str, Any]:
     }
 
 
-def _balance_to_dict(bal: Any) -> dict[str, Any]:
+def _balance_to_dict(bal: CPAccountBalance) -> dict[str, Any]:
     """Convert a CPAccountBalance to a serializable dict preserving Decimal as string."""
     return {
         "account_id": bal.account_id,
@@ -68,11 +74,11 @@ def _balance_to_dict(bal: Any) -> dict[str, Any]:
 
 
 def _filter_orders(
-    orders: list[Any],
+    orders: list[CPOrder],
     symbol: str | None = None,
     side: str | None = None,
     status: str | None = None,
-) -> list[Any]:
+) -> list[CPOrder]:
     """Filter orders by symbol, side, and status."""
     filtered = orders
     if symbol:
@@ -90,6 +96,19 @@ def _filter_orders(
         except ValueError:
             pass
     return filtered
+
+
+async def _resolve_account_id(client: CPClient, account_id: str | None) -> str | None:
+    """Resolve account ID, using first available account if not specified.
+
+    Returns the account ID or None if no accounts are found.
+    """
+    if account_id:
+        return account_id
+    accounts = await client.get_accounts()
+    if not accounts:
+        return None
+    return accounts[0]
 
 
 def register_live_trading_tools(mcp: FastMCP) -> None:
@@ -157,13 +176,11 @@ def register_live_trading_tools(mcp: FastMCP) -> None:
 
         try:
             async with CPClient() as client:
-                if not account_id:
-                    accounts = await client.get_accounts()
-                    if not accounts:
-                        return _error_response("No accounts found")
-                    account_id = accounts[0]
+                resolved_id = await _resolve_account_id(client, account_id)
+                if not resolved_id:
+                    return _error_response("No accounts found")
 
-                balance = await client.get_account_balance(account_id)
+                balance = await client.get_account_balance(resolved_id)
                 return json.dumps(_balance_to_dict(balance), indent=2)
         except CPConnectionError:
             return _error_response(GATEWAY_NOT_RUNNING_MSG)
@@ -192,16 +209,14 @@ def register_live_trading_tools(mcp: FastMCP) -> None:
 
         try:
             async with CPClient() as client:
-                if not account_id:
-                    accounts = await client.get_accounts()
-                    if not accounts:
-                        return _error_response("No accounts found")
-                    account_id = accounts[0]
+                resolved_id = await _resolve_account_id(client, account_id)
+                if not resolved_id:
+                    return _error_response("No accounts found")
 
-                positions = await client.get_positions(account_id)
+                positions = await client.get_positions(resolved_id)
                 return json.dumps(
                     {
-                        "account_id": account_id,
+                        "account_id": resolved_id,
                         "total_positions": len(positions),
                         "positions": [_position_to_dict(p) for p in positions],
                     },
