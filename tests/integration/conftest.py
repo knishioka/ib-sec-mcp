@@ -13,7 +13,7 @@ from collections.abc import AsyncGenerator
 
 import pytest
 
-from ib_sec_mcp.api.cp_client import CPClient, CPConnectionError
+from ib_sec_mcp.api.cp_client import CPClient, CPClientError
 
 
 def gateway_available() -> bool:
@@ -30,7 +30,7 @@ def gateway_available() -> bool:
             return loop.run_until_complete(_check())
         finally:
             loop.close()
-    except (CPConnectionError, Exception):
+    except CPClientError:
         return False
 
 
@@ -60,6 +60,7 @@ async def paper_account_id(cp_client: CPClient) -> str:
     """Get the Paper Trading account ID.
 
     Uses IB_PAPER_ACCOUNT_ID env var if set, otherwise fetches from Gateway.
+    Paper Trading accounts typically start with 'D' (demo).
     """
     env_id = os.environ.get("IB_PAPER_ACCOUNT_ID")
     if env_id:
@@ -67,6 +68,10 @@ async def paper_account_id(cp_client: CPClient) -> str:
 
     accounts = await cp_client.get_accounts()
     assert len(accounts) > 0, "No accounts found on Gateway"
+    # Prefer paper trading accounts (start with 'D' for demo)
+    paper_accounts = [a for a in accounts if a.startswith("D")]
+    if paper_accounts:
+        return paper_accounts[0]
     return accounts[0]
 
 

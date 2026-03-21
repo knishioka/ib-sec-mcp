@@ -20,6 +20,25 @@ from ib_sec_mcp.api.cp_models import (
 # AAPL contract ID on IB (well-known, stable)
 AAPL_CONID = 265598
 
+# Polling configuration for order propagation
+POLL_INTERVAL = 0.5  # seconds between polls
+POLL_TIMEOUT = 10  # max seconds to wait
+
+
+async def poll_for_order(
+    cp_client: CPClient, order_ids: list[int], *, timeout: float = POLL_TIMEOUT
+) -> bool:
+    """Poll until order appears in live orders or timeout."""
+    elapsed = 0.0
+    while elapsed < timeout:
+        live_orders = await cp_client.get_orders()
+        live_order_ids = {o.order_id for o in live_orders}
+        if any(oid in live_order_ids for oid in order_ids):
+            return True
+        await asyncio.sleep(POLL_INTERVAL)
+        elapsed += POLL_INTERVAL
+    return False
+
 
 class TestOrderPlacement:
     """Test order placement on Paper Trading account"""
@@ -41,7 +60,7 @@ class TestOrderPlacement:
             tif="DAY",
         )
         replies = await cp_client.place_order(order)
-        assert len(replies) > 0
+        assert replies, "Order placement should return at least one reply"
 
         # Track for cleanup
         cleanup_orders.extend(int(reply.order_id) for reply in replies if reply.order_id)
@@ -63,17 +82,14 @@ class TestOrderPlacement:
             tif="DAY",
         )
         replies = await cp_client.place_order(order)
+        assert replies, "Order placement should return at least one reply"
 
         order_ids = [int(r.order_id) for r in replies if r.order_id]
         cleanup_orders.extend(order_ids)
 
-        # Wait briefly for order to propagate
-        await asyncio.sleep(1)
-
-        # Verify order appears in live orders
-        live_orders = await cp_client.get_orders()
-        live_order_ids = {o.order_id for o in live_orders}
-        assert any(oid in live_order_ids for oid in order_ids)
+        # Poll until order appears in live orders
+        found = await poll_for_order(cp_client, order_ids)
+        assert found, f"Order(s) {order_ids} not found in live orders within {POLL_TIMEOUT}s"
 
 
 class TestOrderModification:
@@ -97,11 +113,12 @@ class TestOrderModification:
             tif="DAY",
         )
         replies = await cp_client.place_order(order)
+        assert replies, "Order placement should return at least one reply"
         order_id = int(replies[0].order_id) if replies[0].order_id else None
         assert order_id is not None
         cleanup_orders.append(order_id)
 
-        await asyncio.sleep(1)
+        assert await poll_for_order(cp_client, [order_id])
 
         # Modify price
         mod_replies = await cp_client.modify_order(
@@ -128,11 +145,12 @@ class TestOrderModification:
             tif="DAY",
         )
         replies = await cp_client.place_order(order)
+        assert replies, "Order placement should return at least one reply"
         order_id = int(replies[0].order_id) if replies[0].order_id else None
         assert order_id is not None
         cleanup_orders.append(order_id)
 
-        await asyncio.sleep(1)
+        assert await poll_for_order(cp_client, [order_id])
 
         # Modify quantity
         mod_replies = await cp_client.modify_order(
@@ -162,22 +180,26 @@ class TestOrderCancellation:
             tif="DAY",
         )
         replies = await cp_client.place_order(order)
+        assert replies, "Order placement should return at least one reply"
         order_id = int(replies[0].order_id) if replies[0].order_id else None
         assert order_id is not None
 
-        await asyncio.sleep(1)
+        assert await poll_for_order(cp_client, [order_id])
 
         # Cancel
         result = await cp_client.cancel_order(paper_account_id, order_id)
         assert isinstance(result, dict)
 
-        # Verify order is cancelled or pending cancel
-        await asyncio.sleep(1)
-        live_orders = await cp_client.get_orders()
+        # Poll until order is cancelled
+        elapsed = 0.0
         cancelled_statuses = {CPOrderStatus.CANCELLED, CPOrderStatus.PENDING_CANCEL}
-        for o in live_orders:
-            if o.order_id == order_id:
-                assert o.status in cancelled_statuses
+        while elapsed < POLL_TIMEOUT:
+            live_orders = await cp_client.get_orders()
+            for o in live_orders:
+                if o.order_id == order_id and o.status in cancelled_statuses:
+                    return  # Test passed
+            await asyncio.sleep(POLL_INTERVAL)
+            elapsed += POLL_INTERVAL
 
     @pytest.mark.skip(reason="Full lifecycle test — run manually for comprehensive validation")
     async def test_full_order_lifecycle(
@@ -197,12 +219,12 @@ class TestOrderCancellation:
             tif="DAY",
         )
         replies = await cp_client.place_order(order)
+        assert replies, "Order placement should return at least one reply"
         order_id = int(replies[0].order_id) if replies[0].order_id else None
         assert order_id is not None
 
-        await asyncio.sleep(2)
-
         # Verify placed
+        assert await poll_for_order(cp_client, [order_id])
         orders = await cp_client.get_orders()
         placed = [o for o in orders if o.order_id == order_id]
         assert len(placed) == 1
@@ -214,14 +236,20 @@ class TestOrderCancellation:
             limit_price=Decimal("1.11"),
             quantity=Decimal("2"),
         )
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
         # Cancel
         await cp_client.cancel_order(paper_account_id, order_id)
-        await asyncio.sleep(2)
 
         # Verify cancelled
-        orders = await cp_client.get_orders()
-        for o in orders:
-            if o.order_id == order_id:
-                assert o.status in {CPOrderStatus.CANCELLED, CPOrderStatus.PENDING_CANCEL}
+        elapsed = 0.0
+        while elapsed < POLL_TIMEOUT:
+            orders = await cp_client.get_orders()
+            for o in orders:
+                if o.order_id == order_id and o.status in {
+                    CPOrderStatus.CANCELLED,
+                    CPOrderStatus.PENDING_CANCEL,
+                }:
+                    return
+            await asyncio.sleep(POLL_INTERVAL)
+            elapsed += POLL_INTERVAL

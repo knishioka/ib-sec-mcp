@@ -69,9 +69,10 @@ class TestOrderSync:
             tif="DAY",
         )
         replies = await cp_client.place_order(order)
+        assert replies, "Order placement should return at least one reply"
         order_id = int(replies[0].order_id) if replies[0].order_id else None
-        if order_id:
-            cleanup_orders.append(order_id)
+        assert order_id is not None, "Order placement should return an order ID"
+        cleanup_orders.append(order_id)
 
         await asyncio.sleep(1)
 
@@ -121,6 +122,16 @@ class TestOrderSync:
         # Second sync — should detect cancellation
         result2 = await sync_orders_from_ib(cp_client, store)
         assert result2.errors == []
+
+        # Verify order status is CANCELLED in local DB
+        history = store.get_order_history()
+        synced = [
+            o for o in history if o["symbol"] == "AAPL" and o["limit_price"] == Decimal("1.07")
+        ]
+        assert len(synced) > 0, "Synced order should exist in local DB"
+        assert synced[0]["status"] == "CANCELLED", (
+            f"Order should be CANCELLED after sync, got {synced[0]['status']}"
+        )
 
 
 class TestTrySyncFromIB:
