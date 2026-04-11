@@ -73,8 +73,8 @@ secretGroup = 1
 [allowlist]
 description = "Allowlisted files and patterns"
 paths = [
-    # Test files and examples
-    '''tests/fixtures/.*''',
+    # Test files and examples (dummy account IDs in test data)
+    '''tests/.*''',
     '''\.env\.example$''',
     '''\.env\.template$''',
 
