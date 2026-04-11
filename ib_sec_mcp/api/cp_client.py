@@ -270,8 +270,17 @@ class CPClient:
         while page < max_pages:
             data = await self._request("GET", f"/v1/api/portfolio/{account_id}/positions/{page}")
 
-            if not isinstance(data, list) or len(data) == 0:
+            if isinstance(data, list) and len(data) == 0:
                 break
+
+            if not isinstance(data, list):
+                if page == 0:
+                    # First page returning non-list means no positions
+                    break
+                raise CPClientError(
+                    f"Unexpected response on positions page {page}: "
+                    f"expected list, got {type(data).__name__}"
+                )
 
             all_positions.extend(CPPosition.model_validate(p) for p in data)
             page += 1

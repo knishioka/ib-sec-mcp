@@ -474,6 +474,36 @@ class TestCPClientPositions:
             # Verify all 3 pages were requested (page 0, 1, 2)
             assert client._client.request.call_count == 4  # auth + 3 pages
 
+    @pytest.mark.asyncio
+    async def test_get_positions_non_list_response_mid_pagination_raises(
+        self, cp_client: CPClient
+    ) -> None:
+        """Non-list response after page 0 should raise CPClientError"""
+        auth_response = make_async_mock_response(AUTH_AUTHENTICATED)
+        page0_response = make_async_mock_response(SAMPLE_POSITIONS)
+        # Simulate gateway returning a dict message on page 1
+        bad_response = make_async_mock_response({"message": "temporary error"})
+
+        async with cp_client as client:
+            client._client.request = AsyncMock(
+                side_effect=[auth_response, page0_response, bad_response]
+            )
+            with pytest.raises(CPClientError, match="Unexpected response on positions page 1"):
+                await client.get_positions("U1234567")
+
+    @pytest.mark.asyncio
+    async def test_get_positions_non_list_first_page_returns_empty(
+        self, cp_client: CPClient
+    ) -> None:
+        """Non-list response on first page returns empty (no positions)"""
+        auth_response = make_async_mock_response(AUTH_AUTHENTICATED)
+        dict_response = make_async_mock_response({"message": "no data"})
+
+        async with cp_client as client:
+            client._client.request = AsyncMock(side_effect=[auth_response, dict_response])
+            positions = await client.get_positions("U1234567")
+            assert positions == []
+
 
 # ---------------------------------------------------------------------------
 # TestCPClientSecurity
