@@ -275,6 +275,13 @@ class CPClient:
 
             all_positions.extend(CPPosition.model_validate(p) for p in data)
             page += 1
+        else:
+            logger.warning(
+                "Reached max_pages (%d) while fetching positions for account %s. "
+                "Data may be truncated.",
+                max_pages,
+                mask_sensitive(account_id, show_chars=3),
+            )
 
         if page > 1:
             logger.info(
