@@ -37,6 +37,10 @@ description = "Interactive Brokers Account ID"
 regex = '''U\d{7,10}'''
 # Note: No keywords required - should always detect U followed by 7-10 digits
 
+[rules.allowlist]
+# Test files use dummy account IDs (U1234567 etc.) - only suppress this rule, not others
+paths = ['''tests/.*''']
+
 # Additional security patterns
 [[rules]]
 id = "generic-api-key"
@@ -73,7 +77,6 @@ secretGroup = 1
 [allowlist]
 description = "Allowlisted files and patterns"
 paths = [
-    # Test files and examples
     '''tests/fixtures/.*''',
     '''\.env\.example$''',
     '''\.env\.template$''',

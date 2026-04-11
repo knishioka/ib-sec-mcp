@@ -32,7 +32,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+          fetch-depth: ${{ github.event_name == 'schedule' && 1 || 0 }}
+
+      # push/PR: scan new commits only (action default behaviour)
+      - if: github.event_name != 'schedule'
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # schedule: scan working tree only (skip history false-positives)
+      - if: github.event_name == 'schedule'
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --no-git --source .
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
