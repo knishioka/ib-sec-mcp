@@ -243,7 +243,10 @@ class CPClient:
 
     async def get_positions(self, account_id: str) -> list[CPPosition]:
         """
-        Get positions for an account
+        Get all positions for an account (handles pagination)
+
+        The IB API paginates positions (~30 per page). This method
+        fetches all pages until an empty response is returned.
 
         Args:
             account_id: IB account ID
@@ -259,11 +262,45 @@ class CPClient:
             "Fetching positions for account %s",
             mask_sensitive(account_id, show_chars=3),
         )
-        data = await self._request("GET", f"/v1/api/portfolio/{account_id}/positions/0")
 
-        if isinstance(data, list):
-            return [CPPosition.model_validate(p) for p in data]
-        return []
+        all_positions: list[CPPosition] = []
+        page = 0
+        max_pages = 100  # Safety limit to prevent infinite loops
+
+        while page < max_pages:
+            data = await self._request("GET", f"/v1/api/portfolio/{account_id}/positions/{page}")
+
+            if isinstance(data, list) and len(data) == 0:
+                break
+
+            if not isinstance(data, list):
+                if page == 0:
+                    # First page returning non-list means no positions
+                    break
+                raise CPClientError(
+                    f"Unexpected response on positions page {page}: "
+                    f"expected list, got {type(data).__name__}"
+                )
+
+            all_positions.extend(CPPosition.model_validate(p) for p in data)
+            page += 1
+        else:
+            logger.warning(
+                "Reached max_pages (%d) while fetching positions for account %s. "
+                "Data may be truncated.",
+                max_pages,
+                mask_sensitive(account_id, show_chars=3),
+            )
+
+        if page > 1:
+            logger.info(
+                "Fetched %d positions across %d pages for account %s",
+                len(all_positions),
+                page,
+                mask_sensitive(account_id, show_chars=3),
+            )
+
+        return all_positions
 
     async def place_order(
         self,
@@ -423,10 +460,13 @@ class CPClient:
         Ensure session is authenticated, reauthenticate if needed
 
         Raises:
+            CPConnectionError: If gateway is unreachable
             CPAuthenticationError: If authentication cannot be established
         """
         try:
             status = await self.check_auth_status()
+        except CPConnectionError:
+            raise
         except CPClientError as e:
             raise CPAuthenticationError(f"Cannot verify auth status: {e}") from e
 

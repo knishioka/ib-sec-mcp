@@ -405,9 +405,12 @@ class TestCPClientPositions:
     async def test_get_positions(self, cp_client: CPClient) -> None:
         auth_response = make_async_mock_response(AUTH_AUTHENTICATED)
         positions_response = make_async_mock_response(SAMPLE_POSITIONS)
+        empty_response = make_async_mock_response([])
 
         async with cp_client as client:
-            client._client.request = AsyncMock(side_effect=[auth_response, positions_response])
+            client._client.request = AsyncMock(
+                side_effect=[auth_response, positions_response, empty_response]
+            )
             positions = await client.get_positions("U1234567")
 
             assert len(positions) == 1
@@ -422,6 +425,82 @@ class TestCPClientPositions:
 
         async with cp_client as client:
             client._client.request = AsyncMock(side_effect=[auth_response, empty_response])
+            positions = await client.get_positions("U1234567")
+            assert positions == []
+
+    @pytest.mark.asyncio
+    async def test_get_positions_paginated(self, cp_client: CPClient) -> None:
+        """Test that get_positions fetches all pages until empty response"""
+        auth_response = make_async_mock_response(AUTH_AUTHENTICATED)
+        page0_positions = [
+            {
+                "acctId": "U1234567",
+                "conid": 265598,
+                "symbol": "AAPL",
+                "position": "100",
+                "mktPrice": "175.50",
+                "mktValue": "17550.00",
+                "avgCost": "150.25",
+                "unrealizedPnl": "2525.00",
+                "currency": "USD",
+            }
+        ]
+        page1_positions = [
+            {
+                "acctId": "U1234567",
+                "conid": 272093,
+                "symbol": "MSFT",
+                "position": "50",
+                "mktPrice": "400.00",
+                "mktValue": "20000.00",
+                "avgCost": "350.00",
+                "unrealizedPnl": "2500.00",
+                "currency": "USD",
+            }
+        ]
+        page0_response = make_async_mock_response(page0_positions)
+        page1_response = make_async_mock_response(page1_positions)
+        empty_response = make_async_mock_response([])
+
+        async with cp_client as client:
+            client._client.request = AsyncMock(
+                side_effect=[auth_response, page0_response, page1_response, empty_response]
+            )
+            positions = await client.get_positions("U1234567")
+
+            assert len(positions) == 2
+            assert positions[0].symbol == "AAPL"
+            assert positions[1].symbol == "MSFT"
+            # Verify all 3 pages were requested (page 0, 1, 2)
+            assert client._client.request.call_count == 4  # auth + 3 pages
+
+    @pytest.mark.asyncio
+    async def test_get_positions_non_list_response_mid_pagination_raises(
+        self, cp_client: CPClient
+    ) -> None:
+        """Non-list response after page 0 should raise CPClientError"""
+        auth_response = make_async_mock_response(AUTH_AUTHENTICATED)
+        page0_response = make_async_mock_response(SAMPLE_POSITIONS)
+        # Simulate gateway returning a dict message on page 1
+        bad_response = make_async_mock_response({"message": "temporary error"})
+
+        async with cp_client as client:
+            client._client.request = AsyncMock(
+                side_effect=[auth_response, page0_response, bad_response]
+            )
+            with pytest.raises(CPClientError, match="Unexpected response on positions page 1"):
+                await client.get_positions("U1234567")
+
+    @pytest.mark.asyncio
+    async def test_get_positions_non_list_first_page_returns_empty(
+        self, cp_client: CPClient
+    ) -> None:
+        """Non-list response on first page returns empty (no positions)"""
+        auth_response = make_async_mock_response(AUTH_AUTHENTICATED)
+        dict_response = make_async_mock_response({"message": "no data"})
+
+        async with cp_client as client:
+            client._client.request = AsyncMock(side_effect=[auth_response, dict_response])
             positions = await client.get_positions("U1234567")
             assert positions == []
 
@@ -477,6 +556,16 @@ class TestCPClientConnection:
             client._client.request = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
             with pytest.raises(CPConnectionError, match="Cannot connect to gateway"):
                 await client._request("GET", "/test")
+
+    @pytest.mark.asyncio
+    async def test_ensure_authenticated_preserves_connection_error(
+        self, cp_client: CPClient
+    ) -> None:
+        """Test that CPConnectionError is not masked as CPAuthenticationError"""
+        async with cp_client as client:
+            client._client.request = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
+            with pytest.raises(CPConnectionError, match="Cannot connect to gateway"):
+                await client._ensure_authenticated()
 
     @pytest.mark.asyncio
     async def test_context_manager(self, cp_client: CPClient) -> None:
