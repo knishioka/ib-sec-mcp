@@ -17,7 +17,12 @@ async def _maybe_await(value: Any) -> Any:
 
 async def get_tool(mcp: FastMCP, name: str) -> Any:
     """Fetch a registered tool via FastMCP's public API."""
-    tool = await _maybe_await(mcp.get_tool(name))
+    if hasattr(mcp, "get_tool"):
+        tool = await _maybe_await(mcp.get_tool(name))
+    else:
+        tools = await _maybe_await(mcp.get_tools())
+        tool = tools.get(name)
+
     if tool is None:
         raise AssertionError(f"Expected tool {name!r} to be registered")
     return tool
@@ -53,7 +58,7 @@ async def list_resource_template_uris(mcp: FastMCP) -> set[str]:
     """List registered resource template URIs across FastMCP 2 and 3."""
     if hasattr(mcp, "list_resource_templates"):
         templates = await _maybe_await(mcp.list_resource_templates())
-        return {str(getattr(template, "uri", template.uri_template)) for template in templates}
+        return {str(getattr(template, "uri", getattr(template, "uri_template", ""))) for template in templates}
 
     templates = await _maybe_await(mcp.get_resource_templates())
     return set(templates.keys())
