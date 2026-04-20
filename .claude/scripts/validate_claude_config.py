@@ -39,6 +39,11 @@ class ValidationMessage:
     suggestion: str | None = None
 
 
+def _write_line(text: str = "") -> None:
+    """Write a single line to stdout without using print()."""
+    sys.stdout.write(f"{text}\n")
+
+
 class FrontmatterParser:
     """Parse YAML frontmatter from Markdown files"""
 
@@ -163,7 +168,7 @@ class SubAgentValidator:
         messages = []
 
         content = file_path.read_text()
-        frontmatter, fm_end = FrontmatterParser.extract(content)
+        frontmatter, _fm_end = FrontmatterParser.extract(content)
 
         # Check frontmatter exists
         if frontmatter is None:
@@ -179,17 +184,17 @@ class SubAgentValidator:
             return messages
 
         # Check required fields
-        for field in SubAgentValidator.REQUIRED_FIELDS:
-            if field not in frontmatter:
-                messages.append(
-                    ValidationMessage(
-                        Severity.ERROR,
-                        file_path,
-                        None,
-                        f"Missing required field: {field}",
-                        f"Add '{field}: value' to frontmatter",
-                    )
-                )
+        messages.extend(
+            ValidationMessage(
+                Severity.ERROR,
+                file_path,
+                None,
+                f"Missing required field: {field}",
+                f"Add '{field}: value' to frontmatter",
+            )
+            for field in SubAgentValidator.REQUIRED_FIELDS
+            if field not in frontmatter
+        )
 
         # Validate name format (kebab-case)
         if "name" in frontmatter:
@@ -311,17 +316,17 @@ class CommandValidator:
             return messages
 
         # Check required fields
-        for field in CommandValidator.REQUIRED_FIELDS:
-            if field not in frontmatter:
-                messages.append(
-                    ValidationMessage(
-                        Severity.ERROR,
-                        file_path,
-                        None,
-                        f"Missing required field: {field}",
-                        f"Add '{field}: value' to frontmatter",
-                    )
-                )
+        messages.extend(
+            ValidationMessage(
+                Severity.ERROR,
+                file_path,
+                None,
+                f"Missing required field: {field}",
+                f"Add '{field}: value' to frontmatter",
+            )
+            for field in CommandValidator.REQUIRED_FIELDS
+            if field not in frontmatter
+        )
 
         # Validate description (should be concise)
         if "description" in frontmatter:
@@ -377,17 +382,18 @@ class CommandValidator:
         content_body = "\n".join(lines)
 
         # Check for $ARGUMENTS usage
-        if "$ARGUMENTS" in content_body or "$1" in content_body:
-            if "argument-hint" not in frontmatter:
-                messages.append(
-                    ValidationMessage(
-                        Severity.WARNING,
-                        file_path,
-                        None,
-                        "Uses $ARGUMENTS but no argument-hint in frontmatter",
-                        "Add 'argument-hint: [expected-args]' for documentation",
-                    )
+        if ("$ARGUMENTS" in content_body or "$1" in content_body) and (
+            "argument-hint" not in frontmatter
+        ):
+            messages.append(
+                ValidationMessage(
+                    Severity.WARNING,
+                    file_path,
+                    None,
+                    "Uses $ARGUMENTS but no argument-hint in frontmatter",
+                    "Add 'argument-hint: [expected-args]' for documentation",
                 )
+            )
 
         # Check Task delegation syntax
         task_pattern = re.compile(r"Task\([a-z-]+\)")
@@ -505,9 +511,11 @@ class ConfigValidator:
             by_file[msg.file_path].append(msg)
 
         # Print results
-        print("\n" + "=" * 60)
-        print("Claude Code Configuration Validation Results")
-        print("=" * 60 + "\n")
+        _write_line()
+        _write_line("=" * 60)
+        _write_line("Claude Code Configuration Validation Results")
+        _write_line("=" * 60)
+        _write_line()
 
         for file_path, file_messages in sorted(by_file.items()):
             file_errors = [m for m in file_messages if m.severity == Severity.ERROR]
@@ -521,7 +529,7 @@ class ConfigValidator:
             else:
                 status = Severity.SUCCESS.value
 
-            print(f"{status} {file_path.relative_to(file_path.parent.parent.parent)}")
+            _write_line(f"{status} {file_path.relative_to(file_path.parent.parent.parent)}")
 
             # Print messages
             for msg in file_messages:
@@ -530,20 +538,21 @@ class ConfigValidator:
 
                 indent = "   "
                 line_info = f"Line {msg.line_number}: " if msg.line_number else ""
-                print(f"{indent}{msg.severity.value} {line_info}{msg.message}")
+                _write_line(f"{indent}{msg.severity.value} {line_info}{msg.message}")
 
                 if msg.suggestion:
-                    print(f"{indent}   💡 {msg.suggestion}")
+                    _write_line(f"{indent}   💡 {msg.suggestion}")
 
-            print()
+            _write_line()
 
         # Summary
-        print("=" * 60)
-        print("Summary:")
-        print(f"  {Severity.ERROR.value} Errors: {len(errors)}")
-        print(f"  {Severity.WARNING.value} Warnings: {len(warnings)}")
-        print(f"  {Severity.INFO.value} Info: {len(info)}")
-        print("=" * 60 + "\n")
+        _write_line("=" * 60)
+        _write_line("Summary:")
+        _write_line(f"  {Severity.ERROR.value} Errors: {len(errors)}")
+        _write_line(f"  {Severity.WARNING.value} Warnings: {len(warnings)}")
+        _write_line(f"  {Severity.INFO.value} Info: {len(info)}")
+        _write_line("=" * 60)
+        _write_line()
 
         # Return code
         return 1 if errors else 0
@@ -594,7 +603,7 @@ def main():
                         messages.extend(validator.validate_file(file_path))
 
         except subprocess.CalledProcessError:
-            print("Error: Git not available or not in a git repository")
+            _write_line("Error: Git not available or not in a git repository")
             return 1
 
     else:
@@ -605,7 +614,7 @@ def main():
     exit_code = validator.print_results(messages, verbose=args.verbose)
 
     if args.fix:
-        print("Note: Auto-fix not yet implemented")
+        _write_line("Note: Auto-fix not yet implemented")
 
     return exit_code
 
