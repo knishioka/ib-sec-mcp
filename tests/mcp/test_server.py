@@ -1,10 +1,9 @@
-"""MCP server startup smoke tests
+"""MCP server startup smoke tests.
 
 Verifies that the server starts correctly and all expected tools and resources are registered.
 """
 
 import asyncio
-from typing import Any
 
 import pytest
 from fastmcp import FastMCP
@@ -21,6 +20,11 @@ from ib_sec_mcp.mcp.resources import (
     RESOURCE_USER_PROFILE,
 )
 from ib_sec_mcp.mcp.server import create_server
+from tests.mcp._fastmcp_helpers import (
+    list_resource_template_uris,
+    list_resource_uris,
+    list_tool_names,
+)
 
 # All expected tool names
 EXPECTED_TOOLS = {
@@ -132,19 +136,19 @@ class TestMCPServerStartup:
         return create_server()
 
     @pytest.fixture(scope="class")
-    def registered_tools(self, server: FastMCP) -> dict[str, Any]:
-        """Fetch registered tools once for all tests in the class"""
-        return asyncio.run(server.get_tools())
+    def registered_tools(self, server: FastMCP) -> set[str]:
+        """Fetch registered tool names once for all tests in the class."""
+        return asyncio.run(list_tool_names(server))
 
     @pytest.fixture(scope="class")
-    def registered_resources(self, server: FastMCP) -> dict[str, Any]:
-        """Fetch registered resources once for all tests in the class"""
-        return asyncio.run(server.get_resources())
+    def registered_resources(self, server: FastMCP) -> set[str]:
+        """Fetch registered static resource URIs once for all tests in the class."""
+        return asyncio.run(list_resource_uris(server))
 
     @pytest.fixture(scope="class")
-    def registered_templates(self, server: FastMCP) -> dict[str, Any]:
-        """Fetch registered resource templates once for all tests in the class"""
-        return asyncio.run(server.get_resource_templates())
+    def registered_templates(self, server: FastMCP) -> set[str]:
+        """Fetch registered resource template URIs once for all tests in the class."""
+        return asyncio.run(list_resource_template_uris(server))
 
     def test_server_is_fastmcp_instance(self, server: FastMCP) -> None:
         """create_server() returns a FastMCP instance"""
@@ -154,19 +158,18 @@ class TestMCPServerStartup:
         """Server is named ib-sec-mcp"""
         assert server.name == "ib-sec-mcp"
 
-    def test_all_expected_tools_registered(self, registered_tools: dict[str, Any]) -> None:
+    def test_all_expected_tools_registered(self, registered_tools: set[str]) -> None:
         """All expected tools are registered, with no extras or missing"""
-        registered_names = set(registered_tools.keys())
-        assert registered_names == EXPECTED_TOOLS, (
-            f"Missing: {EXPECTED_TOOLS - registered_names}, "
-            f"Unexpected: {registered_names - EXPECTED_TOOLS}"
+        assert registered_tools == EXPECTED_TOOLS, (
+            f"Missing: {EXPECTED_TOOLS - registered_tools}, "
+            f"Unexpected: {registered_tools - EXPECTED_TOOLS}"
         )
 
     def test_all_resource_uris_registered(
-        self, registered_resources: dict[str, Any], registered_templates: dict[str, Any]
+        self, registered_resources: set[str], registered_templates: set[str]
     ) -> None:
         """All expected resource URIs (static + templates) are registered"""
-        all_registered = set(registered_resources.keys()) | set(registered_templates.keys())
+        all_registered = registered_resources | registered_templates
         all_expected = EXPECTED_RESOURCES | EXPECTED_RESOURCE_TEMPLATES
         assert all_registered == all_expected, (
             f"Missing: {all_expected - all_registered}, Unexpected: {all_registered - all_expected}"

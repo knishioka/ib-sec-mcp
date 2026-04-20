@@ -17,6 +17,7 @@ from ib_sec_mcp.mcp.tools.rebalancing import (
 from ib_sec_mcp.models.account import Account, CashBalance
 from ib_sec_mcp.models.position import Position
 from ib_sec_mcp.models.trade import AssetClass
+from tests.mcp._fastmcp_helpers import call_tool_fn
 
 
 @pytest.fixture
@@ -210,8 +211,9 @@ class TestGenerateRebalancingTrades:
             ),
         ):
             # Target: equal weight across three stocks
-            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"AAPL": 33.33, "MSFT": 33.33, "VOO": 33.34},
                 start_date="2025-01-01",
                 end_date="2025-06-30",
@@ -243,8 +245,9 @@ class TestGenerateRebalancingTrades:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"AAPL": 25.0, "MSFT": 25.0, "VOO": 25.0, "GOOG": 25.0},
                 start_date="2025-01-01",
             )
@@ -276,8 +279,9 @@ class TestGenerateRebalancingTrades:
             ),
         ):
             # Target only AAPL and VOO, closing MSFT
-            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"AAPL": 60.0, "VOO": 40.0},
                 start_date="2025-01-01",
             )
@@ -305,8 +309,9 @@ class TestGenerateRebalancingTrades:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"AAPL": 50.0, "MSFT": 50.0},
                 start_date="2025-01-01",
                 total_portfolio_value=100000.0,
@@ -320,9 +325,10 @@ class TestGenerateRebalancingTrades:
         """Test that empty target allocation raises ValidationError."""
         mcp = mcp_with_rebalancing_tools
 
-        tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
         with pytest.raises(ValidationError, match="target_allocation cannot be empty"):
-            await tool_fn(
+            await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={},
                 start_date="2025-01-01",
             )
@@ -332,9 +338,10 @@ class TestGenerateRebalancingTrades:
         """Test that weights not summing to 100 raises ValidationError."""
         mcp = mcp_with_rebalancing_tools
 
-        tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
         with pytest.raises(ValidationError, match="must sum to 100"):
-            await tool_fn(
+            await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"AAPL": 30.0, "MSFT": 30.0},
                 start_date="2025-01-01",
             )
@@ -344,9 +351,10 @@ class TestGenerateRebalancingTrades:
         """Test that negative weight raises ValidationError."""
         mcp = mcp_with_rebalancing_tools
 
-        tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
         with pytest.raises(ValidationError, match="must be non-negative"):
-            await tool_fn(
+            await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"AAPL": -10.0, "MSFT": 110.0},
                 start_date="2025-01-01",
             )
@@ -368,23 +376,25 @@ class TestGenerateRebalancingTrades:
                 "ib_sec_mcp.mcp.tools.rebalancing._parse_account_by_index",
                 return_value=sample_account,
             ),
+            pytest.raises(ValidationError, match="must be positive"),
         ):
-            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
-            with pytest.raises(ValidationError, match="must be positive"):
-                await tool_fn(
-                    target_allocation={"AAPL": 100.0},
-                    start_date="2025-01-01",
-                    total_portfolio_value=-1000.0,
-                )
+            await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
+                target_allocation={"AAPL": 100.0},
+                start_date="2025-01-01",
+                total_portfolio_value=-1000.0,
+            )
 
     @pytest.mark.asyncio
     async def test_validation_empty_symbol(self, mcp_with_rebalancing_tools):
         """Test that empty symbol raises ValidationError."""
         mcp = mcp_with_rebalancing_tools
 
-        tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
         with pytest.raises(ValidationError, match="Symbol cannot be empty"):
-            await tool_fn(
+            await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"": 100.0},
                 start_date="2025-01-01",
             )
@@ -407,8 +417,9 @@ class TestGenerateRebalancingTrades:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"AAPL": 33.33, "MSFT": 33.33, "VOO": 33.34},
                 start_date="2025-01-01",
             )
@@ -436,8 +447,9 @@ class TestGenerateRebalancingTrades:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"AAPL": 50.0, "MSFT": 50.0},
                 start_date="2025-01-01",
             )
@@ -520,10 +532,11 @@ class TestGenerateRebalancingTrades:
                 return_value=account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["generate_rebalancing_trades"].fn
             # Tiny rebalance on BRK.A (target 96% vs current ~95.89%)
             # Trade value ~$800 / $700,000 mark_price = 0.001 shares → 0
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "generate_rebalancing_trades",
                 target_allocation={"BRK.A": 96.0, "AAPL": 4.0},
                 start_date="2025-01-01",
             )
@@ -555,8 +568,9 @@ class TestSimulateRebalancing:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
                 target_allocation={"AAPL": 33.33, "MSFT": 33.33, "VOO": 33.34},
                 start_date="2025-01-01",
             )
@@ -589,8 +603,9 @@ class TestSimulateRebalancing:
             ),
         ):
             # Sell MSFT (has unrealized gain of $2500) to buy more AAPL
-            tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
                 target_allocation={"AAPL": 80.0, "VOO": 20.0},
                 start_date="2025-01-01",
             )
@@ -620,8 +635,9 @@ class TestSimulateRebalancing:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
                 target_allocation={"AAPL": 25.0, "MSFT": 25.0, "VOO": 25.0, "GOOG": 25.0},
                 start_date="2025-01-01",
             )
@@ -649,8 +665,9 @@ class TestSimulateRebalancing:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
                 target_allocation={"AAPL": 60.0, "VOO": 40.0},
                 start_date="2025-01-01",
             )
@@ -665,13 +682,18 @@ class TestSimulateRebalancing:
         """Test that simulation validates inputs properly."""
         mcp = mcp_with_rebalancing_tools
 
-        tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
-
         with pytest.raises(ValidationError, match="target_allocation cannot be empty"):
-            await tool_fn(target_allocation={}, start_date="2025-01-01")
+            await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
+                target_allocation={},
+                start_date="2025-01-01",
+            )
 
         with pytest.raises(ValidationError, match="must sum to 100"):
-            await tool_fn(
+            await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
                 target_allocation={"AAPL": 50.0},
                 start_date="2025-01-01",
             )
@@ -694,8 +716,9 @@ class TestSimulateRebalancing:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
                 target_allocation={"AAPL": 50.0, "MSFT": 50.0},
                 start_date="2025-01-01",
             )
@@ -724,8 +747,9 @@ class TestSimulateRebalancing:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
                 target_allocation={"AAPL": 50.0, "MSFT": 25.0, "VOO": 25.0},
                 start_date="2025-01-01",
             )
@@ -751,8 +775,9 @@ class TestSimulateRebalancing:
                 return_value=sample_account,
             ),
         ):
-            tool_fn = mcp._tool_manager._tools["simulate_rebalancing"].fn
-            result_str = await tool_fn(
+            result_str = await call_tool_fn(
+                mcp,
+                "simulate_rebalancing",
                 target_allocation={"AAPL": 50.0, "MSFT": 50.0},
                 start_date="2025-01-01",
                 total_portfolio_value=200000.0,
