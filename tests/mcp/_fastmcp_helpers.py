@@ -58,7 +58,10 @@ async def list_resource_template_uris(mcp: FastMCP) -> set[str]:
     """List registered resource template URIs across FastMCP 2 and 3."""
     if hasattr(mcp, "list_resource_templates"):
         templates = await _maybe_await(mcp.list_resource_templates())
-        return {str(getattr(template, "uri", getattr(template, "uri_template", ""))) for template in templates}
+        return {
+            str(getattr(template, "uri", getattr(template, "uri_template", "")))
+            for template in templates
+        }
 
     templates = await _maybe_await(mcp.get_resource_templates())
     return set(templates.keys())
