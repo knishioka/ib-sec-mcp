@@ -16,6 +16,7 @@ from ib_sec_mcp.storage import PositionStore
 
 DEFAULT_DB_PATH = "data/processed/positions.db"
 ACCOUNT_ID_ENV_VARS = ("IB_ACCOUNT_ID", "ACCOUNT_ID", "IBKR_ACCOUNT_ID")
+FETCH_CONCURRENCY_LIMIT = 8
 
 
 def _today() -> date:
@@ -206,15 +207,22 @@ def _build_calendar_entry(
     if days_until_earnings is None and days_until_ex_dividend is None:
         return None
 
+    next_earnings_date = (
+        earnings_date.isoformat()
+        if earnings_date is not None and days_until_earnings is not None
+        else None
+    )
+    ex_dividend_date_iso = (
+        ex_dividend_date.isoformat()
+        if ex_dividend_date is not None and days_until_ex_dividend is not None
+        else None
+    )
+
     return {
         "symbol": symbol,
-        "next_earnings_date": earnings_date.isoformat()
-        if days_until_earnings is not None
-        else None,
+        "next_earnings_date": next_earnings_date,
         "days_until_earnings": days_until_earnings,
-        "ex_dividend_date": (
-            ex_dividend_date.isoformat() if days_until_ex_dividend is not None else None
-        ),
+        "ex_dividend_date": ex_dividend_date_iso,
         "days_until_ex_dividend": days_until_ex_dividend,
     }
 
@@ -250,6 +258,17 @@ async def _fetch_calendar_entry(
         return _build_calendar_entry(symbol, calendar, current_date, days_ahead)
     except Exception as exc:
         return {"symbol": symbol, "error": str(exc)}
+
+
+async def _fetch_calendar_entry_with_limit(
+    symbol: str,
+    current_date: date,
+    days_ahead: int,
+    semaphore: asyncio.Semaphore,
+) -> dict[str, Any] | None:
+    """Fetch one symbol while limiting concurrent yfinance requests."""
+    async with semaphore:
+        return await _fetch_calendar_entry(symbol, current_date, days_ahead)
 
 
 def register_earnings_calendar_tools(mcp: FastMCP) -> None:
@@ -288,9 +307,15 @@ def register_earnings_calendar_tools(mcp: FastMCP) -> None:
             )
 
         current_date = _today()
+        semaphore = asyncio.Semaphore(FETCH_CONCURRENCY_LIMIT)
         fetched_entries = await asyncio.gather(
             *(
-                _fetch_calendar_entry(symbol, current_date, days_ahead)
+                _fetch_calendar_entry_with_limit(
+                    symbol,
+                    current_date,
+                    days_ahead,
+                    semaphore,
+                )
                 for symbol in normalized_symbols
             )
         )
