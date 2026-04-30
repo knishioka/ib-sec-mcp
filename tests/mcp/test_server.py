@@ -107,6 +107,8 @@ EXPECTED_TOOLS = {
     # daily_monitor
     "sync_daily_snapshot",
     "get_sync_status",
+    # earnings_calendar
+    "get_earnings_calendar",
 }
 
 # Non-template resources
