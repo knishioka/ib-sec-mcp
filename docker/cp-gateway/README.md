@@ -96,6 +96,10 @@ To change the host port, edit the `ports` mapping in `docker-compose.yml`.
 
 ## Configuration (`conf.yaml`)
 
+`docker-compose.yml` bind-mounts `conf.yaml` over the image's baked-in copy, so
+you can edit it and apply changes with `docker compose restart` — no rebuild
+required.
+
 Key settings:
 
 - `proxyRemoteHost: "https://api.ibkr.com"` — upstream IBKR API.

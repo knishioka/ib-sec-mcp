@@ -4,6 +4,9 @@ services:
     container_name: ib-cp-gateway
     ports:
       - "5001:5000"
+    volumes:
+      # Override the image's baked-in config without rebuilding.
+      - ./conf.yaml:/app/api_gateway/root/conf.yaml
     restart: unless-stopped
     healthcheck:
       test:
