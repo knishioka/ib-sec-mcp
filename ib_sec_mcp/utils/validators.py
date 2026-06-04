@@ -108,12 +108,15 @@ def validate_isin(isin: str) -> bool:
             value = str(ord(char.upper()) - ord("A") + 10)
             digits.extend(value)
 
-    # Double every second digit from right
+    # Double every second digit from the right. For ISIN check-digit
+    # computation the rightmost digit of the expanded payload (the position
+    # adjacent to the check digit) is doubled, so we double even indices
+    # (0-based) of the reversed string.
     total = 0
     reversed_digits = "".join(digits)[::-1]
     for i, digit in enumerate(reversed_digits):
         digit_value: int = int(digit)
-        if i % 2 == 1:
+        if i % 2 == 0:
             digit_value *= 2
             if digit_value > 9:
                 digit_value = digit_value // 10 + digit_value % 10
