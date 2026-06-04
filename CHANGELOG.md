@@ -11,6 +11,14 @@ All notable changes to this project will be documented in this file.
   - `get_news_sentiment` — removed; use `analyze_market_sentiment` (default `sources="news"`)
   - `validate_etf_price_mcp` — removed from MCP surface; demoted to the internal
     `ib_sec_mcp.tools.etf_calculator.validate_etf_price` helper
+- **Dead code cleanup** (#120):
+  - `ib-sec-report` CLI command and its `cli/report.py` stub (was a "not yet implemented" placeholder; use `ib-sec-analyze --output` instead)
+  - Unreachable IV Rank and Max Pain branches in `OptionsSentimentAnalyzer` (behavior unchanged; sentiment is derived solely from the Put/Call ratio)
+  - `sync_orders_to_ib()` "Phase 2" stub in `storage/order_sync.py` (no callers)
+
+### Changed
+
+- **`FlexQueryClient`** (#120): extracted duplicated SendRequest XML parsing into a shared `_parse_send_request_response()` helper (no behavior change)
 
 ### Added
 

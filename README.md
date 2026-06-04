@@ -84,13 +84,7 @@ ib-sec-analyze --all-accounts
 
 ### 4. Generate Reports
 
-```bash
-# Console report
-ib-sec-report --account U1234567 --format console
-
-# HTML report with charts
-ib-sec-report --account U1234567 --format html --output report.html
-```
+Use `ib-sec-analyze` with its `--output` option to produce reports.
 
 ## Docker Usage
 

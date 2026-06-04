@@ -11,7 +11,6 @@ from ib_sec_mcp.storage.limit_order_store import LimitOrderStore
 from ib_sec_mcp.storage.order_sync import (
     SyncResult,
     sync_orders_from_ib,
-    sync_orders_to_ib,
     try_sync_from_ib,
 )
 
@@ -470,20 +469,6 @@ class TestSyncErrorHandling:
         assert result.added == 0
         assert result.updated == 0
         assert result.skipped == 0
-
-
-# ---------------------------------------------------------------------------
-# Tests: sync_orders_to_ib (Phase 2 stub)
-# ---------------------------------------------------------------------------
-
-
-class TestSyncToIB:
-    @pytest.mark.asyncio
-    async def test_raises_not_implemented(
-        self, mock_cp_client: AsyncMock, store: LimitOrderStore
-    ) -> None:
-        with pytest.raises(NotImplementedError, match="Phase 2"):
-            await sync_orders_to_ib(mock_cp_client, store)
 
 
 # ---------------------------------------------------------------------------

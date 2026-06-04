@@ -60,7 +60,6 @@ reporting = [
 [project.scripts]
 ib-sec-fetch = "ib_sec_mcp.cli.fetch:app"
 ib-sec-analyze = "ib_sec_mcp.cli.analyze:app"
-ib-sec-report = "ib_sec_mcp.cli.report:app"
 ib-sec-mcp = "ib_sec_mcp.mcp.server:main"
 
 [tool.setuptools.packages.find]
