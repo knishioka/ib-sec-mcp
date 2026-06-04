@@ -88,13 +88,20 @@ Use `ib-sec-analyze` with its `--output` option to produce reports.
 
 ## Docker Usage
 
-Run IB Analytics in an isolated container with security hardening (non-root user, read-only filesystem, resource limits).
+The repository ships **two independent Docker setups**:
+
+| Setup          | Location             | Purpose                                                                                  |
+| -------------- | -------------------- | ---------------------------------------------------------------------------------------- |
+| **MCP server** | repository root      | Runs IB Analytics itself in a hardened container (analysis & MCP server)                 |
+| **CP Gateway** | `docker/cp-gateway/` | Runs IBKR's Client Portal Gateway, required for [live trading](#live-trading-cp-gateway) |
+
+Run the MCP server in an isolated container with security hardening (non-root user, read-only filesystem, resource limits):
 
 ```bash
-docker-compose up  # or: docker build -t ib-sec-mcp . && docker run -e QUERY_ID=... -e TOKEN=... ib-sec-mcp
+docker compose up  # or: docker build -t ib-sec-mcp . && docker run -e QUERY_ID=... -e TOKEN=... ib-sec-mcp
 ```
 
-See [docs/docker.md](docs/docker.md) for full setup, docker-compose configuration, and troubleshooting.
+See [docs/docker.md](docs/docker.md) for full setup of both containers, docker-compose configuration, and troubleshooting.
 
 ## Programmatic Usage
 
@@ -152,7 +159,7 @@ ib-sec/
 ├─────────────────────────────────────┤
 │    Reports Layer (console/html)     │
 ├─────────────────────────────────────┤
-│   Analyzers Layer (5 analyzers)     │
+│   Analyzers Layer (7 analyzers)     │
 ├─────────────────────────────────────┤
 │  Core Logic (parser/calc/agg)       │
 ├─────────────────────────────────────┤
@@ -171,18 +178,27 @@ See [docs/architecture.md](docs/architecture.md) for design patterns, data flow 
 - **CostAnalyzer**: Commission and cost efficiency analysis
 - **RiskAnalyzer**: Interest rate and market risk scenarios
 - **BondAnalyzer**: Bond-specific analytics (YTM, duration, etc.)
+- **SectorAnalyzer**: Sector allocation and concentration (HHI) analysis
+- **FXExposureAnalyzer**: Currency exposure and FX sensitivity analysis
 
 ## Investment Analysis Tools (MCP)
 
-45 MCP tools for stock, options, and portfolio analysis via Yahoo Finance and IB portfolio data.
+**51 MCP tools** for stock, options, and portfolio analysis via Yahoo Finance and IB
+portfolio data — plus **8 optional live-trading tools** (CP Gateway, disabled by default)
+for a total of **59** when `IB_ENABLE_LIVE_TRADING` is enabled (see
+[Live Trading (CP Gateway)](#live-trading-cp-gateway)).
 
-| Category            | Tools | Representative Tools                                                    |
-| ------------------- | :---: | ----------------------------------------------------------------------- |
-| Portfolio Analysis  |  15   | `analyze_performance`, `analyze_risk`, `analyze_consolidated_portfolio` |
-| Stock & Market Data |  12   | `get_stock_analysis`, `get_current_price`, `get_stock_info`             |
-| Options Analysis    |   8   | `get_options_chain`, `calculate_greeks`, `calculate_iv_metrics`         |
-| Tax & Costs         |   6   | `analyze_tax`, `analyze_costs`, `calculate_tax_loss_harvesting`         |
-| Position History    |   4   | `get_position_history`, `compare_portfolio_snapshots`                   |
+| Category                         | Tools | Representative Tools                                                    |
+| -------------------------------- | :---: | ----------------------------------------------------------------------- |
+| Portfolio analysis & metrics     |  10   | `analyze_performance`, `analyze_risk`, `analyze_consolidated_portfolio` |
+| Composable data access           |   6   | `get_trades`, `get_positions`, `calculate_metric`, `compare_periods`    |
+| Stock & market data              |  11   | `get_stock_analysis`, `get_current_price`, `analyze_market_sentiment`   |
+| Options analysis                 |   5   | `get_options_chain`, `calculate_greeks`, `calculate_iv_metrics`         |
+| Position history & snapshots     |   5   | `get_position_history`, `compare_portfolio_snapshots`                   |
+| Rebalancing, sector & FX         |   4   | `generate_rebalancing_trades`, `analyze_sector_allocation`              |
+| ETF swap calculators             |   2   | `calculate_etf_swap`, `calculate_portfolio_swap`                        |
+| Limit orders & daily monitoring  |   8   | `add_limit_order`, `check_order_proximity`, `sync_daily_snapshot`       |
+| **Live trading (CP Gateway)** ⚠️ |   8   | `place_order`, `cancel_order`, `get_live_positions` — _gated, opt-in_   |
 
 Full reference (all arguments, return values, examples): [docs/mcp-tools-reference.md](docs/mcp-tools-reference.md)
 
@@ -273,7 +289,7 @@ IB Analytics provides a **Model Context Protocol (MCP)** server for integration 
 
 ### Features
 
-- **45 Tools**: Portfolio analysis, market data, risk/tax/cost analytics, rebalancing, dividend/sector/FX analysis
+- **51 Tools** (+8 optional live-trading tools = **59** when `IB_ENABLE_LIVE_TRADING` is enabled): portfolio analysis, market data, risk/tax/cost analytics, rebalancing, dividend/sector/FX analysis, position history, limit orders, and daily monitoring
 - **9 Resources**: Portfolio data, account info, trades, positions, and strategy context via URI patterns
 - **5 Prompts**: Pre-configured analysis templates for common workflows
 
@@ -363,22 +379,88 @@ cp .mcp.json.example .mcp.json  # パスを編集
 - [uv](https://docs.astral.sh/uv/) インストール済み: `brew install uv` または `curl -LsSf https://astral.sh/uv/install.sh | sh`
 - IB Flex Query の `QUERY_ID` と `TOKEN`（IB ポータルで取得）
 
-See [MCP Tools Reference](docs/mcp-tools-reference.md) for complete documentation of all 45 tools, 9 resources, and 5 prompts.
+See [MCP Tools Reference](docs/mcp-tools-reference.md) for complete documentation of all 51 tools (59 with live trading), 9 resources, and 5 prompts.
 
 See [.claude/CLAUDE.md](.claude/CLAUDE.md) for development guide and usage patterns.
 
+## Live Trading (CP Gateway)
+
+Beyond read-only analysis, IB Analytics can place and manage **live orders** through the
+IBKR **Client Portal Web API**. This requires the local **Client Portal Gateway (CP
+Gateway)** — IBKR's authenticated proxy for the `/v1/api/...` endpoints — and the
+live-trading tools are **disabled by default**.
+
+> ⚠️ **Live trading moves real money.** Read the [Live Trading Gate](#live-trading-gate)
+> safety guards below before enabling anything. Start with paper trading and keep
+> `IB_ORDER_DRY_RUN` on until you have verified the full flow.
+
+### Prerequisites
+
+- A funded or paper **IBKR account** with Client Portal Web API access enabled
+- **Docker + Docker Compose** (to run the gateway)
+- The MCP server started with the live-trading gate enabled (see step 2)
+
+### 1. Start the CP Gateway
+
+The gateway is packaged under [`docker/cp-gateway/`](docker/cp-gateway/):
+
+```bash
+cd docker/cp-gateway
+docker compose up -d --build      # host 5001 → container 5000 (HTTPS)
+# Then open https://localhost:5001/ in your browser to authenticate
+```
+
+Full setup, authentication, and troubleshooting:
+[`docker/cp-gateway/README.md`](docker/cp-gateway/README.md) and the
+[Docker Usage](#docker-usage) section.
+
+### 2. Enable the live-trading tools
+
+The 8 CP Gateway tools (`place_order`, `modify_order`, `cancel_order`,
+`cancel_all_orders`, `get_live_orders`, `get_live_account_balance`,
+`get_live_positions`, `check_gateway_status`) are only registered with the MCP server
+when the gate is explicitly enabled:
+
+```bash
+export IB_ENABLE_LIVE_TRADING=1            # accepts 1 / true / yes (default: off)
+export IB_GATEWAY_URL=https://localhost:5001   # match the Docker host port (default: 5000)
+ib-sec-mcp
+```
+
+> **Gateway URL**: `CPClient` defaults `IB_GATEWAY_URL` to `https://localhost:5000`, but the
+> `docker/cp-gateway/` compose file publishes the gateway on host port **5001**. Export
+> `IB_GATEWAY_URL=https://localhost:5001` (as shown) so the live-trading tools reach the
+> gateway; otherwise they report it as unavailable. If you run the gateway directly on
+> `5000` (no Docker port remap), the default is correct and this export is unnecessary.
+
+When the flag is off, these tools are not advertised to MCP clients at all. See the
+[Live Trading Gate](#live-trading-gate) table for the full set of safety guards
+(`IB_READ_ONLY`, `IB_ORDER_DRY_RUN`, per-order and daily amount limits).
+
+## Daily Monitoring & Scheduled Tasks
+
+IB Analytics supports unattended, scheduled portfolio monitoring. The `sync_daily_snapshot`
+MCP tool persists a daily snapshot to the SQLite position history (with pipeline health
+monitored via the read-only `get_sync_status` tool), and the
+[`/daily-check`](.claude/commands/daily-check.md) slash command runs a complete
+hands-off monitoring pass (snapshot sync, price check, limit-order proximity, consolidated
+portfolio review) in under 3 minutes — designed for Claude Desktop scheduled tasks.
+
+See [docs/scheduled-tasks.md](docs/scheduled-tasks.md) for the full setup, the 3-layer
+memory system, and recommended morning/evening schedules.
+
 ## Documentation
 
-| Document                                                                      | Description                                                                |
-| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [Architecture](docs/architecture.md)                                          | Data flow diagrams, layer responsibilities, and new feature decision guide |
-| [Financial Calculators](docs/calculators.md)                                  | Calculation formulas (YTM, duration, Sharpe, Sortino, phantom income)      |
-| [Database Schema](docs/database-schema.md)                                    | SQLite position history schema, indexes, and migration procedures          |
-| [MCP Tools Reference](docs/mcp-tools-reference.md)                            | Complete reference for all 45 tools, 9 resources, and 5 prompts            |
-| [Docker Usage](docs/docker.md)                                                | Docker and docker-compose setup                                            |
-| [Troubleshooting](docs/troubleshooting.md)                                    | Common errors and solutions                                                |
-| [Calculation Error Prevention](docs/calculation_error_prevention_strategy.md) | ETF calculation accuracy strategy                                          |
-| [Scheduled Tasks](docs/scheduled-tasks.md)                                    | Claude Desktop scheduled task setup (daily monitoring)                     |
+| Document                                                                      | Description                                                                            |
+| ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [Architecture](docs/architecture.md)                                          | Data flow diagrams, layer responsibilities, and new feature decision guide             |
+| [Financial Calculators](docs/calculators.md)                                  | Calculation formulas (YTM, duration, Sharpe, Sortino, phantom income)                  |
+| [Database Schema](docs/database-schema.md)                                    | SQLite position history schema, indexes, and migration procedures                      |
+| [MCP Tools Reference](docs/mcp-tools-reference.md)                            | Complete reference for all 51 tools (59 with live trading), 9 resources, and 5 prompts |
+| [Docker Usage](docs/docker.md)                                                | Docker and docker-compose setup                                                        |
+| [Troubleshooting](docs/troubleshooting.md)                                    | Common errors and solutions                                                            |
+| [Calculation Error Prevention](docs/calculation_error_prevention_strategy.md) | ETF calculation accuracy strategy                                                      |
+| [Scheduled Tasks](docs/scheduled-tasks.md)                                    | Claude Desktop scheduled task setup (daily monitoring)                                 |
 
 ## Development
 
