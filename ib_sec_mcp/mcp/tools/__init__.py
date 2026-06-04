@@ -5,9 +5,18 @@ Central registration point for all MCP tools.
 
 from fastmcp import FastMCP
 
+from ib_sec_mcp.utils.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 def register_all_tools(mcp: FastMCP) -> None:
-    """Register all IB Analytics tools with MCP server"""
+    """Register all IB Analytics tools with MCP server.
+
+    CP Gateway live-trading and order-management tools are gated behind the
+    ``IB_ENABLE_LIVE_TRADING`` flag (default off). The local ``limit_orders``
+    tools are always registered.
+    """
 
     # Import and register tools from each module
     from ib_sec_mcp.mcp.tools.composable_data import register_composable_data_tools
@@ -22,7 +31,10 @@ def register_all_tools(mcp: FastMCP) -> None:
     from ib_sec_mcp.mcp.tools.live_trading import register_live_trading_tools
     from ib_sec_mcp.mcp.tools.market_comparison import register_market_comparison_tools
     from ib_sec_mcp.mcp.tools.options import register_options_tools
-    from ib_sec_mcp.mcp.tools.order_management import register_order_management_tools
+    from ib_sec_mcp.mcp.tools.order_management import (
+        is_live_trading_enabled,
+        register_order_management_tools,
+    )
     from ib_sec_mcp.mcp.tools.portfolio_analytics import (
         register_portfolio_analytics_tools,
     )
@@ -53,9 +65,22 @@ def register_all_tools(mcp: FastMCP) -> None:
     register_sentiment_analysis_tools(mcp)  # Add sentiment analysis tools
     register_rebalancing_tools(mcp)  # Add rebalancing tools
     register_sector_fx_tools(mcp)  # Add sector allocation and FX exposure tools
-    register_limit_order_tools(mcp)  # Add limit order management tools
-    register_live_trading_tools(mcp)  # Add live trading tools via CP Gateway
-    register_order_management_tools(mcp)  # Add order management tools (place/modify/cancel)
+    register_limit_order_tools(mcp)  # Always-on: local limit order management tools
+
+    # Gated: CP Gateway live-trading + order-management tools (default OFF)
+    if is_live_trading_enabled():
+        register_live_trading_tools(mcp)  # Add live trading tools via CP Gateway
+        register_order_management_tools(mcp)  # Add order management (place/modify/cancel)
+        logger.info(
+            "Live-trading tools ENABLED via IB_ENABLE_LIVE_TRADING "
+            "(live_trading + order_management registered)"
+        )
+    else:
+        logger.info(
+            "Live-trading tools DISABLED (set IB_ENABLE_LIVE_TRADING=1 to enable "
+            "CP Gateway live_trading + order_management tools)"
+        )
+
     register_daily_monitor_tools(mcp)  # Add daily monitor tools
     register_earnings_calendar_tools(mcp)  # Add earnings and dividend calendar tools
 
