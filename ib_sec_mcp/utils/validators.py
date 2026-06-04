@@ -144,7 +144,7 @@ def validate_account_id(account_id: str) -> bool:
 
 def parse_decimal_safe(
     value: str | int | float | Decimal | None,
-    default: Decimal = Decimal("0"),
+    default: str | int | float | Decimal = Decimal("0"),
 ) -> Decimal:
     """
     Safely parse a value into a ``Decimal`` without float precision loss.
@@ -158,13 +158,20 @@ def parse_decimal_safe(
 
     Args:
         value: Value to parse (string, int, float, Decimal, or None)
-        default: Default ``Decimal`` returned when the input is empty or invalid
+        default: Fallback for empty/invalid input. Accepts any numeric-like type
+            and is normalized to ``Decimal`` so this helper always returns a
+            ``Decimal`` (even when a legacy caller passes a ``float`` default).
 
     Returns:
-        Parsed ``Decimal`` value, or ``default`` on empty/invalid input
+        Parsed ``Decimal`` value, or the normalized ``default`` on empty/invalid
+        input
     """
+    # Normalize the fallback first so every return path yields a Decimal and a
+    # float default can never reintroduce a binary artifact downstream.
+    default_decimal = default if isinstance(default, Decimal) else Decimal(str(default))
+
     if value is None or value == "":
-        return default
+        return default_decimal
 
     # Already a Decimal: return as-is, avoiding a redundant str() round-trip.
     if isinstance(value, Decimal):
@@ -175,13 +182,13 @@ def parse_decimal_safe(
             # Remove thousands separators and surrounding whitespace
             cleaned = value.replace(",", "").strip()
             if not cleaned:
-                return default
+                return default_decimal
             return Decimal(cleaned)
         # int/float: route through str() so float binary artifacts are not
         # propagated into the resulting Decimal.
         return Decimal(str(value))
     except (InvalidOperation, ValueError, TypeError):
-        return default
+        return default_decimal
 
 
 def validate_xml_format(data: str) -> None:

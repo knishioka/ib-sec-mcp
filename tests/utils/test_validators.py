@@ -91,6 +91,21 @@ class TestParseDecimalSafe:
         result = parse_decimal_safe(None, default=Decimal("5"))
         assert isinstance(result, Decimal)
 
+    @pytest.mark.parametrize("empty", [None, "", "   ", "not-a-number"])
+    def test_float_default_is_normalized_to_decimal(self, empty: object) -> None:
+        """A legacy float default must be normalized so the artifact-prone path
+        Decimal(parse_decimal_safe('', default=0.1)) can never resurface."""
+        result = parse_decimal_safe(empty, default=0.1)  # type: ignore[arg-type]
+        assert isinstance(result, Decimal)
+        assert result == Decimal("0.1")
+        # No binary artifact, even if a caller re-wraps in Decimal.
+        assert Decimal(str(result)) == Decimal("0.1")
+
+    def test_int_default_is_normalized(self) -> None:
+        result = parse_decimal_safe("", default=5)  # type: ignore[arg-type]
+        assert result == Decimal("5")
+        assert isinstance(result, Decimal)
+
 
 class TestValidateXmlFormat:
     """validate_xml_format raises on non-XML input."""
