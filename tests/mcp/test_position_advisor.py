@@ -10,8 +10,9 @@ Ireland-domicile / FX tax notes, validation, and error masking.
 import json
 from datetime import datetime
 from decimal import Decimal
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
+import pandas as pd
 import pytest
 from fastmcp import FastMCP
 
@@ -392,6 +393,10 @@ class TestPureHelpers:
     def test_is_chasing_neutral(self) -> None:
         assert pa._is_chasing(make_tech()) is False
 
+    def test_is_chasing_handles_none_valued_keys(self) -> None:
+        # Keys present but explicitly None must not raise (gemini PR #149 feedback).
+        assert pa._is_chasing({"support_resistance": None, "indicators": None}) is False
+
     def test_staged_entry_avoid_not_applicable(self) -> None:
         plan = pa._build_staged_entry(
             current_price=100.0,
@@ -415,3 +420,31 @@ class TestPureHelpers:
         # Weights sum to ~100%.
         total_weight = sum(t["weight_pct"] for t in plan["tranches"])
         assert total_weight == pytest.approx(100.0, abs=0.5)
+
+
+# ---------------------------------------------------------------------------
+# Technical-signal data guards
+# ---------------------------------------------------------------------------
+class TestComputeTechnicalSignals:
+    async def test_empty_history_raises(self) -> None:
+        with patch("yfinance.Ticker") as ticker:
+            ticker.return_value.history.return_value = pd.DataFrame()
+            with pytest.raises(YahooFinanceError, match="No price history"):
+                await pa._compute_technical_signals("AAPL")
+
+    async def test_insufficient_history_raises(self) -> None:
+        # Fewer than _MIN_HISTORY_POINTS rows -> guard trips before NaN math
+        # (gemini PR #149 feedback).
+        short = pd.DataFrame(
+            {
+                "Open": [1.0] * 5,
+                "High": [1.0] * 5,
+                "Low": [1.0] * 5,
+                "Close": [1.0] * 5,
+                "Volume": [100] * 5,
+            }
+        )
+        with patch("yfinance.Ticker") as ticker:
+            ticker.return_value.history.return_value = short
+            with pytest.raises(YahooFinanceError, match="Insufficient price history"):
+                await pa._compute_technical_signals("AAPL")

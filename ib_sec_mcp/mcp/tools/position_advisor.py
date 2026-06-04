@@ -57,6 +57,9 @@ logger = get_logger(__name__)
 # Timeout constants (in seconds)
 DEFAULT_TIMEOUT = 30
 
+# Minimum daily bars required for trend/indicator analysis (SMA-20 needs >= 20).
+_MIN_HISTORY_POINTS = 20
+
 # User investment profile location (same file backing ib://user/profile)
 PROFILE_PATH = Path("notes/investor-profile.yaml")
 
@@ -88,7 +91,7 @@ def _read_user_profile() -> dict[str, Any]:
     if not PROFILE_PATH.exists():
         return {}
     try:
-        with open(PROFILE_PATH) as f:
+        with open(PROFILE_PATH, encoding="utf-8") as f:
             data = yaml.safe_load(f)
     except (yaml.YAMLError, OSError) as e:
         logger.warning("Failed to read user profile: %s", e)
@@ -121,6 +124,11 @@ async def _compute_technical_signals(symbol: str) -> dict[str, Any]:
 
     if hist is None or hist.empty:
         raise YahooFinanceError(f"No price history found for {symbol}")
+    if len(hist) < _MIN_HISTORY_POINTS:
+        raise YahooFinanceError(
+            f"Insufficient price history for {symbol}: {len(hist)} rows "
+            f"(need at least {_MIN_HISTORY_POINTS} for trend/indicator analysis)"
+        )
 
     close = hist["Close"]
     support_resistance = _find_support_resistance(hist)
@@ -197,10 +205,10 @@ def _is_chasing(tech: dict[str, Any]) -> bool:
     True when price sits near resistance or RSI is overbought — situations the
     user explicitly wants to avoid following.
     """
-    sr = tech.get("support_resistance", {})
+    sr = tech.get("support_resistance") or {}
     if sr.get("current_level") == "near_resistance":
         return True
-    rsi = tech.get("indicators", {}).get("rsi", {})
+    rsi = (tech.get("indicators") or {}).get("rsi") or {}
     return bool(rsi.get("signal") == "overbought")
 
 
@@ -213,7 +221,7 @@ def _synthesize_recommendation(
     Returns a dict with ``recommendation``, ``conviction`` (composite score),
     ``technical_score``, ``sentiment_score`` and a ``rationale`` list.
     """
-    signals = tech.get("signals", {})
+    signals = tech.get("signals") or {}
     technical_score = float(signals.get("score", 0.0))
 
     sentiment_score = 0.0
@@ -435,7 +443,7 @@ def _build_portfolio_fit(
                 f"Candidate size {candidate_size:,.0f} is ~{size_pct:.2f}% of your "
                 f"~{float(total_value):,.0f} external holdings."
             )
-        except (TypeError, ZeroDivisionError, ArithmeticError):
+        except (TypeError, ValueError, ZeroDivisionError, ArithmeticError):
             size_pct = None
 
     notes.append(
@@ -537,7 +545,7 @@ def register_position_advisor_tools(mcp: FastMCP) -> None:
             decision = _synthesize_recommendation(tech, sentiment)
             staged_entry = _build_staged_entry(
                 current_price=float(current_price),
-                support_resistance=tech.get("support_resistance", {}),
+                support_resistance=tech.get("support_resistance") or {},
                 candidate_size=candidate_size,
                 recommendation=decision["recommendation"],
                 chasing_risk=decision["chasing_risk"],
@@ -547,7 +555,10 @@ def register_position_advisor_tools(mcp: FastMCP) -> None:
                 stock_ctx=stock_ctx, candidate_size=candidate_size, profile=profile
             )
 
-            signals = tech.get("signals", {})
+            signals = tech.get("signals") or {}
+            support_resistance = tech.get("support_resistance") or {}
+            indicators = tech.get("indicators") or {}
+            trend = tech.get("trend") or {}
             result: dict[str, Any] = {
                 "symbol": symbol,
                 "as_of": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -560,13 +571,11 @@ def register_position_advisor_tools(mcp: FastMCP) -> None:
                     "score": decision["technical_score"],
                     "signal": signals.get("recommendation"),
                     "signals": signals.get("signals", []),
-                    "current_level": tech.get("support_resistance", {}).get("current_level"),
-                    "nearest_support": tech.get("support_resistance", {}).get("nearest_support"),
-                    "nearest_resistance": tech.get("support_resistance", {}).get(
-                        "nearest_resistance"
-                    ),
-                    "rsi": tech.get("indicators", {}).get("rsi"),
-                    "trend": tech.get("trend", {}).get("trend_strength"),
+                    "current_level": support_resistance.get("current_level"),
+                    "nearest_support": support_resistance.get("nearest_support"),
+                    "nearest_resistance": support_resistance.get("nearest_resistance"),
+                    "rsi": indicators.get("rsi"),
+                    "trend": trend.get("trend_strength"),
                 },
                 "sentiment": (
                     {
