@@ -101,6 +101,8 @@ EXPECTED_TOOLS = {
     "get_sync_status",
     # earnings_calendar
     "get_earnings_calendar",
+    # position_advisor
+    "evaluate_position",
 }
 
 # CP Gateway live-trading tools gated behind IB_ENABLE_LIVE_TRADING (default OFF).

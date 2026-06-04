@@ -41,6 +41,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     from ib_sec_mcp.mcp.tools.portfolio_timeseries import (
         register_portfolio_timeseries_tools,
     )
+    from ib_sec_mcp.mcp.tools.position_advisor import register_position_advisor_tools
     from ib_sec_mcp.mcp.tools.position_history import register_position_history_tools
     from ib_sec_mcp.mcp.tools.rebalancing import register_rebalancing_tools
     from ib_sec_mcp.mcp.tools.sector_fx import register_sector_fx_tools
@@ -65,6 +66,7 @@ def register_all_tools(mcp: FastMCP) -> None:
     register_technical_analysis_tools(mcp)  # Add technical analysis tools
     register_position_history_tools(mcp)  # Add position history tools
     register_portfolio_timeseries_tools(mcp)  # Add portfolio time-series tools
+    register_position_advisor_tools(mcp)  # Add position decision synthesis tool
     register_etf_calculator_tools(mcp)  # Add ETF calculator tools
     register_sentiment_analysis_tools(mcp)  # Add sentiment analysis tools
     register_rebalancing_tools(mcp)  # Add rebalancing tools
