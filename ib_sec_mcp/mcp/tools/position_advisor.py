@@ -265,10 +265,12 @@ def _format_event_note(event: dict[str, Any]) -> str:
     """
     days = event.get("days_until")
     when = event.get("event_date")
-    if event.get("event_type") == "rate":
+    event_type = event.get("event_type")
+    if event_type == "rate":
         label = event.get("description") or f"{event.get('central_bank', 'Rate')} rate decision"
         return f"{label} in {days} day(s) on {when}"
-    return f"{event['event_type'].replace('_', '-')} in {days} day(s) on {when}"
+    label = event_type.replace("_", "-") if event_type else "event"
+    return f"{label} in {days} day(s) on {when}"
 
 
 def _summarize_event_risk(events: list[dict[str, Any]]) -> dict[str, Any]:
@@ -278,7 +280,13 @@ def _summarize_event_risk(events: list[dict[str, Any]]) -> dict[str, Any]:
     (e.g. earnings or an FOMC decision within a few days) — a signal to wait
     rather than commit capital straight into binary event risk.
     """
-    upcoming = [event for event in events if "error" not in event]
+    # Sort soonest-first so the combined per-symbol + global rate events are
+    # chronological (matching get_upcoming_events), which also makes
+    # next_earnings_days resolve to the *nearest* earnings.
+    upcoming = sorted(
+        (event for event in events if "error" not in event),
+        key=lambda event: event.get("days_until", 999_999),
+    )
     soon = [event for event in upcoming if event.get("flag") == "EVENT_SOON"]
 
     next_earnings_days: int | None = None
