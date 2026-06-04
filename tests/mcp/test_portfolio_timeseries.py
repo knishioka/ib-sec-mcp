@@ -175,6 +175,32 @@ class TestGetPortfolioTimeseries:
         assert data["relative_performance"]["outperformed"] is False
         assert "external_cash_flows" in data["methodology"]
 
+    async def test_benchmark_nan_closes_are_dropped(
+        self, test_mcp: FastMCP, db_path: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # A NaN close (e.g. holiday/missing data) must not crash benchmark
+        # tracking via Decimal("NaN") formatting; the NaN row is dropped.
+        FakeTicker.histories = {
+            "SPY": _make_history(SNAP_DATES, [100.0, float("nan"), 121.0]),
+        }
+        monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+
+        result = await call_tool_fn(
+            test_mcp,
+            "get_portfolio_timeseries",
+            account_id=ACCOUNT_ID,
+            start_date="2025-01-01",
+            end_date="2025-04-01",
+            benchmark="SPY",
+            db_path=db_path,
+            ctx=None,
+        )
+        data = json.loads(result)
+        # Two valid closes remain (100 -> 121): TWR = 0.21, no error block.
+        assert "error" not in data["benchmark"]
+        assert data["benchmark"]["observation_count"] == 2
+        assert Decimal(str(data["benchmark"]["twr"])) == Decimal("0.21")
+
     async def test_decimal_precision_no_float(
         self, test_mcp: FastMCP, db_path: str, patch_yf: None
     ) -> None:

@@ -67,7 +67,9 @@ async def _fetch_benchmark_closes(
         )
 
     closes: list[tuple[str, Decimal]] = []
-    for ts, close in data["Close"].items():
+    # Drop NaN closes (holidays/missing data); Decimal("NaN") would later raise
+    # InvalidOperation in fixed-point formatting and break benchmark tracking.
+    for ts, close in data["Close"].dropna().items():
         iso = ts.date().isoformat() if hasattr(ts, "date") else str(ts)[:10]
         closes.append((iso, Decimal(str(close))))
     return closes
@@ -182,7 +184,13 @@ def register_portfolio_timeseries_tools(mcp: FastMCP) -> None:
         benchmark_block: dict[str, Any]
         relative_block: dict[str, Any] | None = None
         try:
-            closes = await _fetch_benchmark_closes(benchmark, start, end)
+            # Align the benchmark window to the actual snapshot range so the
+            # portfolio TWR (computed over available snapshots) and benchmark TWR
+            # cover the same period — comparing over the full requested range
+            # would skew the excess return when snapshots span a narrower window.
+            actual_start = date.fromisoformat(dates[0])
+            actual_end = date.fromisoformat(dates[-1])
+            closes = await _fetch_benchmark_closes(benchmark, actual_start, actual_end)
             if len(closes) < 2:
                 raise YahooFinanceError(f"Insufficient benchmark data for {benchmark} in range")
             bench_dates = [c[0] for c in closes]
