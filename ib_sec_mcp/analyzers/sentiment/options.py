@@ -97,7 +97,7 @@ class OptionsSentimentAnalyzer(BaseSentimentAnalyzer):
 
             reasoning = (
                 f"Analyzed {data_points} options indicators for {symbol}. "
-                f"Put/Call ratio: {put_call_ratio}"
+                f"Put/Call ratio: {put_call_ratio:.4f}"
             )
 
             return SentimentScore(
