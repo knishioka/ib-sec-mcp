@@ -87,3 +87,6 @@ Thumbs.db
 # Tool configuration (machine-specific)
 .mcp.json
 .tool-versions
+
+# Claude Code worktrees (local development workspaces)
+.claude/worktrees/
