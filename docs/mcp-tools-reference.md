@@ -4,12 +4,12 @@ Complete reference for all MCP tools, resources, and prompts provided by the IB 
 
 ## Overview
 
-IB Analytics provides **59 tools**, **9 resources**, and **5 prompts** across two usage modes:
+IB Analytics provides **60 tools**, **9 resources**, and **5 prompts** across two usage modes:
 
 - **Mode 1 (Claude Desktop)**: Coarse-grained tools for complete, self-contained analysis
 - **Mode 2 (Claude Code + MCP)**: Fine-grained tools for composable, custom workflows
 
-Of the 59 tools, **51 are registered by default** and **8 are gated** behind the
+Of the 60 tools, **52 are registered by default** and **8 are gated** behind the
 `IB_ENABLE_LIVE_TRADING` flag (CP Gateway live trading + order management — disabled by
 default). See [Live Trading & Order Management](#live-trading--order-management-gated).
 
@@ -42,6 +42,7 @@ relies on:
 | [ETF Comparison](#etf-comparison)                                        | 1           | Both   | Yahoo          | Multi-ETF performance comparison                 |
 | [Technical Analysis](#technical-analysis)                                | 2           | Both   | Yahoo          | Technical indicators and signals                 |
 | [Position History](#position-history)                                    | 5           | Mode 2 | DB             | SQLite-based position tracking                   |
+| [Position Reconciliation](#position-reconciliation)                      | 1           | Mode 2 | CP + DB        | Unify live (CP) and snapshot (Flex) positions    |
 | [ETF Calculator](#etf-calculator)                                        | 2           | Both   | Compute        | ETF swap calculations                            |
 | [Sentiment Analysis](#sentiment-analysis)                                | 1           | Both   | Yahoo          | Market sentiment from multiple sources           |
 | [Limit Orders](#limit-orders)                                            | 6           | Both   | DB (+CP/Yahoo) | Local limit-order tracking and proximity alerts  |
@@ -49,7 +50,7 @@ relies on:
 | [Earnings Calendar](#earnings-calendar)                                  | 1           | Both   | Yahoo + DB     | Upcoming earnings and ex-dividend dates          |
 | [Live Trading & Order Management](#live-trading--order-management-gated) | 8 _(gated)_ | Mode 1 | CP             | Live broker trading via CP Gateway (opt-in)      |
 
-**Total: 59 tools** (51 default-enabled + 8 gated behind `IB_ENABLE_LIVE_TRADING`).
+**Total: 60 tools** (52 default-enabled + 8 gated behind `IB_ENABLE_LIVE_TRADING`).
 
 ---
 
@@ -783,6 +784,37 @@ List all dates with position snapshots stored in the database.
 | `db_path`    | `str` | No       | `"data/processed/positions.db"` | Path to SQLite database |
 
 **Returns**: JSON with list of available dates in descending order.
+
+---
+
+## Position Reconciliation
+
+Unifies real-time positions from the IB Client Portal Gateway with the most
+recent historical snapshot (parsed from Flex Query data and stored in SQLite),
+flagging newly opened, closed, and quantity-changed positions along with market
+value and unrealized P&L deltas.
+
+**Data source**: CP (IB Client Portal Gateway) + DB (`data/processed/positions.db`).
+
+### `reconcile_positions_view`
+
+Reconcile live (CP) positions against the latest stored snapshot. Degrades
+gracefully: when the gateway is not running or the session has expired, returns a
+snapshot-only view with `degraded: true` instead of failing.
+
+| Parameter       | Type  | Required | Default                         | Description                                              |
+| --------------- | ----- | -------- | ------------------------------- | -------------------------------------------------------- |
+| `account_id`    | `str` | No       | _(first CP account)_            | Account ID. Auto-resolved from the gateway when omitted. |
+| `snapshot_date` | `str` | No       | _(latest available)_            | Snapshot date in YYYY-MM-DD format.                      |
+| `db_path`       | `str` | No       | `"data/processed/positions.db"` | Path to SQLite database                                  |
+
+**Returns**: JSON with `live_available`, `degraded`, per-symbol entries (status
+of `new` / `closed` / `quantity_changed` / `unchanged` / `snapshot_only`, plus
+quantities, values, and diffs), and an aggregate `summary`.
+
+```
+>>> result = await reconcile_positions_view(account_id="U1234567")
+```
 
 ---
 
