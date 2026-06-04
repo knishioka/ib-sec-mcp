@@ -213,22 +213,6 @@ def _process_single_order(
         result.skipped += 1
 
 
-async def sync_orders_to_ib(
-    cp_client: CPClient,
-    store: LimitOrderStore,
-) -> SyncResult:
-    """Sync local DB orders to IB (Phase 2 — not yet implemented)
-
-    Args:
-        cp_client: Authenticated CPClient instance
-        store: LimitOrderStore instance
-
-    Raises:
-        NotImplementedError: Always, as this is reserved for Phase 2
-    """
-    raise NotImplementedError("sync_orders_to_ib is reserved for Phase 2")
-
-
 async def try_sync_from_ib(
     store: LimitOrderStore,
     gateway_url: str | None = None,
