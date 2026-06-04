@@ -4,7 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Removed
+
+- **Dead code cleanup** (#120):
+  - `ib-sec-report` CLI command and its `cli/report.py` stub (was a "not yet implemented" placeholder; use `ib-sec-analyze --output` instead)
+  - Unreachable IV Rank and Max Pain branches in `OptionsSentimentAnalyzer` (behavior unchanged; sentiment is derived solely from the Put/Call ratio)
+  - `sync_orders_to_ib()` "Phase 2" stub in `storage/order_sync.py` (no callers)
+
+### Changed
+
+- **`FlexQueryClient`** (#120): extracted duplicated SendRequest XML parsing into a shared `_parse_send_request_response()` helper (no behavior change)
+
 ### Added
+
 - **Sentiment Analysis Module** (Phase 1-3): Comprehensive market sentiment analysis (#7)
   - **Base Infrastructure**:
     - `SentimentScore` Pydantic model with Decimal precision
@@ -40,12 +52,14 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 #### Core Infrastructure
+
 - **Project Structure**: Professional Python package structure with `pyproject.toml`
 - **Dependency Management**: Latest stable versions (requests 2.32.5, pandas 2.2.3, pydantic 2.10.0)
 - **Configuration**: Environment-based config with `.env` support
 - **Documentation**: Comprehensive README, INSTALL guide, and inline documentation
 
 #### API Client
+
 - **FlexQueryClient**: IB Flex Query API v3 client
 - **Multi-Account Support**: Fetch data from multiple accounts
 - **Async Support**: Parallel data fetching with `httpx`
@@ -53,6 +67,7 @@ All notable changes to this project will be documented in this file.
 - **Rate Limiting**: Configurable timeout and retry settings
 
 #### Data Models (Pydantic v2)
+
 - **Trade**: Trading activity with buy/sell, P&L, commissions
 - **Position**: Current holdings with unrealized P&L
 - **Account**: Account-level data aggregation
@@ -60,11 +75,13 @@ All notable changes to this project will be documented in this file.
 - **Type Safety**: Full validation and type checking
 
 #### Parsers
+
 - **CSVParser**: Parse IB Flex Query CSV format
 - **Multi-Section Support**: Account info, cash, positions, trades
 - **XMLParser**: Placeholder for future XML support
 
 #### Analyzers
+
 - **PerformanceAnalyzer**: Win rate, profit factor, ROI metrics
 - **CostAnalyzer**: Commission analysis and cost efficiency
 - **BondAnalyzer**: Zero-coupon bond analytics (YTM, duration)
@@ -72,39 +89,46 @@ All notable changes to this project will be documented in this file.
 - **RiskAnalyzer**: Interest rate scenarios and concentration risk
 
 #### Calculation Engine
+
 - **PerformanceCalculator**: 15+ financial calculations
 - **Bond Calculations**: YTM, duration, price sensitivity
 - **Tax Calculations**: Phantom income using constant yield method
 - **Risk Metrics**: Sharpe ratio, max drawdown, etc.
 
 #### Aggregation
+
 - **MultiAccountAggregator**: Cross-account data aggregation
 - **Symbol Aggregation**: Aggregate trades/positions by symbol
 - **Asset Class Aggregation**: Group by asset class
 - **Account Allocation**: Calculate percentage allocations
 
 #### Reporting
+
 - **ConsoleReport**: Rich console output with tables and formatting
 - **BaseReport**: Abstract base for future report types
 - **HTML/PDF Support**: Planned for future releases
 
 #### CLI Tools
+
 - **ib-sec-fetch**: Fetch data from IB API
 - **ib-sec-analyze**: Run analysis on CSV data
 - **ib-sec-report**: Generate reports (placeholder)
 - **Rich UI**: Beautiful terminal interface
 
 #### Utilities
+
 - **Config**: Settings management with validation
 - **Validators**: CUSIP, ISIN, date, symbol validation
 - **Type Converters**: Safe decimal parsing
 
 ### Migration
+
 - Moved existing scripts to `legacy/` folder
 - Preserved all original functionality
 - New modular architecture for better maintainability
 
 ### Documentation
+
 - README with quick start guide
 - INSTALL guide with examples
 - API documentation in docstrings
@@ -113,6 +137,7 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Planned Features
+
 - [ ] Unit tests with pytest
 - [ ] HTML report generation
 - [ ] PDF report generation with charts
@@ -126,6 +151,7 @@ All notable changes to this project will be documented in this file.
 - [ ] CI/CD pipeline
 
 ### Known Issues
+
 - XML parsing not yet implemented
 - PDF report generation requires additional dependencies
 - Some edge cases in date parsing may need handling

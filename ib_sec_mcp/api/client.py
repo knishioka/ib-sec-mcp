@@ -155,9 +155,24 @@ class FlexQueryClient:
         except requests.RequestException as e:
             raise FlexQueryAPIError(f"SendRequest failed: {e}") from e
 
-        # Parse XML response
+        return self._parse_send_request_response(response.text)
+
+    @staticmethod
+    def _parse_send_request_response(text: str) -> str:
+        """Parse a SendRequest XML response and return the reference code
+
+        Args:
+            text: Raw XML response body from the SendRequest endpoint
+
+        Returns:
+            The reference code used to poll for the generated statement
+
+        Raises:
+            FlexQueryAPIError: If the response is malformed, reports a non-success
+                status, or omits the reference code
+        """
         try:
-            root = ET.fromstring(response.text)
+            root = ET.fromstring(text)
             status_elem = root.find(".//Status")
             reference_code_elem = root.find(".//ReferenceCode")
             error_code_elem = root.find(".//ErrorCode")
@@ -314,34 +329,7 @@ class FlexQueryClient:
             except httpx.HTTPError as e:
                 raise FlexQueryAPIError(f"SendRequest failed: {e}") from e
 
-            # Parse XML (same logic as sync version)
-            try:
-                root = ET.fromstring(response.text)
-                status_elem = root.find(".//Status")
-                reference_code_elem = root.find(".//ReferenceCode")
-                error_code_elem = root.find(".//ErrorCode")
-                error_msg_elem = root.find(".//ErrorMessage")
-
-                if status_elem is None:
-                    raise FlexQueryAPIError("Invalid response: missing Status element")
-
-                status = status_elem.text
-                reference_code = (
-                    reference_code_elem.text if reference_code_elem is not None else None
-                )
-                error_code = error_code_elem.text if error_code_elem is not None else None
-                error_msg = error_msg_elem.text if error_msg_elem is not None else None
-
-                if status != "Success":
-                    raise FlexQueryAPIError(f"SendRequest failed: {error_code} - {error_msg}")
-
-                if not reference_code:
-                    raise FlexQueryAPIError("No reference code in response")
-
-                return str(reference_code)
-
-            except ET.ParseError as e:
-                raise FlexQueryAPIError(f"Failed to parse XML response: {e}") from e
+            return self._parse_send_request_response(response.text)
 
     async def _get_statement_async(
         self,
