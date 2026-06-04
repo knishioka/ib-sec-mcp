@@ -20,8 +20,24 @@ All notable changes to this project will be documented in this file.
 
 - **`FlexQueryClient`** (#120): extracted duplicated SendRequest XML parsing into a shared `_parse_send_request_response()` helper (no behavior change)
 
+### Fixed
+
+- **Position pagination & connection errors** (#105): `CPClient` now paginates the
+  positions endpoint (with a `max_pages` safeguard and warning log) and preserves
+  underlying connection errors instead of masking them as empty responses
+
 ### Added
 
+- **Live-trading tools via Client Portal Gateway** (#99, #142): CP Gateway-backed
+  live order/account/position tools (`get_live_orders`, `get_live_account_balance`,
+  `get_live_positions`, etc.), gated behind the `IB_ENABLE_LIVE_TRADING` flag
+  (default off) so they are not advertised to MCP clients unless explicitly enabled
+- **Limit order management** (#80, #100): limit order management table and MCP tools,
+  plus DB sync of locally tracked limit orders against live IB orders via the CP API
+- **Daily monitor tools** (#81) and **`/daily-check` command** (#82, #83): reliable
+  fetch + sync pipeline for scheduled portfolio monitoring with memory-file
+  auto-update rules
+- **Earnings calendar MCP tool** (#115): upcoming earnings dates for a given symbol
 - **Sentiment Analysis Module** (Phase 1-3): Comprehensive market sentiment analysis (#7)
   - **Base Infrastructure**:
     - `SentimentScore` Pydantic model with Decimal precision
