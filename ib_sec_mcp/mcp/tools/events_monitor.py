@@ -19,7 +19,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Iterable
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 import yfinance as yf
@@ -131,9 +131,11 @@ async def _fetch_symbol_events(
     async with semaphore:
         try:
             calendar = await asyncio.to_thread(lambda: yf.Ticker(symbol).calendar)
+            return build_symbol_events(
+                symbol, calendar, current_date, days_ahead, soon_threshold_days
+            )
         except Exception as exc:
             return [{"symbol": symbol, "error": str(exc)}]
-    return build_symbol_events(symbol, calendar, current_date, days_ahead, soon_threshold_days)
 
 
 def _sort_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -230,7 +232,7 @@ def register_events_monitor_tools(mcp: FastMCP) -> None:
 
         return json.dumps(
             {
-                "as_of": datetime.combine(current_date, datetime.min.time()).strftime("%Y-%m-%d"),
+                "as_of": current_date.isoformat(),
                 "days_ahead": days,
                 "soon_threshold_days": soon_threshold_days,
                 "event_count": len(sorted_events),

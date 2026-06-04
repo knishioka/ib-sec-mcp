@@ -217,17 +217,16 @@ async def _fetch_event_risk(symbol: str) -> list[dict[str, Any]]:
 
     try:
         calendar = await asyncio.wait_for(asyncio.to_thread(_load), timeout=DEFAULT_TIMEOUT)
+        return build_symbol_events(
+            symbol,
+            calendar,
+            datetime.now().date(),
+            _EVENT_RISK_DAYS_AHEAD,
+            EVENT_SOON_THRESHOLD_DAYS,
+        )
     except Exception as e:
         logger.warning("Failed to fetch event risk for %s: %s", symbol, e)
         return []
-
-    return build_symbol_events(
-        symbol,
-        calendar,
-        datetime.now().date(),
-        _EVENT_RISK_DAYS_AHEAD,
-        EVENT_SOON_THRESHOLD_DAYS,
-    )
 
 
 # ---------------------------------------------------------------------------
