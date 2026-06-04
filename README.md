@@ -98,7 +98,7 @@ The repository ships **two independent Docker setups**:
 Run the MCP server in an isolated container with security hardening (non-root user, read-only filesystem, resource limits):
 
 ```bash
-docker-compose up  # or: docker build -t ib-sec-mcp . && docker run -e QUERY_ID=... -e TOKEN=... ib-sec-mcp
+docker compose up  # or: docker build -t ib-sec-mcp . && docker run -e QUERY_ID=... -e TOKEN=... ib-sec-mcp
 ```
 
 See [docs/docker.md](docs/docker.md) for full setup of both containers, docker-compose configuration, and troubleshooting.
@@ -407,7 +407,7 @@ The gateway is packaged under [`docker/cp-gateway/`](docker/cp-gateway/):
 ```bash
 cd docker/cp-gateway
 docker compose up -d --build      # host 5001 → container 5000 (HTTPS)
-open https://localhost:5001/      # authenticate in the browser
+# Then open https://localhost:5001/ in your browser to authenticate
 ```
 
 Full setup, authentication, and troubleshooting:
@@ -422,9 +422,16 @@ The 8 CP Gateway tools (`place_order`, `modify_order`, `cancel_order`,
 when the gate is explicitly enabled:
 
 ```bash
-export IB_ENABLE_LIVE_TRADING=1   # accepts 1 / true / yes (default: off)
+export IB_ENABLE_LIVE_TRADING=1            # accepts 1 / true / yes (default: off)
+export IB_GATEWAY_URL=https://localhost:5001   # match the Docker host port (default: 5000)
 ib-sec-mcp
 ```
+
+> **Gateway URL**: `CPClient` defaults `IB_GATEWAY_URL` to `https://localhost:5000`, but the
+> `docker/cp-gateway/` compose file publishes the gateway on host port **5001**. Export
+> `IB_GATEWAY_URL=https://localhost:5001` (as shown) so the live-trading tools reach the
+> gateway; otherwise they report it as unavailable. If you run the gateway directly on
+> `5000` (no Docker port remap), the default is correct and this export is unnecessary.
 
 When the flag is off, these tools are not advertised to MCP clients at all. See the
 [Live Trading Gate](#live-trading-gate) table for the full set of safety guards
@@ -433,8 +440,9 @@ When the flag is off, these tools are not advertised to MCP clients at all. See 
 ## Daily Monitoring & Scheduled Tasks
 
 IB Analytics supports unattended, scheduled portfolio monitoring. The `sync_daily_snapshot`
-and `get_sync_status` MCP tools persist a daily snapshot to the SQLite position history,
-and the [`/daily-check`](.claude/commands/daily-check.md) slash command runs a complete
+MCP tool persists a daily snapshot to the SQLite position history (with pipeline health
+monitored via the read-only `get_sync_status` tool), and the
+[`/daily-check`](.claude/commands/daily-check.md) slash command runs a complete
 hands-off monitoring pass (snapshot sync, price check, limit-order proximity, consolidated
 portfolio review) in under 3 minutes — designed for Claude Desktop scheduled tasks.
 
