@@ -4,35 +4,60 @@ Complete reference for all MCP tools, resources, and prompts provided by the IB 
 
 ## Overview
 
-IB Analytics provides **45 tools**, **9 resources**, and **5 prompts** across two usage modes:
+IB Analytics provides **59 tools**, **9 resources**, and **5 prompts** across two usage modes:
 
 - **Mode 1 (Claude Desktop)**: Coarse-grained tools for complete, self-contained analysis
 - **Mode 2 (Claude Code + MCP)**: Fine-grained tools for composable, custom workflows
 
+Of the 59 tools, **51 are registered by default** and **8 are gated** behind the
+`IB_ENABLE_LIVE_TRADING` flag (CP Gateway live trading + order management — disabled by
+default). See [Live Trading & Order Management](#live-trading--order-management-gated).
+
+### Data source legend
+
+Each tool section is tagged with a **Data source** indicating the external dependency it
+relies on:
+
+| Tag         | Dependency                                                             |
+| ----------- | ---------------------------------------------------------------------- |
+| **Flex**    | IB Flex Query API (XML statements, cached under `data/raw/`)           |
+| **CP**      | IB Client Portal Gateway (live broker API at `https://localhost:5000`) |
+| **Yahoo**   | Yahoo Finance via `yfinance` (live market data, news, fundamentals)    |
+| **DB**      | Local SQLite store (`data/processed/*.db`)                             |
+| **Compute** | Pure local computation — no external data dependency                   |
+
 ## Quick Reference
 
-| Category                                        | Tools | Mode   | Description                                      |
-| ----------------------------------------------- | ----- | ------ | ------------------------------------------------ |
-| [IB Portfolio Analysis](#ib-portfolio-analysis) | 9     | Mode 1 | Complete portfolio analysis with IB API          |
-| [Composable Data](#composable-data-access)      | 6     | Mode 2 | Fine-grained data access, metrics, and dividends |
-| [Rebalancing](#rebalancing)                     | 2     | Mode 1 | Portfolio rebalancing trades and simulation      |
-| [Sector & FX Analysis](#sector--fx-analysis)    | 2     | Mode 1 | Sector allocation and currency exposure          |
-| [Stock Data](#stock-data)                       | 3     | Both   | Price data and company information               |
-| [Stock News](#stock-news)                       | 1     | Both   | News article retrieval                           |
-| [Options Analysis](#options-analysis)           | 5     | Both   | Options chain, Greeks, IV, Max Pain              |
-| [Portfolio Analytics](#portfolio-analytics)     | 2     | Both   | Advanced metrics and correlation                 |
-| [Market Comparison](#market-comparison)         | 2     | Both   | Benchmark comparison and analyst consensus       |
-| [ETF Comparison](#etf-comparison)               | 1     | Both   | Multi-ETF performance comparison                 |
-| [Technical Analysis](#technical-analysis)       | 2     | Both   | Technical indicators and signals                 |
-| [Position History](#position-history)           | 5     | Mode 2 | SQLite-based position tracking                   |
-| [ETF Calculator](#etf-calculator)               | 3     | Both   | ETF swap calculations                            |
-| [Sentiment Analysis](#sentiment-analysis)       | 2     | Both   | Market sentiment from multiple sources           |
+| Category                                                                 | Tools       | Mode   | Data source    | Description                                      |
+| ------------------------------------------------------------------------ | ----------- | ------ | -------------- | ------------------------------------------------ |
+| [IB Portfolio Analysis](#ib-portfolio-analysis)                          | 8           | Mode 1 | Flex + DB      | Complete portfolio analysis with IB API          |
+| [Composable Data](#composable-data-access)                               | 6           | Mode 2 | Flex           | Fine-grained data access, metrics, and dividends |
+| [Rebalancing](#rebalancing)                                              | 2           | Mode 1 | Flex           | Portfolio rebalancing trades and simulation      |
+| [Sector & FX Analysis](#sector--fx-analysis)                             | 2           | Mode 1 | Flex           | Sector allocation and currency exposure          |
+| [Stock Data](#stock-data)                                                | 3           | Both   | Yahoo          | Price data and company information               |
+| [Stock News](#stock-news)                                                | 1           | Both   | Yahoo          | News article retrieval                           |
+| [Options Analysis](#options-analysis)                                    | 5           | Both   | Yahoo          | Options chain, Greeks, IV, Max Pain              |
+| [Portfolio Analytics](#portfolio-analytics)                              | 2           | Both   | Flex + Yahoo   | Advanced metrics and correlation                 |
+| [Market Comparison](#market-comparison)                                  | 2           | Both   | Yahoo          | Benchmark comparison and analyst consensus       |
+| [ETF Comparison](#etf-comparison)                                        | 1           | Both   | Yahoo          | Multi-ETF performance comparison                 |
+| [Technical Analysis](#technical-analysis)                                | 2           | Both   | Yahoo          | Technical indicators and signals                 |
+| [Position History](#position-history)                                    | 5           | Mode 2 | DB             | SQLite-based position tracking                   |
+| [ETF Calculator](#etf-calculator)                                        | 2           | Both   | Compute        | ETF swap calculations                            |
+| [Sentiment Analysis](#sentiment-analysis)                                | 1           | Both   | Yahoo          | Market sentiment from multiple sources           |
+| [Limit Orders](#limit-orders)                                            | 6           | Both   | DB (+CP/Yahoo) | Local limit-order tracking and proximity alerts  |
+| [Daily Monitor](#daily-monitor)                                          | 2           | Mode 1 | Flex + DB      | Reliable fetch+sync pipeline with health checks  |
+| [Earnings Calendar](#earnings-calendar)                                  | 1           | Both   | Yahoo + DB     | Upcoming earnings and ex-dividend dates          |
+| [Live Trading & Order Management](#live-trading--order-management-gated) | 8 _(gated)_ | Mode 1 | CP             | Live broker trading via CP Gateway (opt-in)      |
+
+**Total: 59 tools** (51 default-enabled + 8 gated behind `IB_ENABLE_LIVE_TRADING`).
 
 ---
 
 ## IB Portfolio Analysis
 
 Coarse-grained tools that automatically fetch data from the IB Flex Query API (with caching) and perform complete analysis. **Recommended for Mode 1 (Claude Desktop)**.
+
+**Data source**: Flex (IB Flex Query API) + DB (`fetch_ib_data` auto-syncs positions to SQLite).
 
 ### `fetch_ib_data`
 
@@ -170,6 +195,8 @@ Identify unrealized loss positions eligible for tax loss harvesting. Detects was
 ## Composable Data Access
 
 Fine-grained tools for custom analysis. **Recommended for Mode 2 (Claude Code + MCP)**.
+
+**Data source**: Flex (IB Flex Query API, cached).
 
 ### `get_trades`
 
@@ -310,6 +337,8 @@ Analyze dividend income from held equity positions and compare Ireland-domiciled
 
 Tools for generating and simulating portfolio rebalancing trades. Typically invoked via `/rebalance-portfolio`.
 
+**Data source**: Flex (IB Flex Query API, cached).
+
 ### `generate_rebalancing_trades`
 
 Calculate specific buy/sell trades required to move from current allocation to a target allocation.
@@ -349,6 +378,8 @@ Simulate rebalancing and calculate the tax and commission impact before executin
 
 Tools for portfolio diversification analysis across sectors and currencies.
 
+**Data source**: Flex (IB Flex Query API, cached).
+
 ### `analyze_sector_allocation`
 
 Analyze portfolio sector breakdown and concentration risk using the Herfindahl-Hirschman Index (HHI).
@@ -381,6 +412,8 @@ Analyze currency exposure across all portfolio positions and simulate exchange r
 ## Stock Data
 
 Yahoo Finance stock data retrieval tools.
+
+**Data source**: Yahoo (`yfinance`).
 
 ### `get_stock_data`
 
@@ -434,6 +467,8 @@ Get comprehensive company/fund information.
 
 ## Stock News
 
+**Data source**: Yahoo (`yfinance`).
+
 ### `get_stock_news`
 
 Get latest news articles for a stock symbol.
@@ -452,6 +487,8 @@ Get latest news articles for a stock symbol.
 ---
 
 ## Options Analysis
+
+**Data source**: Yahoo (`yfinance` options chains). Greeks use a local Black-Scholes model.
 
 ### `get_options_chain`
 
@@ -538,6 +575,8 @@ Calculate Max Pain price for options expiration.
 
 Advanced portfolio performance metrics. Requires an IB Flex Query XML file.
 
+**Data source**: Flex (XML file via `file_path`) + Yahoo (benchmark price series).
+
 ### `calculate_portfolio_metrics`
 
 Calculate advanced risk-adjusted performance metrics.
@@ -580,6 +619,8 @@ Analyze correlation between portfolio positions.
 
 ## Market Comparison
 
+**Data source**: Yahoo (`yfinance`).
+
 ### `compare_with_benchmark`
 
 Compare stock/fund performance against a benchmark.
@@ -614,6 +655,8 @@ Get analyst consensus and recommendations.
 
 ## ETF Comparison
 
+**Data source**: Yahoo (`yfinance`).
+
 ### `compare_etf_performance`
 
 Compare multiple ETFs with dividend-adjusted performance.
@@ -632,6 +675,8 @@ Compare multiple ETFs with dividend-adjusted performance.
 ---
 
 ## Technical Analysis
+
+**Data source**: Yahoo (`yfinance`).
 
 ### `get_stock_analysis`
 
@@ -668,6 +713,8 @@ Analyze stock across daily, weekly, and monthly timeframes for confluence.
 ## Position History
 
 SQLite-based position tracking tools. Requires data synced via `fetch_ib_data`.
+
+**Data source**: DB (`data/processed/positions.db`).
 
 ### `get_position_history`
 
@@ -743,6 +790,8 @@ List all dates with position snapshots stored in the database.
 
 Deterministic ETF swap calculation tools. All arithmetic is performed in Python to prevent LLM calculation errors.
 
+**Data source**: Compute (pure local calculation — prices and ratios are supplied as arguments).
+
 ### `calculate_etf_swap`
 
 Calculate ETF swap requirements with exact share counts.
@@ -795,6 +844,8 @@ Calculate multiple ETF swaps for portfolio restructuring.
 
 ## Sentiment Analysis
 
+**Data source**: Yahoo (`yfinance` news, options, and technical signals).
+
 ### `analyze_market_sentiment`
 
 Analyze market sentiment from multiple sources.
@@ -816,11 +867,185 @@ Analyze market sentiment from multiple sources.
 
 ---
 
+## Limit Orders
+
+Local limit-order tracking for staged-entry strategies. Orders are stored in a dedicated
+SQLite database and are independent of any live broker connection. Typically invoked via
+`/daily-check`.
+
+**Data source**: DB (`data/processed/limit_orders.db`). `check_order_proximity` also reads
+live prices from Yahoo, and `sync_limit_orders` optionally reconciles against the CP Gateway.
+
+### `add_limit_order`
+
+Register a new limit order for price monitoring.
+
+| Parameter        | Type  | Required | Default                            | Description                                     |
+| ---------------- | ----- | -------- | ---------------------------------- | ----------------------------------------------- |
+| `symbol`         | `str` | Yes      | -                                  | Trading symbol (e.g., "CSPX", "VWRA", "1329.T") |
+| `market`         | `str` | Yes      | -                                  | Market identifier (LSE, TSE, NYSE, BOND)        |
+| `order_type`     | `str` | Yes      | -                                  | `BUY` or `SELL`                                 |
+| `limit_price`    | `str` | Yes      | -                                  | Limit price as string for Decimal precision     |
+| `created_date`   | `str` | No       | today                              | Order creation date in YYYY-MM-DD               |
+| `quantity`       | `str` | No       | -                                  | Number of shares/units                          |
+| `amount_usd`     | `str` | No       | -                                  | Target USD amount (e.g., "10000")               |
+| `tranche_number` | `int` | No       | -                                  | Tranche number for staged entries (1, 2, 3, 4)  |
+| `rationale`      | `str` | No       | -                                  | Why this price level (e.g., "SMA200 support")   |
+| `notes`          | `str` | No       | -                                  | Additional notes                                |
+| `db_path`        | `str` | No       | `"data/processed/limit_orders.db"` | Path to SQLite database                         |
+
+**Returns**: JSON with `status` (`created`) and the created `order` (id, symbol, prices, tranche, status).
+
+```
+>>> result = await add_limit_order(
+...     symbol="CSPX", market="LSE", order_type="BUY",
+...     limit_price="700.00", tranche_number=1,
+...     rationale="SMA200 support level"
+... )
+```
+
+### `update_limit_order`
+
+Update an existing limit order. Status transitions are one-way: `PENDING` → `FILLED` / `CANCELLED` / `EXPIRED`. Price, quantity, and amount can be updated while `PENDING`.
+
+| Parameter      | Type  | Required | Default                            | Description                                    |
+| -------------- | ----- | -------- | ---------------------------------- | ---------------------------------------------- |
+| `order_id`     | `int` | Yes      | -                                  | ID of the order to update                      |
+| `status`       | `str` | No       | -                                  | New status (`FILLED`, `CANCELLED`, `EXPIRED`)  |
+| `filled_price` | `str` | No       | -                                  | Price at which the order filled (for `FILLED`) |
+| `filled_date`  | `str` | No       | today if `FILLED`                  | Fill date in YYYY-MM-DD                        |
+| `limit_price`  | `str` | No       | -                                  | Updated limit price                            |
+| `quantity`     | `str` | No       | -                                  | Updated quantity                               |
+| `amount_usd`   | `str` | No       | -                                  | Updated USD amount                             |
+| `notes`        | `str` | No       | -                                  | Updated notes                                  |
+| `db_path`      | `str` | No       | `"data/processed/limit_orders.db"` | Path to SQLite database                        |
+
+**Returns**: JSON with `status` (`updated` / `not_found`) and the updated `order`.
+
+### `get_pending_orders`
+
+List all pending limit orders, optionally filtered by symbol or market.
+
+| Parameter | Type  | Required | Default                            | Description             |
+| --------- | ----- | -------- | ---------------------------------- | ----------------------- |
+| `symbol`  | `str` | No       | -                                  | Filter by symbol        |
+| `market`  | `str` | No       | -                                  | Filter by market        |
+| `db_path` | `str` | No       | `"data/processed/limit_orders.db"` | Path to SQLite database |
+
+**Returns**: JSON with `pending_count` and a list of `orders`.
+
+### `check_order_proximity`
+
+For each pending order, fetch the current price (Yahoo Finance, resolving the market suffix) and calculate the distance to the limit. Orders within the threshold are flagged as alerts.
+
+| Parameter       | Type    | Required | Default                            | Description                |
+| --------------- | ------- | -------- | ---------------------------------- | -------------------------- |
+| `threshold_pct` | `float` | No       | `5.0`                              | Alert threshold percentage |
+| `symbol`        | `str`   | No       | -                                  | Check only this symbol     |
+| `db_path`       | `str`   | No       | `"data/processed/limit_orders.db"` | Path to SQLite database    |
+
+**Returns**: JSON with `threshold_pct`, `total_orders`, `alert_count`, `alerts`, and per-order `results` (current price, distance, distance_pct). Price-fetch failures degrade gracefully to a per-order `error` field.
+
+```
+>>> result = await check_order_proximity(threshold_pct=3.0)
+```
+
+### `get_order_history`
+
+Get the complete order history (filled, cancelled, expired) for an audit trail.
+
+| Parameter | Type  | Required | Default                            | Description             |
+| --------- | ----- | -------- | ---------------------------------- | ----------------------- |
+| `symbol`  | `str` | No       | -                                  | Filter by symbol        |
+| `db_path` | `str` | No       | `"data/processed/limit_orders.db"` | Path to SQLite database |
+
+**Returns**: JSON with `total_orders`, `status_summary` (counts per status), and `orders` sorted by date descending.
+
+### `sync_limit_orders`
+
+Sync limit orders from the IB Client Portal Gateway into the local DB: new IB orders are added, filled/cancelled IB orders update the local status, existing matches are skipped. Requires the Gateway to be running — if unreachable, returns a `skipped` status (no error).
+
+| Parameter     | Type  | Required | Default                            | Description             |
+| ------------- | ----- | -------- | ---------------------------------- | ----------------------- |
+| `db_path`     | `str` | No       | `"data/processed/limit_orders.db"` | Path to SQLite database |
+| `gateway_url` | `str` | No       | env / `https://localhost:5000`     | IB Gateway URL override |
+
+**Returns**: JSON with `status` (`completed` / `skipped`) and, when completed, a `sync_result` (added, updated, skipped, errors).
+
+```
+>>> result = await sync_limit_orders()
+```
+
+---
+
+## Daily Monitor
+
+Reliable daily fetch+sync pipeline with API fallback, sync logging, and health checks.
+Designed for scheduled tasks (see `docs/scheduled-tasks.md`).
+
+**Data source**: Flex (IB Flex Query API, with fallback to the latest cached XML) + DB
+(`data/processed/positions.db`).
+
+### `sync_daily_snapshot`
+
+Fetch and sync a daily portfolio snapshot with reliability features: explicit success/failure status, fallback to cached XML if the API fails, comparison against the previous snapshot, and a record in the `sync_log` table.
+
+| Parameter    | Type  | Required | Default            | Description              |
+| ------------ | ----- | -------- | ------------------ | ------------------------ |
+| `start_date` | `str` | No       | first of the month | Start date in YYYY-MM-DD |
+| `end_date`   | `str` | No       | today              | End date in YYYY-MM-DD   |
+
+**Returns**: JSON with `sync_date`, `status` (`success` / `fallback` / `failure`), `source` (`api` / `cached_xml` / `none`), `positions_count`, `accounts_synced`, `account_details`, `comparison_summary` (vs previous snapshot), and `duration_seconds`.
+
+```
+>>> result = await sync_daily_snapshot()
+```
+
+### `get_sync_status`
+
+Check sync pipeline health. Reports the last sync date/status, snapshot count, DB file size, days since the last sync (alerts if > 2 days), and recent `sync_log` entries.
+
+This tool takes no parameters.
+
+**Returns**: JSON with `status` (`healthy` / `warning` / `no_database`), `db_path`, `db_size_mb`, `last_snapshot_date`, `days_since_last_sync`, `total_snapshots`, `alert`, `alert_message`, `last_successful_sync`, and `recent_sync_logs`.
+
+```
+>>> status = await get_sync_status()
+```
+
+---
+
+## Earnings Calendar
+
+### `get_earnings_calendar`
+
+Get upcoming earnings and ex-dividend dates for portfolio holdings or a requested symbol list.
+
+**Data source**: Yahoo (`yfinance` calendars). When `symbols` is omitted, the holdings list
+is loaded from the latest snapshot in the position store (DB).
+
+| Parameter    | Type        | Required | Default              | Description                                                                 |
+| ------------ | ----------- | -------- | -------------------- | --------------------------------------------------------------------------- |
+| `symbols`    | `list[str]` | No       | latest snapshot syms | Tickers to inspect. When omitted, loaded from the latest portfolio snapshot |
+| `days_ahead` | `int`       | No       | `90`                 | Maximum number of days ahead to include events                              |
+
+**Returns**: JSON array of entries, each with `symbol`, `next_earnings_date`, `days_until_earnings`, `ex_dividend_date`, and `days_until_ex_dividend`. Events are sorted by the nearest upcoming date; per-symbol yfinance failures are returned as `error` entries rather than raising.
+
+```
+>>> calendar = await get_earnings_calendar(days_ahead=30)
+>>> calendar = await get_earnings_calendar(symbols=["AAPL", "MSFT"], days_ahead=60)
+```
+
+---
+
 ## Live Trading & Order Management (gated)
 
 CP Gateway live-trading and order-management tools are **disabled by default** and only
-registered when `IB_ENABLE_LIVE_TRADING` is enabled (accepts `1` / `true` / `yes`). When the
-flag is off, these 8 tools are not advertised to MCP clients.
+registered when `IB_ENABLE_LIVE_TRADING` is enabled (accepts `1` / `true` / `yes`,
+case-insensitively). When the flag is off, these **8 tools are not advertised to MCP
+clients** at all.
+
+**Data source**: CP (IB Client Portal Gateway at `https://localhost:5000`).
 
 **Gated tools** (require `IB_ENABLE_LIVE_TRADING=1`):
 
@@ -829,18 +1054,100 @@ flag is off, these 8 tools are not advertised to MCP clients.
 | `live_trading`     | `get_live_orders`, `get_live_account_balance`, `get_live_positions`, `check_gateway_status` |
 | `order_management` | `place_order`, `modify_order`, `cancel_order`, `cancel_all_orders`                          |
 
-**Always-on** (local limit-order tools, never gated): `add_limit_order`, `update_limit_order`,
-`get_pending_orders`, `check_order_proximity`, `get_order_history`, `sync_limit_orders`.
-`sync_limit_orders` touches the CP Gateway optionally and degrades gracefully (gateway
-unavailability is a soft skip, not an error).
-
 The registration gate is additive. Once enabled, the per-call safety guards still apply:
 `IB_READ_ONLY`, `IB_ORDER_DRY_RUN` (default **on**), `IB_MAX_ORDER_AMOUNT_USD` (default
 `50000`), and `IB_DAILY_ORDER_LIMIT_USD` (default `200000`). See the [README Security
 section](../README.md#live-trading-gate) for the full flag table.
 
-> Per-tool parameter documentation for these tools is tracked separately (see issues
-> #125 / #126 / #127).
+> The always-on local limit-order tools (`add_limit_order`, etc.) live under
+> [Limit Orders](#limit-orders) and are **never** gated.
+
+### `get_live_orders`
+
+Get live orders from the CP Gateway with optional filtering.
+
+| Parameter | Type  | Required | Default | Description                                          |
+| --------- | ----- | -------- | ------- | ---------------------------------------------------- |
+| `symbol`  | `str` | No       | -       | Filter by trading symbol                             |
+| `side`    | `str` | No       | -       | Filter by order side (`BUY` / `SELL`)                |
+| `status`  | `str` | No       | -       | Filter by order status (e.g., `Submitted`, `Filled`) |
+
+**Returns**: JSON with `total_orders` and a list of `orders`. Returns an `error` message if the Gateway is not running or the session has expired.
+
+### `get_live_account_balance`
+
+Get the real-time account balance from the CP Gateway (net liquidation, cash, buying power, gross position value).
+
+| Parameter    | Type  | Required | Default       | Description                                   |
+| ------------ | ----- | -------- | ------------- | --------------------------------------------- |
+| `account_id` | `str` | No       | first account | IB account ID (uses first account if omitted) |
+
+**Returns**: JSON with `account_id`, `net_liquidation`, `total_cash`, `buying_power`, and `gross_position_value`.
+
+### `get_live_positions`
+
+Get real-time positions from the CP Gateway as reported live by the broker. For historical positions parsed from Flex Query data, use [`get_positions`](#get_positions) instead.
+
+| Parameter    | Type  | Required | Default       | Description                                   |
+| ------------ | ----- | -------- | ------------- | --------------------------------------------- |
+| `account_id` | `str` | No       | first account | IB account ID (uses first account if omitted) |
+
+**Returns**: JSON with `account_id`, `total_positions`, and a list of `positions` (symbol, quantity, market price/value, avg cost, unrealized P&L, currency).
+
+### `check_gateway_status`
+
+Check the CP Gateway connection and authentication state. This tool takes no parameters.
+
+**Returns**: JSON with `connected`, `authenticated`, `competing`, `server_connected`, and a `message`. Never raises — when the Gateway is unreachable it returns `connected: false`.
+
+### `place_order`
+
+Place a buy/sell order via the CP Gateway. Subject to all safety mechanisms: dry-run (default **on**), per-order limit, daily limit, read-only mode, and full order logging to `data/processed/order_log.jsonl`.
+
+| Parameter     | Type  | Required    | Default | Description                                         |
+| ------------- | ----- | ----------- | ------- | --------------------------------------------------- |
+| `account_id`  | `str` | Yes         | -       | IB account ID                                       |
+| `contract_id` | `int` | Yes         | -       | IB contract ID for the instrument                   |
+| `symbol`      | `str` | Yes         | -       | Trading symbol (for logging)                        |
+| `side`        | `str` | Yes         | -       | Order side (`BUY` / `SELL`)                         |
+| `quantity`    | `str` | Yes         | -       | Order quantity (string for precision)               |
+| `order_type`  | `str` | No          | `"LMT"` | `LMT`, `MKT`, `STP`, `STP_LMT`                      |
+| `limit_price` | `str` | Conditional | -       | Limit price (required for `LMT` / `STP_LMT` orders) |
+| `tif`         | `str` | No          | `"GTC"` | Time in force (`GTC`, `DAY`, `IOC`)                 |
+
+**Returns**: JSON with the placement result. In dry-run mode: `dry_run: true` plus `order_details` and a `log` record. When live: `status`, `order_id`, `replies`, and a `log` record. Limit/safety violations return an `error` message.
+
+### `modify_order`
+
+Modify the quantity and/or limit price of an active order. At least one of `quantity` or `limit_price` must be supplied. Same safety guards as `place_order`.
+
+| Parameter     | Type  | Required | Default | Description                        |
+| ------------- | ----- | -------- | ------- | ---------------------------------- |
+| `account_id`  | `str` | Yes      | -       | IB account ID                      |
+| `order_id`    | `int` | Yes      | -       | Order ID to modify                 |
+| `symbol`      | `str` | Yes      | -       | Trading symbol (for audit logging) |
+| `quantity`    | `str` | No       | -       | New quantity                       |
+| `limit_price` | `str` | No       | -       | New limit price                    |
+
+**Returns**: JSON with the modification result (`dry_run` preview or live `status` / `order_id` / `replies`), plus a `log` record. Returns an `error` if neither field is provided or a safety limit is exceeded.
+
+### `cancel_order`
+
+Cancel a single active order via the CP Gateway. Honors read-only and dry-run modes.
+
+| Parameter    | Type  | Required | Default | Description                  |
+| ------------ | ----- | -------- | ------- | ---------------------------- |
+| `account_id` | `str` | Yes      | -       | IB account ID                |
+| `order_id`   | `int` | Yes      | -       | Order ID to cancel           |
+| `symbol`     | `str` | Yes      | -       | Trading symbol (for logging) |
+
+**Returns**: JSON with `status` (`cancelled`), `order_id`, `api_response`, and a `log` record (or a `dry_run` preview).
+
+### `cancel_all_orders`
+
+Cancel **all** open orders across all accounts (emergency use). Honors read-only and dry-run modes. Takes no parameters.
+
+**Returns**: JSON with `total_cancelled`, `total_failed`, and per-order `results` (or a `dry_run` preview / "No active orders to cancel").
 
 ---
 
