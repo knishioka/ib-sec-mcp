@@ -523,3 +523,84 @@ class TestEventRisk:
         )
         assert data["event_risk"]["near_term"] is False
         assert data["event_risk"]["events"]  # still surfaced for visibility
+
+    async def test_imminent_rate_event_flags_near_term_with_label(
+        self, test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An imminent macro rate decision drives near-term risk and a labelled note."""
+        patch_components(
+            monkeypatch,
+            tech=make_tech(score=0.6, current_level="neutral", rsi_signal="neutral"),
+            stock_ctx=make_stock_ctx(),
+            sentiment=make_sentiment("0.5"),
+            events=[
+                {
+                    "symbol": None,
+                    "event_type": "rate",
+                    "event_date": "2026-01-03",
+                    "days_until": 2,
+                    "flag": "EVENT_SOON",
+                    "central_bank": "FOMC",
+                    "region": "US",
+                    "currency": "USD",
+                    "description": "FOMC interest rate decision",
+                }
+            ],
+        )
+        data = json.loads(
+            await call_tool_fn(test_mcp, "evaluate_position", symbol="AAPL", ctx=None)
+        )
+        assert data["event_risk"]["near_term"] is True
+        assert data["event_risk"]["next_earnings_days"] is None
+        assert any("FOMC interest rate decision" in r for r in data["rationale"])
+
+    async def test_fetch_event_risk_merges_global_rate_events(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_fetch_event_risk appends curated rate events to per-symbol events."""
+        rate_record = {
+            "symbol": None,
+            "event_type": "rate",
+            "event_date": "2026-01-02",
+            "days_until": 1,
+            "flag": "EVENT_SOON",
+            "central_bank": "FOMC",
+            "region": "US",
+            "currency": "USD",
+            "description": "FOMC interest rate decision",
+        }
+        monkeypatch.setattr(pa, "build_rate_events", lambda *a, **k: [rate_record])
+
+        class _Ticker:
+            def __init__(self, symbol: str) -> None:
+                self.symbol = symbol
+
+            @property
+            def calendar(self) -> dict:
+                return {"Earnings Date": [], "Ex-Dividend Date": None}
+
+        with patch("yfinance.Ticker", _Ticker):
+            events = await pa._fetch_event_risk("AAPL")
+
+        assert rate_record in events
+        assert any(e["event_type"] == "rate" for e in events)
+
+    async def test_fetch_event_risk_keeps_rate_events_on_yfinance_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A yfinance failure still yields the offline rate events."""
+        rate_record = {"symbol": None, "event_type": "rate", "days_until": 1, "flag": "EVENT_SOON"}
+        monkeypatch.setattr(pa, "build_rate_events", lambda *a, **k: [rate_record])
+
+        class _Ticker:
+            def __init__(self, symbol: str) -> None:
+                pass
+
+            @property
+            def calendar(self) -> dict:
+                raise RuntimeError("yfinance down")
+
+        with patch("yfinance.Ticker", _Ticker):
+            events = await pa._fetch_event_risk("AAPL")
+
+        assert events == [rate_record]

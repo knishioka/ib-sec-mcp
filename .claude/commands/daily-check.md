@@ -67,7 +67,7 @@ For any symbols in pending orders that were NOT in portfolio positions, fetch th
 
 ### Step 4.5: Upcoming Event Check
 
-Call `get_upcoming_events` with a 14-day horizon to surface near-term earnings / ex-dividend events for holdings **plus pending-order symbols that are not current holdings**.
+Call `get_upcoming_events` with a 14-day horizon to surface near-term earnings / ex-dividend events for holdings **plus pending-order symbols that are not current holdings**, together with global macro interest-rate (e.g. FOMC) decisions.
 
 Pass any unheld pending-order symbols from Step 4 as `watchlist` so they are swept alongside holdings — otherwise `get_upcoming_events` only loads portfolio holdings and an imminent event on an unheld limit-order target would produce no `EVENT_SOON` alert, defeating the staged-entry pause this step is meant to add.
 
@@ -77,26 +77,26 @@ get_upcoming_events(days=14, watchlist=["{unheld_order_sym_1}", "{unheld_order_s
 # If there are no unheld pending-order symbols, simply call get_upcoming_events(days=14)
 ```
 
-Record each event's `symbol`, `event_type`, `event_date`, `days_until`, and `flag`. Events flagged `EVENT_SOON` (within 3 days) feed the alert step below. If the call fails, note it and continue (events are advisory, not blocking).
+Record each event's `symbol`, `event_type`, `event_date`, `days_until`, and `flag`. Macro rate events are global and carry `symbol: null` (plus `central_bank` / `region` / `currency`); they apply to the whole portfolio. Events flagged `EVENT_SOON` (within 3 days) feed the alert step below. If the call fails, note it and continue (events are advisory, not blocking).
 
 ### Step 5: Alert Generation
 
 Generate alerts based on these thresholds:
 
-| Condition                                    | Alert Level      | Label       |
-| -------------------------------------------- | ---------------- | ----------- |
-| Limit order distance <= 3%                   | URGENT ALERT     | URGENT      |
-| Limit order distance <= 5% (but > 3%)        | ALERT            | APPROACHING |
-| Daily price change > +/-3%                   | VOLATILITY ALERT | VOLATILE    |
-| Current price <= limit price (likely filled) | FILL CHECK       | FILL CHECK  |
-| Earnings/ex-div within 3 days (`EVENT_SOON`) | EVENT ALERT      | EVENT SOON  |
+| Condition                                         | Alert Level      | Label       |
+| ------------------------------------------------- | ---------------- | ----------- |
+| Limit order distance <= 3%                        | URGENT ALERT     | URGENT      |
+| Limit order distance <= 5% (but > 3%)             | ALERT            | APPROACHING |
+| Daily price change > +/-3%                        | VOLATILITY ALERT | VOLATILE    |
+| Current price <= limit price (likely filled)      | FILL CHECK       | FILL CHECK  |
+| Earnings/ex-div/rate within 3 days (`EVENT_SOON`) | EVENT ALERT      | EVENT SOON  |
 
 Classification logic:
 
 - Use `distance_pct` from `check_order_proximity` results for order alerts
 - Use `day_change_percent` from `get_current_price` results for volatility alerts
 - If current price is at or below the buy limit price, flag as FILL CHECK
-- Use `flag == "EVENT_SOON"` from `get_upcoming_events` for event alerts; treat an imminent earnings date as a reason to pause staged entries into that symbol
+- Use `flag == "EVENT_SOON"` from `get_upcoming_events` for event alerts; treat an imminent earnings date as a reason to pause staged entries into that symbol, and an imminent macro rate decision (`event_type == "rate"`) as a reason to pause staged entries across the portfolio
 
 ### Step 6: Memory Update — daily-snapshot.md (OVERWRITE — every run)
 
