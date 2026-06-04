@@ -4,12 +4,12 @@ Complete reference for all MCP tools, resources, and prompts provided by the IB 
 
 ## Overview
 
-IB Analytics provides **59 tools**, **9 resources**, and **5 prompts** across two usage modes:
+IB Analytics provides **62 tools**, **9 resources**, and **5 prompts** across two usage modes:
 
 - **Mode 1 (Claude Desktop)**: Coarse-grained tools for complete, self-contained analysis
 - **Mode 2 (Claude Code + MCP)**: Fine-grained tools for composable, custom workflows
 
-Of the 59 tools, **51 are registered by default** and **8 are gated** behind the
+Of the 62 tools, **54 are registered by default** and **8 are gated** behind the
 `IB_ENABLE_LIVE_TRADING` flag (CP Gateway live trading + order management — disabled by
 default). See [Live Trading & Order Management](#live-trading--order-management-gated).
 
@@ -47,9 +47,14 @@ relies on:
 | [Limit Orders](#limit-orders)                                            | 6           | Both   | DB (+CP/Yahoo) | Local limit-order tracking and proximity alerts  |
 | [Daily Monitor](#daily-monitor)                                          | 2           | Mode 1 | Flex + DB      | Reliable fetch+sync pipeline with health checks  |
 | [Earnings Calendar](#earnings-calendar)                                  | 1           | Both   | Yahoo + DB     | Upcoming earnings and ex-dividend dates          |
+| [Events Monitor](#events-monitor)                                        | 1           | Both   | Yahoo + DB     | Near-term event monitoring with EVENT_SOON flags |
 | [Live Trading & Order Management](#live-trading--order-management-gated) | 8 _(gated)_ | Mode 1 | CP             | Live broker trading via CP Gateway (opt-in)      |
 
-**Total: 59 tools** (51 default-enabled + 8 gated behind `IB_ENABLE_LIVE_TRADING`).
+**Total: 62 tools** (54 default-enabled + 8 gated behind `IB_ENABLE_LIVE_TRADING`).
+
+> **Note:** The category subtotals above are being reconciled separately (see the
+> tracking issue for docs/tool-count alignment); the headline totals reflect the
+> tools actually registered by the server.
 
 ---
 
@@ -1034,6 +1039,41 @@ is loaded from the latest snapshot in the position store (DB).
 ```
 >>> calendar = await get_earnings_calendar(days_ahead=30)
 >>> calendar = await get_earnings_calendar(symbols=["AAPL", "MSFT"], days_ahead=60)
+```
+
+---
+
+## Events Monitor
+
+### `get_upcoming_events`
+
+Monitor near-term earnings / ex-dividend events for portfolio holdings plus an optional
+watchlist, flagging imminent ones (`EVENT_SOON`). Complements `get_earnings_calendar` by
+turning the same calendar data into a flat, sorted monitoring feed suitable for
+`/daily-check` alerts and for feeding near-term event risk into `evaluate_position`.
+
+**Data source**: Yahoo (`yfinance` calendars). When `symbols` is omitted, holdings are
+loaded from the latest snapshot in the position store (DB); `watchlist` symbols are merged
+in on top.
+
+| Parameter             | Type        | Required | Default              | Description                                                        |
+| --------------------- | ----------- | -------- | -------------------- | ------------------------------------------------------------------ |
+| `days`                | `int`       | No       | `14`                 | Monitoring horizon in days; events further out are omitted         |
+| `symbols`             | `list[str]` | No       | latest snapshot syms | Base tickers to monitor. When omitted, loaded from latest snapshot |
+| `watchlist`           | `list[str]` | No       | -                    | Additional non-held symbols to monitor alongside holdings          |
+| `soon_threshold_days` | `int`       | No       | `3`                  | Events within this many days are flagged `EVENT_SOON`              |
+
+**Returns**: JSON object with `as_of`, `days_ahead`, `soon_threshold_days`, `event_count`,
+`event_soon_count`, `events` (flat, soonest-first; each with `symbol`, `event_type`
+(`earnings` | `ex_dividend`), `event_date`, `days_until`, `flag`) and `errors`. Per-symbol
+yfinance failures and invalid symbols are collected in `errors` rather than raising.
+
+> Interest-rate (macro) events are not yet sourced per-symbol; the `event_type` field is
+> intentionally open for a future rate feed.
+
+```
+>>> events = await get_upcoming_events(days=14)
+>>> events = await get_upcoming_events(symbols=["CSPX"], watchlist=["NVDA"], soon_threshold_days=5)
 ```
 
 ---

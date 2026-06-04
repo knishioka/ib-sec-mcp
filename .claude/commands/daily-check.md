@@ -1,6 +1,6 @@
 ---
 description: Daily portfolio monitoring for scheduled tasks (no user interaction)
-allowed-tools: Read, Write, Edit, mcp__ib-sec-mcp__sync_daily_snapshot, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__check_order_proximity, mcp__ib-sec-mcp__get_pending_orders, mcp__ib-sec-mcp__analyze_consolidated_portfolio
+allowed-tools: Read, Write, Edit, mcp__ib-sec-mcp__sync_daily_snapshot, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__check_order_proximity, mcp__ib-sec-mcp__get_pending_orders, mcp__ib-sec-mcp__analyze_consolidated_portfolio, mcp__ib-sec-mcp__get_upcoming_events
 argument-hint: [--verbose]
 ---
 
@@ -65,6 +65,16 @@ check_order_proximity(threshold_pct=5.0)
 
 For any symbols in pending orders that were NOT in portfolio positions, fetch their current prices too (parallel `get_current_price` calls).
 
+### Step 4.5: Upcoming Event Check
+
+Call `get_upcoming_events` with a 14-day horizon to surface near-term earnings / ex-dividend events for holdings (and any watchlist symbols from pending orders).
+
+```
+get_upcoming_events(days=14)
+```
+
+Record each event's `symbol`, `event_type`, `event_date`, `days_until`, and `flag`. Events flagged `EVENT_SOON` (within 3 days) feed the alert step below. If the call fails, note it and continue (events are advisory, not blocking).
+
 ### Step 5: Alert Generation
 
 Generate alerts based on these thresholds:
@@ -75,12 +85,14 @@ Generate alerts based on these thresholds:
 | Limit order distance <= 5% (but > 3%)        | ALERT            | APPROACHING |
 | Daily price change > +/-3%                   | VOLATILITY ALERT | VOLATILE    |
 | Current price <= limit price (likely filled) | FILL CHECK       | FILL CHECK  |
+| Earnings/ex-div within 3 days (`EVENT_SOON`) | EVENT ALERT      | EVENT SOON  |
 
 Classification logic:
 
 - Use `distance_pct` from `check_order_proximity` results for order alerts
 - Use `day_change_percent` from `get_current_price` results for volatility alerts
 - If current price is at or below the buy limit price, flag as FILL CHECK
+- Use `flag == "EVENT_SOON"` from `get_upcoming_events` for event alerts; treat an imminent earnings date as a reason to pause staged entries into that symbol
 
 ### Step 6: Memory Update — daily-snapshot.md (OVERWRITE — every run)
 
@@ -108,6 +120,14 @@ Sync Status: {status from Step 1}
 | Symbol | Limit    | Current    | Distance | Alert        |
 | ------ | -------- | ---------- | -------- | ------------ |
 | {sym}  | ${limit} | ${current} | {X.X%}   | {level or —} |
+
+## Upcoming Events (next 14 days)
+
+| Symbol | Event  | Date         | Days | Flag              |
+| ------ | ------ | ------------ | ---- | ----------------- |
+| {sym}  | {type} | {YYYY-MM-DD} | {N}  | {EVENT_SOON or —} |
+
+(or "None within 14 days" if empty)
 
 ## Active Alerts
 
@@ -195,6 +215,11 @@ Display the following to the conversation:
 ### Limit Order Status
 | Symbol | Limit | Current | Distance | Alert |
 |--------|-------|---------|----------|-------|
+| ... | ... | ... | ... | ... |
+
+### Upcoming Events (next 14 days)
+| Symbol | Event | Date | Days | Flag |
+|--------|-------|------|------|------|
 | ... | ... | ... | ... | ... |
 
 ### Alerts
