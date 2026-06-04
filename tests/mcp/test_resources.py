@@ -89,9 +89,10 @@ async def read_resource(mcp: FastMCP, uri: str) -> str:
 
 async def read_account_resource(mcp: FastMCP, account_id: str) -> str:
     """Invoke the ``ib://accounts/{account_id}`` template handler."""
-    templates = await _maybe_await(mcp.list_resource_templates())
+    templates = await _maybe_await(mcp.get_resource_templates())
     assert templates, "expected an account resource template"
-    return await _maybe_await(templates[0].fn(account_id=account_id))
+    template = next(t for t in templates.values() if "{account_id}" in t.uri_template)
+    return await _maybe_await(template.fn(account_id=account_id))
 
 
 @pytest.fixture()
