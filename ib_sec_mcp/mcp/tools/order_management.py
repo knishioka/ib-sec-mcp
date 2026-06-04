@@ -67,8 +67,11 @@ def is_live_trading_enabled() -> bool:
     when this flag is explicitly enabled. This is a registration-level gate; the
     per-call guards (``IB_READ_ONLY``, ``IB_ORDER_DRY_RUN``, ``IB_MAX_ORDER_AMOUNT_USD``,
     ``IB_DAILY_ORDER_LIMIT_USD``) remain the second line of defense once enabled.
+
+    The value is matched case-insensitively, so ``1``, ``true``, ``TRUE``, ``yes``,
+    and ``Yes`` all enable the tools.
     """
-    return os.environ.get("IB_ENABLE_LIVE_TRADING", "0") in ("1", "true", "yes")
+    return os.environ.get("IB_ENABLE_LIVE_TRADING", "0").strip().lower() in ("1", "true", "yes")
 
 
 def is_read_only() -> bool:

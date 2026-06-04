@@ -4,6 +4,9 @@ Verifies that the server starts correctly and all expected tools and resources a
 """
 
 import asyncio
+import os
+from collections.abc import Iterator
+from unittest.mock import patch
 
 import pytest
 from fastmcp import FastMCP
@@ -134,6 +137,18 @@ EXPECTED_RESOURCE_TEMPLATES = {
 class TestMCPServerStartup:
     """Smoke tests for Issue #52: MCP server startup and component registration"""
 
+    @pytest.fixture(scope="class", autouse=True)
+    def _isolate_live_trading_flag(self) -> Iterator[None]:
+        """Ensure IB_ENABLE_LIVE_TRADING does not leak from the ambient env.
+
+        The class-scoped ``server`` fixture reads this flag at creation time, so an
+        ambient ``IB_ENABLE_LIVE_TRADING=1`` (developer shell or CI) would otherwise
+        register the gated tools and break the default-state assertions.
+        """
+        with patch.dict(os.environ, clear=False):
+            os.environ.pop("IB_ENABLE_LIVE_TRADING", None)
+            yield
+
     @pytest.fixture(scope="class")
     def server(self) -> FastMCP:
         """Create a server instance for testing (no network calls)"""
@@ -208,11 +223,11 @@ class TestLiveTradingGate:
         assert tools.isdisjoint(LIVE_TRADING_TOOLS)
         assert tools >= EXPECTED_TOOLS
 
-    @pytest.mark.parametrize("flag_value", ["1", "true", "yes"])
+    @pytest.mark.parametrize("flag_value", ["1", "true", "yes", "TRUE", "Yes", " true "])
     def test_gated_tools_present_when_flag_enabled(
         self, monkeypatch: pytest.MonkeyPatch, flag_value: str
     ) -> None:
-        """With IB_ENABLE_LIVE_TRADING enabled, all 8 gated tools are advertised"""
+        """With IB_ENABLE_LIVE_TRADING enabled (case-insensitive), all 8 tools are advertised"""
         monkeypatch.setenv("IB_ENABLE_LIVE_TRADING", flag_value)
         server = create_server()
         tools = asyncio.run(list_tool_names(server))
