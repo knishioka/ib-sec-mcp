@@ -89,9 +89,11 @@ async def read_resource(mcp: FastMCP, uri: str) -> str:
 
 async def read_account_resource(mcp: FastMCP, account_id: str) -> str:
     """Invoke the ``ib://accounts/{account_id}`` template handler."""
-    templates = await _maybe_await(mcp.get_resource_templates())
-    assert templates, "expected an account resource template"
-    template = next(t for t in templates.values() if "{account_id}" in t.uri_template)
+    # Use the singular get_resource_template(key) — present across the
+    # FastMCP 2.x versions in local/CI; the plural get_resource_templates()
+    # is not available on all of them.
+    template = await _maybe_await(mcp.get_resource_template("ib://accounts/{account_id}"))
+    assert template is not None, "expected an account resource template"
     return await _maybe_await(template.fn(account_id=account_id))
 
 
