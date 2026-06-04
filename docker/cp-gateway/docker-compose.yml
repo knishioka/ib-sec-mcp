@@ -1,0 +1,14 @@
+services:
+  cp-gateway:
+    build: .
+    container_name: ib-cp-gateway
+    ports:
+      - "5001:5000"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        ["CMD-SHELL", "curl -sk https://localhost:5000/v1/api/tickle || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
