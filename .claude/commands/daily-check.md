@@ -67,10 +67,14 @@ For any symbols in pending orders that were NOT in portfolio positions, fetch th
 
 ### Step 4.5: Upcoming Event Check
 
-Call `get_upcoming_events` with a 14-day horizon to surface near-term earnings / ex-dividend events for holdings (and any watchlist symbols from pending orders).
+Call `get_upcoming_events` with a 14-day horizon to surface near-term earnings / ex-dividend events for holdings **plus pending-order symbols that are not current holdings**.
+
+Pass any unheld pending-order symbols from Step 4 as `watchlist` so they are swept alongside holdings — otherwise `get_upcoming_events` only loads portfolio holdings and an imminent event on an unheld limit-order target would produce no `EVENT_SOON` alert, defeating the staged-entry pause this step is meant to add.
 
 ```
-get_upcoming_events(days=14)
+# `watchlist` = pending-order symbols from Step 4 not already in portfolio positions
+get_upcoming_events(days=14, watchlist=["{unheld_order_sym_1}", "{unheld_order_sym_2}"])
+# If there are no unheld pending-order symbols, simply call get_upcoming_events(days=14)
 ```
 
 Record each event's `symbol`, `event_type`, `event_date`, `days_until`, and `flag`. Events flagged `EVENT_SOON` (within 3 days) feed the alert step below. If the call fails, note it and continue (events are advisory, not blocking).
