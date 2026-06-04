@@ -78,7 +78,15 @@ def main() -> None:
     # Check for debug mode from environment
     import os
 
+    from dotenv import load_dotenv
+
     from ib_sec_mcp.utils.logger import configure_logging as configure_app_logging
+
+    # Load .env before anything reads os.environ. Registration-time configuration
+    # such as IB_ENABLE_LIVE_TRADING (which gates tool registration in
+    # register_all_tools) is evaluated at startup, so the .env file must be loaded
+    # here rather than lazily at tool-call time (via Config.load()).
+    load_dotenv()
 
     enable_debug = os.getenv("IB_DEBUG", "").lower() in ("1", "true", "yes")
 

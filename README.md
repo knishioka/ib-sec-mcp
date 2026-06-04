@@ -432,6 +432,32 @@ uv run pre-commit run --all-files
 - **Timeout Protection**: All operations have timeout limits
 - **Retry Logic**: Automatic retry for transient errors (max 3 attempts)
 
+### Live Trading Gate
+
+CP Gateway **live-trading** and **order-management** tools (`place_order`, `modify_order`,
+`cancel_order`, `cancel_all_orders`, `get_live_orders`, `get_live_account_balance`,
+`get_live_positions`, `check_gateway_status`) are **disabled by default**. They are only
+registered with the MCP server when `IB_ENABLE_LIVE_TRADING` is explicitly enabled:
+
+```bash
+export IB_ENABLE_LIVE_TRADING=1   # accepts 1 / true / yes
+ib-sec-mcp
+```
+
+When the flag is off, these 8 tools are not advertised to MCP clients at all. The local
+`limit_orders` tools (`add_limit_order`, `update_limit_order`, `get_pending_orders`,
+`check_order_proximity`, `get_order_history`, `sync_limit_orders`) remain available in both
+states. This registration gate is purely additive — once enabled, the existing per-call
+guards still apply as a second line of defense:
+
+| Variable                   | Default  | Effect                                               |
+| -------------------------- | -------- | ---------------------------------------------------- |
+| `IB_ENABLE_LIVE_TRADING`   | off      | Registers the 8 CP Gateway live-trading tools        |
+| `IB_READ_ONLY`             | off      | Blocks all order placement/modification/cancellation |
+| `IB_ORDER_DRY_RUN`         | **on**   | Simulates orders without submitting (set `0` to arm) |
+| `IB_MAX_ORDER_AMOUNT_USD`  | `50000`  | Per-order amount limit                               |
+| `IB_DAILY_ORDER_LIMIT_USD` | `200000` | Cumulative daily order amount limit                  |
+
 ### Debug Mode
 
 ```bash

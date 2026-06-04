@@ -816,6 +816,34 @@ Analyze market sentiment from multiple sources.
 
 ---
 
+## Live Trading & Order Management (gated)
+
+CP Gateway live-trading and order-management tools are **disabled by default** and only
+registered when `IB_ENABLE_LIVE_TRADING` is enabled (accepts `1` / `true` / `yes`). When the
+flag is off, these 8 tools are not advertised to MCP clients.
+
+**Gated tools** (require `IB_ENABLE_LIVE_TRADING=1`):
+
+| Module             | Tools                                                                                       |
+| ------------------ | ------------------------------------------------------------------------------------------- |
+| `live_trading`     | `get_live_orders`, `get_live_account_balance`, `get_live_positions`, `check_gateway_status` |
+| `order_management` | `place_order`, `modify_order`, `cancel_order`, `cancel_all_orders`                          |
+
+**Always-on** (local limit-order tools, never gated): `add_limit_order`, `update_limit_order`,
+`get_pending_orders`, `check_order_proximity`, `get_order_history`, `sync_limit_orders`.
+`sync_limit_orders` touches the CP Gateway optionally and degrades gracefully (gateway
+unavailability is a soft skip, not an error).
+
+The registration gate is additive. Once enabled, the per-call safety guards still apply:
+`IB_READ_ONLY`, `IB_ORDER_DRY_RUN` (default **on**), `IB_MAX_ORDER_AMOUNT_USD` (default
+`50000`), and `IB_DAILY_ORDER_LIMIT_USD` (default `200000`). See the [README Security
+section](../README.md#live-trading-gate) for the full flag table.
+
+> Per-tool parameter documentation for these tools is tracked separately (see issues
+> #125 / #126 / #127).
+
+---
+
 ## Resources
 
 Read-only data access via URI patterns. Resources automatically use the most recent data file.
