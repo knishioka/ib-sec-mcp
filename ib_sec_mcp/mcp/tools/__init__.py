@@ -26,6 +26,7 @@ def register_all_tools(mcp: FastMCP) -> None:
         register_etf_calculator_tools,
     )
     from ib_sec_mcp.mcp.tools.etf_comparison import register_etf_comparison_tools
+    from ib_sec_mcp.mcp.tools.events_monitor import register_events_monitor_tools
     from ib_sec_mcp.mcp.tools.ib_portfolio import register_ib_portfolio_tools
     from ib_sec_mcp.mcp.tools.limit_orders import register_limit_order_tools
     from ib_sec_mcp.mcp.tools.live_trading import register_live_trading_tools
@@ -93,6 +94,7 @@ def register_all_tools(mcp: FastMCP) -> None:
 
     register_daily_monitor_tools(mcp)  # Add daily monitor tools
     register_earnings_calendar_tools(mcp)  # Add earnings and dividend calendar tools
+    register_events_monitor_tools(mcp)  # Add upcoming-event monitoring tool
 
 
 __all__ = ["register_all_tools"]

@@ -101,6 +101,8 @@ EXPECTED_TOOLS = {
     "get_sync_status",
     # earnings_calendar
     "get_earnings_calendar",
+    # events_monitor
+    "get_upcoming_events",
     # position_advisor
     "evaluate_position",
     # position_reconcile

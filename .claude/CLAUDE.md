@@ -191,7 +191,7 @@ uv run pytest --cov=ib_sec_mcp
 
 ## MCP Server Quick Reference
 
-60 tools (52 default + 8 live-trading tools gated behind `IB_ENABLE_LIVE_TRADING`), 9 resources, 5 prompts. Full reference: [docs/mcp-tools-reference.md](../docs/mcp-tools-reference.md)
+63 tools (55 default + 8 live-trading tools gated behind `IB_ENABLE_LIVE_TRADING`), 9 resources, 5 prompts. Full reference: [docs/mcp-tools-reference.md](../docs/mcp-tools-reference.md)
 
 ---
 

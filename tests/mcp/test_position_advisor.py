@@ -108,11 +108,13 @@ def patch_components(
     stock_ctx: dict | None = None,
     sentiment: SentimentScore | None = None,
     profile: dict | None = None,
+    events: list[dict] | None = None,
 ) -> None:
     """Patch the private data-fetch helpers with deterministic results."""
     monkeypatch.setattr(pa, "_compute_technical_signals", AsyncMock(return_value=tech))
     monkeypatch.setattr(pa, "_fetch_stock_context", AsyncMock(return_value=stock_ctx or {}))
     monkeypatch.setattr(pa, "_fetch_sentiment", AsyncMock(return_value=sentiment))
+    monkeypatch.setattr(pa, "_fetch_event_risk", AsyncMock(return_value=events or []))
     monkeypatch.setattr(pa, "_read_user_profile", lambda: profile or {})
 
 
@@ -448,3 +450,76 @@ class TestComputeTechnicalSignals:
             ticker.return_value.history.return_value = short
             with pytest.raises(YahooFinanceError, match="Insufficient price history"):
                 await pa._compute_technical_signals("AAPL")
+
+
+# ---------------------------------------------------------------------------
+# Near-term event risk (issue #131)
+# ---------------------------------------------------------------------------
+class TestEventRisk:
+    async def test_no_events_reports_empty_event_risk(
+        self, test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        patch_components(
+            monkeypatch,
+            tech=make_tech(score=0.6),
+            stock_ctx=make_stock_ctx(),
+            sentiment=make_sentiment("0.5"),
+            events=[],
+        )
+        data = json.loads(
+            await call_tool_fn(test_mcp, "evaluate_position", symbol="AAPL", ctx=None)
+        )
+        assert data["event_risk"]["near_term"] is False
+        assert data["event_risk"]["events"] == []
+
+    async def test_imminent_earnings_forces_pullback_and_rationale(
+        self, test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Strong Buy signals that would normally enter at market...
+        patch_components(
+            monkeypatch,
+            tech=make_tech(score=0.6, current_level="neutral", rsi_signal="neutral"),
+            stock_ctx=make_stock_ctx(),
+            sentiment=make_sentiment("0.5"),
+            events=[
+                {
+                    "symbol": "AAPL",
+                    "event_type": "earnings",
+                    "event_date": "2026-01-03",
+                    "days_until": 2,
+                    "flag": "EVENT_SOON",
+                }
+            ],
+        )
+        data = json.loads(
+            await call_tool_fn(test_mcp, "evaluate_position", symbol="AAPL", ctx=None)
+        )
+        # ...but imminent earnings make the plan wait for a pullback.
+        assert data["event_risk"]["near_term"] is True
+        assert data["event_risk"]["next_earnings_days"] == 2
+        assert data["staged_entry"]["waits_for_pullback"] is True
+        assert any("event risk" in r.lower() for r in data["rationale"])
+
+    async def test_distant_event_does_not_flag_near_term(
+        self, test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        patch_components(
+            monkeypatch,
+            tech=make_tech(score=0.6),
+            stock_ctx=make_stock_ctx(),
+            sentiment=make_sentiment("0.5"),
+            events=[
+                {
+                    "symbol": "AAPL",
+                    "event_type": "ex_dividend",
+                    "event_date": "2026-01-12",
+                    "days_until": 11,
+                    "flag": None,
+                }
+            ],
+        )
+        data = json.loads(
+            await call_tool_fn(test_mcp, "evaluate_position", symbol="AAPL", ctx=None)
+        )
+        assert data["event_risk"]["near_term"] is False
+        assert data["event_risk"]["events"]  # still surfaced for visibility

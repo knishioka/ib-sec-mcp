@@ -41,6 +41,10 @@ from ib_sec_mcp.mcp.exceptions import (
     ValidationError,
     YahooFinanceError,
 )
+from ib_sec_mcp.mcp.tools.events_monitor import (
+    EVENT_SOON_THRESHOLD_DAYS,
+    build_symbol_events,
+)
 from ib_sec_mcp.mcp.tools.ib_portfolio import ETF_ALTERNATIVES
 from ib_sec_mcp.mcp.tools.technical_analysis import (
     _analyze_trends,
@@ -77,6 +81,9 @@ _AVOID_THRESHOLD = -0.15
 # Weighting of technical vs sentiment in the composite score
 _TECH_WEIGHT = 0.65
 _SENTIMENT_WEIGHT = 0.35
+
+# Near-term event-risk horizon: how far ahead to scan for earnings / ex-div.
+_EVENT_RISK_DAYS_AHEAD = 14
 
 
 # ---------------------------------------------------------------------------
@@ -196,6 +203,32 @@ async def _fetch_sentiment(symbol: str, lookback_days: int) -> SentimentScore | 
         return None
 
 
+async def _fetch_event_risk(symbol: str) -> list[dict[str, Any]]:
+    """Fetch near-term earnings / ex-dividend events for the candidate symbol.
+
+    Best-effort: returns an empty list on any failure so the decision can still
+    be made from technicals + sentiment. Reuses the same yfinance calendar
+    parsing as ``get_upcoming_events`` for consistency.
+    """
+    import yfinance as yf
+
+    def _load() -> Any:
+        return yf.Ticker(symbol).calendar
+
+    try:
+        calendar = await asyncio.wait_for(asyncio.to_thread(_load), timeout=DEFAULT_TIMEOUT)
+        return build_symbol_events(
+            symbol,
+            calendar,
+            datetime.now().date(),
+            _EVENT_RISK_DAYS_AHEAD,
+            EVENT_SOON_THRESHOLD_DAYS,
+        )
+    except Exception as e:
+        logger.warning("Failed to fetch event risk for %s: %s", symbol, e)
+        return []
+
+
 # ---------------------------------------------------------------------------
 # Pure synthesis helpers
 # ---------------------------------------------------------------------------
@@ -210,6 +243,38 @@ def _is_chasing(tech: dict[str, Any]) -> bool:
         return True
     rsi = (tech.get("indicators") or {}).get("rsi") or {}
     return bool(rsi.get("signal") == "overbought")
+
+
+def _summarize_event_risk(events: list[dict[str, Any]]) -> dict[str, Any]:
+    """Summarize near-term event risk from upcoming-event records.
+
+    ``near_term`` is true when any imminent event is flagged ``EVENT_SOON``
+    (e.g. earnings within a few days) — a signal to wait rather than commit
+    capital straight into binary event risk.
+    """
+    upcoming = [event for event in events if "error" not in event]
+    soon = [event for event in upcoming if event.get("flag") == "EVENT_SOON"]
+
+    next_earnings_days: int | None = None
+    for event in upcoming:
+        if event.get("event_type") == "earnings":
+            days = event.get("days_until")
+            if isinstance(days, int):
+                next_earnings_days = days
+            break
+
+    notes: list[str] = [
+        f"{event['event_type'].replace('_', '-')} in {event['days_until']} day(s) "
+        f"on {event['event_date']}"
+        for event in soon
+    ]
+
+    return {
+        "near_term": bool(soon),
+        "next_earnings_days": next_earnings_days,
+        "events": upcoming,
+        "notes": notes,
+    }
 
 
 def _synthesize_recommendation(
@@ -500,6 +565,8 @@ def register_position_advisor_tools(mcp: FastMCP) -> None:
             - ``staged_entry``: tranche plan with price bands and sizing
             - ``tax_fx``: withholding / Ireland-domicile / FX notes
             - ``portfolio_fit``: target-allocation guidance
+            - ``event_risk``: near-term earnings / ex-dividend events and whether
+              an imminent (``EVENT_SOON``) event argues for waiting
 
         Raises:
             ValidationError: If input validation fails.
@@ -518,12 +585,13 @@ def register_position_advisor_tools(mcp: FastMCP) -> None:
 
             profile = _read_user_profile()
 
-            # Gather components concurrently. Technicals are required; sentiment
-            # and valuation are best-effort.
-            tech_res, stock_res, sentiment_res = await asyncio.gather(
+            # Gather components concurrently. Technicals are required; sentiment,
+            # valuation and event risk are best-effort.
+            tech_res, stock_res, sentiment_res, event_res = await asyncio.gather(
                 _compute_technical_signals(symbol),
                 _fetch_stock_context(symbol),
                 _fetch_sentiment(symbol, lookback_days),
+                _fetch_event_risk(symbol),
                 return_exceptions=True,
             )
 
@@ -537,18 +605,30 @@ def register_position_advisor_tools(mcp: FastMCP) -> None:
             sentiment: SentimentScore | None = (
                 None if isinstance(sentiment_res, BaseException) else sentiment_res
             )
+            event_records: list[dict[str, Any]] = (
+                [] if isinstance(event_res, BaseException) else event_res
+            )
+            event_risk = _summarize_event_risk(event_records)
 
             current_price = tech.get("current_price") or stock_ctx.get("current_price")
             if not current_price:
                 raise YahooFinanceError(f"No current price available for {symbol}")
 
             decision = _synthesize_recommendation(tech, sentiment)
+            # Imminent binary events (e.g. earnings) are treated like chasing
+            # risk: prefer to wait for the event rather than enter straight into it.
+            if event_risk["near_term"]:
+                decision["rationale"].append(
+                    "Near-term event risk: "
+                    + "; ".join(event_risk["notes"])
+                    + " — consider waiting until after the event before committing."
+                )
             staged_entry = _build_staged_entry(
                 current_price=float(current_price),
                 support_resistance=tech.get("support_resistance") or {},
                 candidate_size=candidate_size,
                 recommendation=decision["recommendation"],
-                chasing_risk=decision["chasing_risk"],
+                chasing_risk=decision["chasing_risk"] or event_risk["near_term"],
             )
             tax_fx = _build_tax_fx_notes(symbol=symbol, stock_ctx=stock_ctx, profile=profile)
             portfolio_fit = _build_portfolio_fit(
@@ -603,6 +683,7 @@ def register_position_advisor_tools(mcp: FastMCP) -> None:
                 "staged_entry": staged_entry,
                 "tax_fx": tax_fx,
                 "portfolio_fit": portfolio_fit,
+                "event_risk": event_risk,
             }
 
             if ctx:
