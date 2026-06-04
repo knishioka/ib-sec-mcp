@@ -142,7 +142,7 @@ graph TD
 | File            | Responsibility                                                                                         |
 | --------------- | ------------------------------------------------------------------------------------------------------ |
 | `server.py`     | `create_server()` - FastMCP server factory with middleware chain (logging → retry → error).            |
-| `tools/`        | 12 tool modules providing MCP tools. Coarse-grained (complete analysis) and fine-grained (composable). |
+| `tools/`        | 19 tool modules providing MCP tools. Coarse-grained (complete analysis) and fine-grained (composable). |
 | `resources.py`  | URI-based resource access (`ib://portfolio/latest`, `ib://accounts/{id}`).                             |
 | `prompts.py`    | Pre-configured analysis prompt templates.                                                              |
 | `middleware.py` | Logging, retry, and error handling middleware.                                                         |
