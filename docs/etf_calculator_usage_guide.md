@@ -147,9 +147,10 @@ calculate_portfolio_swap(
 ### 3. `validate_etf_price_mcp`（削除済み / Removed in #121）
 
 > **注意**: `validate_etf_price_mcp` は MCP ツールとしては削除されました（Issue #121）。
-> 価格検証ロジックは内部ヘルパー
-> `ib_sec_mcp.tools.etf_calculator.validate_etf_price` として残り、スワップ計算ツール
-> （`calculate_etf_swap` / `calculate_portfolio_swap`）内部で利用されます。
+> 価格検証ロジックは Python の内部ヘルパー
+> `ib_sec_mcp.tools.etf_calculator.validate_etf_price` として引き続き利用できますが、
+> スワップ計算ツール（`calculate_etf_swap` / `calculate_portfolio_swap`）は自動では
+> 検証を実行しません。正確な価格を入力してください。
 > 以下の記述は内部ヘルパーの挙動の参考として残しています。
 
 ETF価格の妥当性検証
@@ -160,14 +161,16 @@ ETF価格の妥当性検証
 - 「参照ETFと比較して妥当？」
 - 「計算前に価格をチェックしたい」
 
-**引数**:
+**内部ヘルパー（参考）**:
 
 ```python
-validate_etf_price_mcp(
+from ib_sec_mcp.tools.etf_calculator import validate_etf_price
+
+validate_etf_price(
     symbol="IDTL",
-    price=3.40,
-    reference_symbol="TLT",  # オプション
-    reference_price=91.34    # オプション
+    price=Decimal("3.40"),
+    reference_symbol="TLT",            # オプション
+    reference_price=Decimal("91.34"),  # オプション
 )
 ```
 
@@ -204,16 +207,8 @@ TLT 200株をIDTLに差し替える場合、何株必要で年間メリットは
 tlt_price = 91.34
 idtl_price = 3.40
 
-# Step 2: 価格検証
-validation = validate_etf_price_mcp(
-    symbol="IDTL",
-    price=3.40,
-    reference_symbol="TLT",
-    reference_price=91.34
-)
-# 検証OK
-
-# Step 3: 計算実行
+# Step 2: 計算実行（正確な価格を入力する。必要なら内部ヘルパー
+# validate_etf_price で事前検証できるが、計算ツールは自動検証しない）
 result = calculate_etf_swap(
     from_symbol="TLT",
     from_shares=200,
@@ -351,7 +346,8 @@ MCPツールは入力された価格を信頼します。
 
 - `get_current_price()` MCPツールで取得
 - Yahoo Finance等の信頼できるソースから取得
-- 計算前に`validate_etf_price_mcp()`で検証
+- 必要に応じて内部ヘルパー `validate_etf_price` で事前検証
+  （スワップ計算ツールは自動検証しない）
 
 ### 2. 計算の前提
 
@@ -374,14 +370,17 @@ MCPツールは入力された価格を信頼します。
 
 ### 4. 検証の重要性
 
-計算前に必ず`validate_etf_price_mcp()`を使用:
+スワップ計算ツールは入力価格を自動検証しません。誤った価格による計算ミスを
+防ぐため、正確な価格を入力してください。プログラムから事前検証したい場合は
+内部ヘルパー `ib_sec_mcp.tools.etf_calculator.validate_etf_price` を利用できます:
 
 ```python
-# 悪い例（検証なし）
-result = calculate_etf_swap(...)  # 誤った価格でも計算
+from decimal import Decimal
 
-# 良い例（検証あり）
-validation = validate_etf_price_mcp(...)
+from ib_sec_mcp.tools.etf_calculator import validate_etf_price
+
+# 良い例（事前検証あり）
+validation = validate_etf_price(symbol="IDTL", price=Decimal("3.40"))
 if validation["is_valid"]:
     result = calculate_etf_swap(...)
 else:
@@ -416,7 +415,7 @@ Decimal("0.1") + Decimal("0.2") == Decimal("0.3")  # True
 
 ### Q3: 価格が異常に低い場合は？
 
-**A**: `validate_etf_price_mcp()`が警告を出します。
+**A**: 内部ヘルパー `validate_etf_price` で事前検証すると警告が得られます。
 
 例: IDTL $3.40（TLTの1/27）
 

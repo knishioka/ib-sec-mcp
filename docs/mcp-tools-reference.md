@@ -787,8 +787,9 @@ Calculate multiple ETF swaps for portfolio restructuring.
 **Returns**: JSON with individual swap calculations and portfolio-wide summary (total tax savings, total payback period).
 
 > **Removed**: `validate_etf_price_mcp` was removed from the MCP surface in #121.
-> Price validation is now an internal helper
-> (`ib_sec_mcp.tools.etf_calculator.validate_etf_price`) used by the swap calculators.
+> Price validation remains available as an internal Python helper
+> (`ib_sec_mcp.tools.etf_calculator.validate_etf_price`) for programmatic use; the
+> swap calculators do not run it automatically, so supply accurate prices.
 
 ---
 
