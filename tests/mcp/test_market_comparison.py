@@ -97,11 +97,15 @@ def patch_ticker(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
         recommendations: dict[str, Any] | None = None,
         calendars: dict[str, Any] | None = None,
     ) -> None:
-        monkeypatch.setattr(FakeTicker, "histories", histories or {})
-        monkeypatch.setattr(FakeTicker, "infos", infos or {})
-        monkeypatch.setattr(FakeTicker, "recommendations_data", recommendations or {})
-        monkeypatch.setattr(FakeTicker, "calendars", calendars or {})
-        monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+        # Use a fresh per-call subclass so concurrent tests never share state.
+        class LocalFakeTicker(FakeTicker):
+            pass
+
+        LocalFakeTicker.histories = histories or {}
+        LocalFakeTicker.infos = infos or {}
+        LocalFakeTicker.recommendations_data = recommendations or {}
+        LocalFakeTicker.calendars = calendars or {}
+        monkeypatch.setattr(PATCH_TARGET, LocalFakeTicker)
 
     return _apply
 

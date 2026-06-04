@@ -138,8 +138,12 @@ def patch_ticker(monkeypatch: pytest.MonkeyPatch) -> Callable[[dict[str, Any]], 
     """Return a helper that installs FakeTicker with the given per-symbol payloads."""
 
     def _apply(payloads: dict[str, Any]) -> None:
-        monkeypatch.setattr(FakeTicker, "payloads", payloads)
-        monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+        # Use a fresh per-call subclass so concurrent tests never share state.
+        class LocalFakeTicker(FakeTicker):
+            pass
+
+        LocalFakeTicker.payloads = payloads
+        monkeypatch.setattr(PATCH_TARGET, LocalFakeTicker)
 
     return _apply
 

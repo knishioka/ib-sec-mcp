@@ -106,9 +106,13 @@ def patch_ticker(
     """Install :class:`FakeTicker` with per-symbol history and info payloads."""
 
     def _apply(histories: dict[str, Any], infos: dict[str, Any]) -> None:
-        monkeypatch.setattr(FakeTicker, "histories", histories)
-        monkeypatch.setattr(FakeTicker, "infos", infos)
-        monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+        # Use a fresh per-call subclass so concurrent tests never share state.
+        class LocalFakeTicker(FakeTicker):
+            pass
+
+        LocalFakeTicker.histories = histories
+        LocalFakeTicker.infos = infos
+        monkeypatch.setattr(PATCH_TARGET, LocalFakeTicker)
 
     return _apply
 

@@ -56,8 +56,12 @@ def patch_ticker(monkeypatch: pytest.MonkeyPatch) -> Callable[[dict[str, Any]], 
     """
 
     def _apply(news_by_symbol: dict[str, Any]) -> None:
-        monkeypatch.setattr(FakeTicker, "news_by_symbol", news_by_symbol)
-        monkeypatch.setattr("yfinance.Ticker", FakeTicker)
+        # Use a fresh per-call subclass so concurrent tests never share state.
+        class LocalFakeTicker(FakeTicker):
+            pass
+
+        LocalFakeTicker.news_by_symbol = news_by_symbol
+        monkeypatch.setattr("yfinance.Ticker", LocalFakeTicker)
 
     return _apply
 

@@ -102,13 +102,17 @@ def patch_ticker(monkeypatch: pytest.MonkeyPatch):
         info_data: dict[str, Any] | Exception | None = None,
         dividends_data: pd.Series | Exception | None = None,
     ) -> None:
-        monkeypatch.setattr(FakeTicker, "history_data", history_data)
-        monkeypatch.setattr(FakeTicker, "history_error", history_error)
+        # Use a fresh per-call subclass so concurrent tests never share state.
+        class LocalFakeTicker(FakeTicker):
+            pass
+
+        LocalFakeTicker.history_data = history_data
+        LocalFakeTicker.history_error = history_error
         if info_data is not None:
-            monkeypatch.setattr(FakeTicker, "info_data", info_data)
+            LocalFakeTicker.info_data = info_data
         if dividends_data is not None:
-            monkeypatch.setattr(FakeTicker, "dividends_data", dividends_data)
-        monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+            LocalFakeTicker.dividends_data = dividends_data
+        monkeypatch.setattr(PATCH_TARGET, LocalFakeTicker)
 
     return _apply
 

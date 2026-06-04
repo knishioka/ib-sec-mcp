@@ -101,8 +101,12 @@ def patch_history(
     """Install FakeTicker with the given ``history`` payload for the test."""
 
     def _apply(history_result: object) -> None:
-        monkeypatch.setattr(FakeTicker, "history_result", history_result)
-        monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+        # Use a fresh per-call subclass so concurrent tests never share state.
+        class LocalFakeTicker(FakeTicker):
+            pass
+
+        LocalFakeTicker.history_result = history_result
+        monkeypatch.setattr(PATCH_TARGET, LocalFakeTicker)
 
     return _apply
 
