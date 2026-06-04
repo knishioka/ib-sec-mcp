@@ -141,6 +141,45 @@ class TestReconcile:
         assert result.positions == []
         assert result.summary.total_symbols == 0
 
+    def test_aggregates_duplicate_live_symbols(self) -> None:
+        # Two live contracts normalizing to the same symbol must be summed,
+        # not silently overwritten.
+        live = [
+            _cp("AAPL", "100", "16000", "1000", conid=1),
+            _cp("AAPL", "50", "8000", "500", conid=2),
+        ]
+        snap = [_snap("AAPL", "150", "24000", "1500")]
+
+        result = reconcile_positions("U1234567", live, snap)
+
+        assert len(result.positions) == 1
+        pos = result.positions[0]
+        assert pos.live_quantity == Decimal("150")
+        assert pos.live_market_value == Decimal("24000")
+        assert pos.live_unrealized_pnl == Decimal("1500")
+        assert pos.status == ReconcileStatus.UNCHANGED
+
+    def test_aggregates_duplicate_snapshot_symbols(self) -> None:
+        live: list[CPPosition] = []
+        snap = [_snap("AAPL", "100", "16000", "1000"), _snap("AAPL", "50", "8000", "500")]
+
+        result = reconcile_positions("U1234567", live, snap)
+
+        assert len(result.positions) == 1
+        pos = result.positions[0]
+        assert pos.snapshot_quantity == Decimal("150")
+        assert pos.snapshot_market_value == Decimal("24000")
+        assert pos.status == ReconcileStatus.CLOSED
+
+    def test_empty_symbol_falls_back_to_conid(self) -> None:
+        # A genuinely empty symbol (no ticker available) keys by contract id so
+        # distinct contracts are not merged into a single blank-symbol entry.
+        live = [_cp("", "10", "100", "0", conid=111), _cp("", "20", "200", "0", conid=222)]
+
+        result = reconcile_positions("U1234567", live, [])
+
+        assert {p.symbol for p in result.positions} == {"CONID:111", "CONID:222"}
+
     def test_decimal_precision_preserved(self) -> None:
         live = [_cp("AAPL", "100", "16000.12", "0.33")]
         snap = [_snap("AAPL", "100", "15000.01", "0.11")]

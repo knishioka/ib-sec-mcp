@@ -257,6 +257,38 @@ class TestCPPosition:
         pos = CPPosition.model_validate(data)
         assert pos.unrealized_pnl == Decimal("-500.75")
 
+    def test_symbol_from_ticker_alias(self) -> None:
+        # The real CP positions endpoint returns ``ticker`` rather than ``symbol``.
+        data = {
+            "acctId": "U1234567",
+            "conid": 265598,
+            "ticker": "AAPL",
+            "position": "100",
+        }
+        pos = CPPosition.model_validate(data)
+        assert pos.symbol == "AAPL"
+
+    def test_symbol_from_contract_desc_alias(self) -> None:
+        data = {
+            "acctId": "U1234567",
+            "conid": 265598,
+            "contractDesc": "AAPL",
+            "position": "100",
+        }
+        pos = CPPosition.model_validate(data)
+        assert pos.symbol == "AAPL"
+
+    def test_symbol_prefers_explicit_symbol_over_ticker(self) -> None:
+        data = {
+            "acctId": "U1234567",
+            "conid": 265598,
+            "symbol": "AAPL",
+            "ticker": "WRONG",
+            "position": "100",
+        }
+        pos = CPPosition.model_validate(data)
+        assert pos.symbol == "AAPL"
+
     def test_required_fields(self) -> None:
         with pytest.raises(ValidationError):
             CPPosition.model_validate({"symbol": "AAPL"})

@@ -191,6 +191,26 @@ def _from_snapshot(row: Mapping[str, Any]) -> tuple[str, _CommonPosition]:
     )
 
 
+def _accumulate(target: dict[str, _CommonPosition], key: str, common: _CommonPosition) -> None:
+    """Insert ``common`` into ``target``, summing duplicates that share a key.
+
+    Multiple raw positions can normalize to the same key (e.g. several option
+    contracts or bond tranches reported under the same ticker). Summing their
+    quantity, market value, and unrealized P&L avoids silently dropping all but
+    the last one, which would corrupt the reconciliation deltas.
+    """
+    existing = target.get(key)
+    if existing is None:
+        target[key] = common
+        return
+    target[key] = _CommonPosition(
+        symbol=key,
+        quantity=existing.quantity + common.quantity,
+        market_value=existing.market_value + common.market_value,
+        unrealized_pnl=existing.unrealized_pnl + common.unrealized_pnl,
+    )
+
+
 def _reconcile_one(
     key: str,
     live: _CommonPosition | None,
@@ -306,7 +326,7 @@ def reconcile_positions(
     snap_map: dict[str, _CommonPosition] = {}
     for row in snapshot_positions:
         key, common = _from_snapshot(row)
-        snap_map[key] = common
+        _accumulate(snap_map, key, common)
 
     # Degraded mode: present snapshot positions only, with no diffs.
     if not live_available:
@@ -323,7 +343,7 @@ def reconcile_positions(
     live_map: dict[str, _CommonPosition] = {}
     for pos in live_positions:
         key, common = _from_cp(pos)
-        live_map[key] = common
+        _accumulate(live_map, key, common)
 
     all_keys = sorted(set(live_map) | set(snap_map))
     positions = [_reconcile_one(key, live_map.get(key), snap_map.get(key)) for key in all_keys]
