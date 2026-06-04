@@ -3,7 +3,7 @@
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class CPAuthStatus(BaseModel):
@@ -87,7 +87,15 @@ class CPPosition(BaseModel):
 
     account_id: str = Field(..., alias="acctId", description="Account ID")
     contract_id: int = Field(..., alias="conid", description="Contract ID")
-    symbol: str = Field("", description="Trading symbol")
+    # The CP positions endpoint returns the ticker under ``ticker`` (and a
+    # human-readable ``contractDesc``) rather than ``symbol``. Accept all three
+    # so the symbol is populated from real API responses; without this it would
+    # default to "" and break symbol-based reconciliation against Flex data.
+    symbol: str = Field(
+        "",
+        validation_alias=AliasChoices("symbol", "ticker", "contractDesc"),
+        description="Trading symbol",
+    )
     position: Decimal = Field(..., description="Position quantity")
     market_price: Decimal = Field(Decimal("0"), alias="mktPrice", description="Market price")
     market_value: Decimal = Field(Decimal("0"), alias="mktValue", description="Market value")
