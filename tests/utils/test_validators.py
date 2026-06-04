@@ -60,6 +60,17 @@ class TestParseDecimalSafe:
         """A float input must not bake its binary artifact into the Decimal."""
         assert parse_decimal_safe(0.1) == Decimal("0.1")
 
+    def test_decimal_input_returned_as_is(self) -> None:
+        """An existing Decimal is returned unchanged (no str() round-trip)."""
+        value = Decimal("123.456")
+        result = parse_decimal_safe(value)
+        assert result == value
+        assert isinstance(result, Decimal)
+
+    def test_decimal_input_preserves_high_precision(self) -> None:
+        value = Decimal("1.000000000000000000001")
+        assert parse_decimal_safe(value) == value
+
     def test_none_returns_default(self) -> None:
         assert parse_decimal_safe(None) == Decimal("0")
 

@@ -143,7 +143,7 @@ def validate_account_id(account_id: str) -> bool:
 
 
 def parse_decimal_safe(
-    value: str | int | float | None,
+    value: str | int | float | Decimal | None,
     default: Decimal = Decimal("0"),
 ) -> Decimal:
     """
@@ -157,7 +157,7 @@ def parse_decimal_safe(
     every code path so callers never need to wrap the result in ``Decimal``.
 
     Args:
-        value: Value to parse (string, int, float, or None)
+        value: Value to parse (string, int, float, Decimal, or None)
         default: Default ``Decimal`` returned when the input is empty or invalid
 
     Returns:
@@ -165,6 +165,10 @@ def parse_decimal_safe(
     """
     if value is None or value == "":
         return default
+
+    # Already a Decimal: return as-is, avoiding a redundant str() round-trip.
+    if isinstance(value, Decimal):
+        return value
 
     try:
         if isinstance(value, str):
@@ -193,9 +197,11 @@ def validate_xml_format(data: str) -> None:
     Raises:
         ValueError: If ``data`` is not valid XML (does not start with ``<``)
     """
-    first_line = data.strip().split("\n")[0] if data.strip() else ""
+    # Find the first non-whitespace character without copying/splitting the
+    # whole payload (XML statements can be large): O(1) for well-formed input.
+    first_char = next((char for char in data if not char.isspace()), "")
 
-    if not first_line.startswith("<"):
+    if first_char != "<":
         raise ValueError(
             "Invalid data format. Only XML format is supported. "
             "CSV support has been removed. "
