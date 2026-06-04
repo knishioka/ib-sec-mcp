@@ -15,22 +15,21 @@ from ib_sec_mcp.analyzers.sentiment.base import SentimentScore
 from ib_sec_mcp.analyzers.sentiment.technical import TechnicalSentimentAnalyzer
 
 
-class FakeTicker:
-    """Minimal yfinance.Ticker stand-in returning a fixed history DataFrame."""
-
-    df: pd.DataFrame = pd.DataFrame()
-
-    def __init__(self, symbol: str) -> None:
-        self.symbol = symbol
-
-    def history(self, *args: object, **kwargs: object) -> pd.DataFrame:
-        return self.df
-
-
 @pytest.fixture()
 def patch_ticker(monkeypatch: pytest.MonkeyPatch):
     def _apply(df: pd.DataFrame) -> None:
-        monkeypatch.setattr(FakeTicker, "df", df)
+        # Define the fake ticker inside the closure so the history DataFrame is
+        # captured per-call rather than stored on a shared class attribute. This
+        # keeps tests isolated even under parallel execution (e.g. pytest-xdist).
+        class FakeTicker:
+            """Minimal yfinance.Ticker stand-in returning a fixed history DataFrame."""
+
+            def __init__(self, symbol: str) -> None:
+                self.symbol = symbol
+
+            def history(self, *args: object, **kwargs: object) -> pd.DataFrame:
+                return df
+
         monkeypatch.setattr("ib_sec_mcp.analyzers.sentiment.technical.yf.Ticker", FakeTicker)
 
     return _apply
