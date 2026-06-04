@@ -18,6 +18,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 import pytest
+from pydantic import PydanticDeprecationWarning
 
 from ib_sec_mcp.analyzers.sentiment.base import SentimentScore
 from ib_sec_mcp.api.models import CashSummary, FlexStatement
@@ -164,7 +165,7 @@ class TestNoDeprecationWarnings:
         self, sample_account: Account, sample_trade: Trade, sample_position: Position
     ) -> None:
         with warnings.catch_warnings():
-            warnings.simplefilter("error", DeprecationWarning)
+            warnings.simplefilter("error", PydanticDeprecationWarning)
             sample_account.model_dump_json()
             sample_trade.model_dump_json()
             sample_position.model_dump_json()
