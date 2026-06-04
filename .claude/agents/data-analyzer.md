@@ -1,7 +1,7 @@
 ---
 name: data-analyzer
 description: Financial data analysis specialist focused on IB trading data, portfolio metrics, and investment insights. Use this subagent for deep analysis of CSV data, performance metrics, and portfolio reviews. For specialized tax optimization (wash sales, OID, Ireland ETF advantages, tax-loss harvesting), use tax-optimizer instead.
-tools: Read, Grep, Glob, Bash(python:*), Bash(python3:*), mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_costs, mcp__ib-sec-mcp__analyze_bonds, mcp__ib-sec-mcp__analyze_tax, mcp__ib-sec-mcp__analyze_risk, mcp__ib-sec-mcp__get_portfolio_summary, mcp__ib-sec-mcp__analyze_consolidated_portfolio, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__compare_etf_performance
+tools: Read, Grep, Glob, Bash(python:*), Bash(python3:*), mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_costs, mcp__ib-sec-mcp__analyze_bonds, mcp__ib-sec-mcp__analyze_tax, mcp__ib-sec-mcp__analyze_risk, mcp__ib-sec-mcp__analyze_consolidated_portfolio, mcp__ib-sec-mcp__get_current_price, mcp__ib-sec-mcp__compare_etf_performance
 model: sonnet
 ---
 
@@ -79,9 +79,9 @@ mcp__ib-sec-mcp__analyze_risk(
     interest_rate_change=0.01  # 1% change
 )
 
-# Portfolio summary
-mcp__ib-sec-mcp__get_portfolio_summary(
-    csv_path="data/raw/latest.csv"
+# Portfolio summary (consolidated analysis: holdings, allocation, concentration risk)
+mcp__ib-sec-mcp__analyze_consolidated_portfolio(
+    file_path="data/raw/latest.xml"
 )
 
 # Get current price for holdings

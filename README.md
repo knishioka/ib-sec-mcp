@@ -182,13 +182,13 @@ See [docs/architecture.md](docs/architecture.md) for design patterns, data flow 
 
 45 MCP tools for stock, options, and portfolio analysis via Yahoo Finance and IB portfolio data.
 
-| Category            | Tools | Representative Tools                                            |
-| ------------------- | :---: | --------------------------------------------------------------- |
-| Portfolio Analysis  |  15   | `analyze_performance`, `analyze_risk`, `get_portfolio_summary`  |
-| Stock & Market Data |  12   | `get_stock_analysis`, `get_current_price`, `get_stock_info`     |
-| Options Analysis    |   8   | `get_options_chain`, `calculate_greeks`, `calculate_iv_metrics` |
-| Tax & Costs         |   6   | `analyze_tax`, `analyze_costs`, `calculate_tax_loss_harvesting` |
-| Position History    |   4   | `get_position_history`, `compare_portfolio_snapshots`           |
+| Category            | Tools | Representative Tools                                                    |
+| ------------------- | :---: | ----------------------------------------------------------------------- |
+| Portfolio Analysis  |  15   | `analyze_performance`, `analyze_risk`, `analyze_consolidated_portfolio` |
+| Stock & Market Data |  12   | `get_stock_analysis`, `get_current_price`, `get_stock_info`             |
+| Options Analysis    |   8   | `get_options_chain`, `calculate_greeks`, `calculate_iv_metrics`         |
+| Tax & Costs         |   6   | `analyze_tax`, `analyze_costs`, `calculate_tax_loss_harvesting`         |
+| Position History    |   4   | `get_position_history`, `compare_portfolio_snapshots`                   |
 
 Full reference (all arguments, return values, examples): [docs/mcp-tools-reference.md](docs/mcp-tools-reference.md)
 

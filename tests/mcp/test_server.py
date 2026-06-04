@@ -37,7 +37,6 @@ EXPECTED_TOOLS = {
     "analyze_risk",
     "analyze_consolidated_portfolio",
     "calculate_tax_loss_harvesting",
-    "get_portfolio_summary",
     # composable_data
     "get_trades",
     "get_positions",
@@ -77,10 +76,8 @@ EXPECTED_TOOLS = {
     # etf_calculator_tools
     "calculate_etf_swap",
     "calculate_portfolio_swap",
-    "validate_etf_price_mcp",
     # sentiment_analysis
     "analyze_market_sentiment",
-    "get_news_sentiment",
     # rebalancing
     "generate_rebalancing_trades",
     "simulate_rebalancing",

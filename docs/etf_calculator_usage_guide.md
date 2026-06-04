@@ -144,7 +144,13 @@ calculate_portfolio_swap(
 
 ---
 
-### 3. `validate_etf_price_mcp`
+### 3. `validate_etf_price_mcp`（削除済み / Removed in #121）
+
+> **注意**: `validate_etf_price_mcp` は MCP ツールとしては削除されました（Issue #121）。
+> 価格検証ロジックは内部ヘルパー
+> `ib_sec_mcp.tools.etf_calculator.validate_etf_price` として残り、スワップ計算ツール
+> （`calculate_etf_swap` / `calculate_portfolio_swap`）内部で利用されます。
+> 以下の記述は内部ヘルパーの挙動の参考として残しています。
 
 ETF価格の妥当性検証
 

@@ -1,6 +1,6 @@
 ---
 description: Check MCP server health and tool availability
-allowed-tools: mcp__ib-sec-mcp__fetch_ib_data, mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__get_portfolio_summary, Read, Bash(python:*)
+allowed-tools: mcp__ib-sec-mcp__fetch_ib_data, mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_consolidated_portfolio, Read, Bash(python:*)
 argument-hint: [--verbose|--test]
 ---
 
@@ -13,11 +13,12 @@ Verify MCP server connectivity, tool availability, and basic functionality.
 ### Health Checks
 
 **1. Server Connectivity**
+
 ```python
 # Check if MCP server is running
 try:
     # Attempt simple MCP call
-    result = mcp__ib-sec-mcp__get_portfolio_summary(csv_path="test")
+    result = mcp__ib-sec-mcp__analyze_consolidated_portfolio(file_path="test")
     print("✅ MCP server responding")
 except Exception as e:
     print(f"❌ MCP server error: {e}")
@@ -26,15 +27,17 @@ except Exception as e:
 **2. Tool Availability**
 
 Check all 7 MCP tools:
+
 1. `fetch_ib_data` - Data fetching
 2. `analyze_performance` - Performance metrics
 3. `analyze_costs` - Cost analysis
 4. `analyze_bonds` - Bond analytics
 5. `analyze_tax` - Tax calculations
 6. `analyze_risk` - Risk assessment
-7. `get_portfolio_summary` - Portfolio overview
+7. `analyze_consolidated_portfolio` - Consolidated portfolio overview
 
 **3. Credential Validation**
+
 ```bash
 # Check .env credentials
 if [ -f .env ]; then
@@ -46,6 +49,7 @@ fi
 ```
 
 **4. Data Availability**
+
 ```bash
 # Check for CSV files
 ls -lh data/raw/*.csv 2>/dev/null | wc -l
@@ -54,6 +58,7 @@ ls -lh data/raw/*.csv 2>/dev/null | wc -l
 **5. Resource Access**
 
 Test MCP resources (6 URIs):
+
 - `ib://portfolio/list`
 - `ib://portfolio/latest`
 - `ib://accounts/{account_id}`
@@ -105,10 +110,10 @@ Process: Running (PID: 12345)
    Purpose: Portfolio risk with interest rate scenarios
    Args: start_date, end_date, interest_rate_change, account_index, use_cache
 
-7. get_portfolio_summary
+7. analyze_consolidated_portfolio
    Status: ✅ Available
-   Purpose: Portfolio overview and summary
-   Args: csv_path
+   Purpose: Consolidated portfolio overview (holdings, allocation, concentration risk)
+   Args: file_path
 
 🔐 CREDENTIALS CHECK
 
@@ -168,8 +173,8 @@ Status: ✅ Data available for analysis
 
 Running basic tool test...
 
-Test 1: get_portfolio_summary
-- Input: data/raw/U1234567_2025-01-01_2025-10-05.csv
+Test 1: analyze_consolidated_portfolio
+- Input: data/raw/U1234567_2025-01-01_2025-10-05.xml
 - Result: ✅ Success
 - Response time: 234ms
 - Data: Account U1234567, 1,234 trades, 45 positions
@@ -211,6 +216,7 @@ Next Steps:
 ### Verbose Mode
 
 If $ARGUMENTS contains `--verbose`:
+
 - Show detailed tool signatures
 - Display all resource URIs
 - List all prompt templates
@@ -220,6 +226,7 @@ If $ARGUMENTS contains `--verbose`:
 ### Test Mode
 
 If $ARGUMENTS contains `--test`:
+
 - Run actual API test (requires credentials)
 - Fetch minimal data (last 7 days)
 - Validate response format
@@ -229,6 +236,7 @@ If $ARGUMENTS contains `--test`:
 ### Troubleshooting Outputs
 
 **If MCP Server Not Running**:
+
 ```
 ❌ MCP SERVER ERROR
 
@@ -249,6 +257,7 @@ Troubleshooting Steps:
 ```
 
 **If Credentials Missing**:
+
 ```
 ❌ CREDENTIALS ERROR
 
@@ -270,6 +279,7 @@ Setup Steps:
 ```
 
 **If Tools Not Available**:
+
 ```
 ❌ TOOL AVAILABILITY ERROR
 

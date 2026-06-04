@@ -376,10 +376,15 @@ def register_resources(mcp: FastMCP) -> None:
     @mcp.resource(RESOURCE_POSITIONS_CURRENT)
     def get_current_positions() -> str:
         """
-        Get current positions from latest portfolio file
+        Get positions from the latest portfolio file (source: historical/Flex)
+
+        Reads the most recent Flex Query XML file in ``data/raw`` and returns the
+        positions recorded in it. This reflects historical Flex statement data,
+        not real-time broker state (for live positions use the ``get_live_positions``
+        tool, source: live/CP).
 
         Returns:
-            JSON string with current positions
+            JSON string with positions from the latest Flex Query file
         """
         data_dir = Path("data/raw")
         if not data_dir.exists():

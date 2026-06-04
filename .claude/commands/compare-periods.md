@@ -1,6 +1,6 @@
 ---
 description: Compare portfolio performance across two time periods
-allowed-tools: Read, Glob, Bash(python:*), mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__get_portfolio_summary
+allowed-tools: Read, Glob, Bash(python:*), mcp__ib-sec-mcp__analyze_performance, mcp__ib-sec-mcp__analyze_consolidated_portfolio
 argument-hint: period1-start period1-end period2-start period2-end
 ---
 
@@ -11,6 +11,7 @@ Compare trading performance and metrics between two time periods to identify tre
 Analyze and compare portfolio performance across two periods. Arguments format:
 
 **$ARGUMENTS Format**:
+
 - `YYYY-MM-DD YYYY-MM-DD YYYY-MM-DD YYYY-MM-DD` (period1-start period1-end period2-start period2-end)
 - Or: `--ytd` (compare current YTD vs previous YTD)
 - Or: `--quarter` (compare current quarter vs previous quarter)
@@ -19,10 +20,12 @@ Analyze and compare portfolio performance across two periods. Arguments format:
 ### Analysis Steps
 
 **1. Determine Periods**
+
 - Parse $ARGUMENTS for date ranges
 - Or use preset comparisons (YTD, quarter, month)
 
 **2. Load Data for Both Periods**
+
 ```python
 # Period 1
 perf1 = mcp__ib-sec-mcp__analyze_performance(
@@ -39,12 +42,14 @@ perf2 = mcp__ib-sec-mcp__analyze_performance(
 
 **3. Calculate Deltas**
 For each metric:
+
 - Absolute change: `metric2 - metric1`
 - Percentage change: `((metric2 - metric1) / metric1) * 100`
 - Trend: `IMPROVING` or `DEGRADING`
 
 **4. Attribution Analysis**
 Identify what changed:
+
 - New positions
 - Closed positions
 - Strategy shifts
@@ -134,14 +139,17 @@ Overall Assessment: 📈 IMPROVING PERFORMANCE
 ### Preset Comparisons
 
 **Year-to-Date** (`/compare-periods --ytd`):
+
 - Period 1: Jan 1 to Current Date (Previous Year)
 - Period 2: Jan 1 to Current Date (Current Year)
 
 **Quarter-over-Quarter** (`/compare-periods --quarter`):
+
 - Period 1: Previous Quarter
 - Period 2: Current Quarter
 
 **Month-over-Month** (`/compare-periods --month`):
+
 - Period 1: Previous Month
 - Period 2: Current Month
 

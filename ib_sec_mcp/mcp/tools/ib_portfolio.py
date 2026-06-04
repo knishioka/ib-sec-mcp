@@ -5,7 +5,6 @@ Interactive Brokers portfolio analysis and data fetching tools.
 
 import asyncio
 import json
-import warnings
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -484,9 +483,12 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
         ctx: Context | None = None,
     ) -> str:
         """
-        Analyze trading performance
+        Analyze trading performance (coarse-grained, full performance report)
 
         Automatically fetches data from IB API (with caching) and performs analysis.
+        Returns a complete set of performance metrics in one call. To compute a
+        single named metric (e.g. win rate) with finer filtering, use the
+        composable ``calculate_metric`` tool instead.
 
         Args:
             start_date: Start date in YYYY-MM-DD format
@@ -1322,104 +1324,6 @@ def register_ib_portfolio_tools(mcp: FastMCP) -> None:
             )
 
         return json.dumps(result, indent=2, default=str)
-
-    @mcp.tool
-    async def get_portfolio_summary(file_path: str, ctx: Context | None = None) -> str:
-        """
-        Get comprehensive portfolio summary
-
-        .. deprecated::
-            Use ``analyze_consolidated_portfolio(file_path=...)`` instead.
-            It provides richer analysis including holdings, asset allocation,
-            and concentration risk.
-
-        Args:
-            file_path: Path to IB Flex Query XML file
-            ctx: MCP context for logging
-
-        Returns:
-            JSON string with portfolio summary (includes all accounts if multiple)
-        """
-        warnings.warn(
-            "get_portfolio_summary is deprecated. "
-            "Use analyze_consolidated_portfolio(file_path=...) instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if ctx:
-            await ctx.info(
-                "Note: get_portfolio_summary is deprecated. "
-                "Use analyze_consolidated_portfolio(file_path=...) instead."
-            )
-            await ctx.info(f"Getting portfolio summary from {file_path}")
-
-        with open(file_path) as f:
-            data = f.read()
-
-        from_date, to_date = _extract_dates_from_filename(file_path)
-
-        # Validate XML format and parse all accounts
-        detect_format(data)  # Raises ValueError if not XML
-        accounts = XMLParser.to_accounts(data, from_date, to_date)
-
-        # If multiple accounts, return aggregated summary
-        if len(accounts) > 1:
-            total_cash = Decimal("0")
-            total_value = Decimal("0")
-            total_positions = 0
-            total_trades = 0
-
-            account_details = []
-
-            for account in accounts.values():
-                total_cash += account.total_cash
-                total_value += account.total_value
-                total_positions += len(account.positions)
-                total_trades += len(account.trades)
-
-                account_details.append(
-                    {
-                        "account_id": account.account_id,
-                        "account_alias": account.account_alias,
-                        "cash": str(account.total_cash),
-                        "value": str(account.total_value),
-                        "num_positions": len(account.positions),
-                        "num_trades": len(account.trades),
-                    }
-                )
-
-            summary = {
-                "num_accounts": len(accounts),
-                "base_currency": "USD",
-                "total_cash": str(total_cash),
-                "total_value": str(total_value),
-                "num_trades": total_trades,
-                "num_positions": total_positions,
-                "date_range": {
-                    "from": str(from_date),
-                    "to": str(to_date),
-                },
-                "accounts": account_details,
-            }
-        else:
-            # Single account
-            account = next(iter(accounts.values()))
-            summary = {
-                "num_accounts": 1,
-                "account_id": account.account_id,
-                "account_alias": account.account_alias,
-                "base_currency": account.base_currency,
-                "total_cash": str(account.total_cash),
-                "total_value": str(account.total_value),
-                "num_trades": len(account.trades),
-                "num_positions": len(account.positions),
-                "date_range": {
-                    "from": str(account.from_date),
-                    "to": str(account.to_date),
-                },
-            }
-
-        return json.dumps(summary, indent=2)
 
 
 __all__ = ["register_ib_portfolio_tools"]

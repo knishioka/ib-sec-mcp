@@ -13,7 +13,6 @@ from fastmcp import FastMCP
 
 from ib_sec_mcp.tools.etf_calculator import (
     ETFSwapCalculator,
-    validate_etf_price,
 )
 
 _DEFAULT_TRADING_FEE_USD = 75.0
@@ -222,48 +221,6 @@ def register_etf_calculator_tools(mcp: FastMCP) -> None:
         }
 
         return json.dumps(result, indent=2, ensure_ascii=False)
-
-    @mcp.tool()
-    def validate_etf_price_mcp(
-        symbol: str,
-        price: float,
-        reference_symbol: str | None = None,
-        reference_price: float | None = None,
-    ) -> str:
-        """
-        Validate ETF price for potential errors
-
-        **IMPORTANT**: Use this before calculations to catch price errors early.
-        This helps prevent calculation mistakes like the IDTL incident (stated $88.67, actual $3.40).
-
-        Args:
-            symbol: ETF symbol to validate
-            price: Price to validate
-            reference_symbol: Optional reference ETF symbol (tracking same index)
-            reference_price: Optional reference ETF price
-
-        Returns:
-            JSON string with validation results:
-            - is_valid: Boolean indicating if price seems correct
-            - warnings: List of warning messages
-            - price_ratio: Ratio compared to reference (if provided)
-
-        Example:
-            >>> result = validate_etf_price_mcp(
-            ...     symbol="IDTL",
-            ...     price=3.40,
-            ...     reference_symbol="TLT",
-            ...     reference_price=91.34
-            ... )
-        """
-        validation = validate_etf_price(
-            symbol=symbol,
-            price=Decimal(str(price)),
-            reference_symbol=reference_symbol,
-            reference_price=Decimal(str(reference_price)) if reference_price else None,
-        )
-
-        return json.dumps(validation, indent=2, ensure_ascii=False)
 
 
 __all__ = ["register_etf_calculator_tools"]
