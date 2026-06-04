@@ -54,13 +54,6 @@ class CashBalance(BaseModel):
         """Net deposits/withdrawals"""
         return self.deposits - self.withdrawals
 
-    class Config:
-        """Pydantic config"""
-
-        json_encoders = {
-            Decimal: lambda v: str(v),
-        }
-
 
 class Account(BaseModel):
     """Account information and data"""
@@ -144,11 +137,3 @@ class Account(BaseModel):
             if balance.currency == currency:
                 return balance
         return None
-
-    class Config:
-        """Pydantic config"""
-
-        json_encoders = {
-            date: lambda v: v.isoformat(),
-            Decimal: lambda v: str(v),
-        }

@@ -146,6 +146,11 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --cov=ib_sec_mcp --cov-report=term-missing --ignore=tests/integration"
 asyncio_mode = "auto"
+filterwarnings = [
+    # Issue #118: gate Pydantic v1 deprecations (scoped to pydantic only, not
+    # unrelated third-party DeprecationWarnings) so reintroductions fail CI.
+    "error::pydantic.PydanticDeprecationWarning",
+]
 markers = [
     "integration: Integration tests requiring external services",
     "manual: Manual-only tests (not run in CI)",

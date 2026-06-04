@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class FlexQueryStatus(StrEnum):
@@ -43,14 +43,6 @@ class FlexStatement(BaseModel):
     when_generated: datetime = Field(..., description="Statement generation timestamp")
     raw_data: str = Field(..., description="Raw XML/CSV data")
 
-    class Config:
-        """Pydantic config"""
-
-        json_encoders = {
-            date: lambda v: v.isoformat(),
-            datetime: lambda v: v.isoformat(),
-        }
-
 
 class AccountInfo(BaseModel):
     """Account information section"""
@@ -73,10 +65,7 @@ class AccountInfo(BaseModel):
     country: str | None = Field(None, alias="Country")
     postal_code: str | None = Field(None, alias="PostalCode")
 
-    class Config:
-        """Pydantic config"""
-
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class CashSummary(BaseModel):
@@ -109,10 +98,7 @@ class CashSummary(BaseModel):
     ending_cash_sec: Decimal = Field(Decimal("0"), alias="EndingCashSec")
     ending_settled_cash: Decimal = Field(..., alias="EndingSettledCash")
 
-    class Config:
-        """Pydantic config"""
-
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class APICredentials(BaseModel):

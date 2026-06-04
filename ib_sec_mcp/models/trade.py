@@ -97,12 +97,3 @@ class Trade(BaseModel):
         if self.gross_amount == 0:
             return Decimal("0")
         return abs(self.ib_commission) / self.gross_amount * 100
-
-    class Config:
-        """Pydantic config"""
-
-        json_encoders = {
-            date: lambda v: v.isoformat(),
-            datetime: lambda v: v.isoformat(),
-            Decimal: lambda v: str(v),
-        }

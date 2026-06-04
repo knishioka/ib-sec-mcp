@@ -81,11 +81,3 @@ class Position(BaseModel):
     def is_bond(self) -> bool:
         """Check if position is a bond"""
         return self.asset_class == AssetClass.BOND
-
-    class Config:
-        """Pydantic config"""
-
-        json_encoders = {
-            date: lambda v: v.isoformat(),
-            Decimal: lambda v: str(v),
-        }
