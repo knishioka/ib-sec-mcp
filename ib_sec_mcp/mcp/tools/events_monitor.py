@@ -1,8 +1,13 @@
 """Upcoming event monitoring MCP tools.
 
-Aggregates near-term corporate events — earnings and ex-dividend dates (and,
-best-effort, interest-rate events) — for portfolio holdings plus an optional
-watchlist, flagging events that are imminent (``EVENT_SOON``).
+Aggregates near-term events for portfolio holdings plus an optional watchlist,
+flagging events that are imminent (``EVENT_SOON``). Two sources are combined:
+
+* per-symbol **earnings** and **ex-dividend** dates from yfinance calendars, and
+* **macro interest-rate** decisions (e.g. FOMC) from a curated, offline
+  calendar (:mod:`ib_sec_mcp.mcp.tools.rate_calendar`). Rate events are global
+  — emitted once with ``symbol: None`` — because a rate decision moves all risk
+  assets, not just same-currency holdings.
 
 This complements ``get_earnings_calendar`` (single-shot lookup) by turning the
 same yfinance-backed calendar data into a monitoring feed: a flat, sorted list
@@ -33,6 +38,7 @@ from ib_sec_mcp.mcp.tools.earnings_calendar import (
     _load_symbols_from_latest_snapshot,
     _normalize_symbols,
 )
+from ib_sec_mcp.mcp.tools.rate_calendar import build_rate_events
 
 # Default proximity threshold: events within this many days are flagged EVENT_SOON.
 EVENT_SOON_THRESHOLD_DAYS = 3
@@ -160,14 +166,17 @@ def register_events_monitor_tools(mcp: FastMCP) -> None:
         symbols: list[str] | None = None,
         watchlist: list[str] | None = None,
         soon_threshold_days: int = EVENT_SOON_THRESHOLD_DAYS,
+        include_rate_events: bool = True,
         ctx: Context | None = None,
     ) -> str:
         """
-        Monitor upcoming earnings / ex-dividend events for holdings + watchlist.
+        Monitor upcoming earnings / ex-dividend / rate events for holdings.
 
-        Aggregates near-term corporate events across portfolio holdings and an
-        optional watchlist, flagging imminent ones (``EVENT_SOON``) so staged
-        entry / exit decisions and ``/daily-check`` can react before the event.
+        Aggregates near-term events across portfolio holdings and an optional
+        watchlist, flagging imminent ones (``EVENT_SOON``) so staged entry /
+        exit decisions and ``/daily-check`` can react before the event. Combines
+        per-symbol earnings / ex-dividend dates with global macro interest-rate
+        (e.g. FOMC) decisions.
 
         Args:
             days: Monitoring horizon in days (default: 14). Events further out
@@ -177,18 +186,19 @@ def register_events_monitor_tools(mcp: FastMCP) -> None:
             watchlist: Additional non-held symbols to monitor alongside holdings.
             soon_threshold_days: Events within this many days are flagged
                 ``EVENT_SOON`` (default: 3).
+            include_rate_events: Include global macro interest-rate decisions
+                (default: True). Rate events apply to all symbols and so are
+                emitted once with ``symbol: null``.
             ctx: MCP context for logging.
 
         Returns:
             JSON string with ``as_of``, ``days_ahead``, ``soon_threshold_days``,
             ``event_count``, ``event_soon_count``, ``events`` (flat, soonest
-            first) and ``errors``. Each event has ``symbol``, ``event_type``
-            (``"earnings"`` | ``"ex_dividend"``), ``event_date``, ``days_until``
-            and ``flag``.
-
-        Note:
-            Interest-rate (macro) events are not yet sourced per-symbol; the
-            ``event_type`` field is intentionally open for a future rate feed.
+            first) and ``errors``. Each event has ``symbol`` (``null`` for
+            global rate events), ``event_type`` (``"earnings"`` |
+            ``"ex_dividend"`` | ``"rate"``), ``event_date``, ``days_until`` and
+            ``flag``. Rate events additionally carry ``central_bank``,
+            ``region``, ``currency`` and ``description``.
         """
         if days < 0:
             return json.dumps({"error": "days must be zero or greater"}, indent=2)
@@ -220,6 +230,11 @@ def register_events_monitor_tools(mcp: FastMCP) -> None:
                     errors.append(record)
                 else:
                     events.append(record)
+
+        # Global macro rate events (e.g. FOMC) apply to all symbols, so they are
+        # appended once rather than per held symbol.
+        if include_rate_events:
+            events.extend(build_rate_events(current_date, days, soon_threshold_days))
 
         sorted_events = _sort_events(events)
         event_soon_count = sum(1 for event in sorted_events if event.get("flag") == EVENT_SOON_FLAG)

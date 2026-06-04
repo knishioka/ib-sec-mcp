@@ -523,3 +523,116 @@ class TestEventRisk:
         )
         assert data["event_risk"]["near_term"] is False
         assert data["event_risk"]["events"]  # still surfaced for visibility
+
+    async def test_imminent_rate_event_flags_near_term_with_label(
+        self, test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An imminent macro rate decision drives near-term risk and a labelled note."""
+        patch_components(
+            monkeypatch,
+            tech=make_tech(score=0.6, current_level="neutral", rsi_signal="neutral"),
+            stock_ctx=make_stock_ctx(),
+            sentiment=make_sentiment("0.5"),
+            events=[
+                {
+                    "symbol": None,
+                    "event_type": "rate",
+                    "event_date": "2026-01-03",
+                    "days_until": 2,
+                    "flag": "EVENT_SOON",
+                    "central_bank": "FOMC",
+                    "region": "US",
+                    "currency": "USD",
+                    "description": "FOMC interest rate decision",
+                }
+            ],
+        )
+        data = json.loads(
+            await call_tool_fn(test_mcp, "evaluate_position", symbol="AAPL", ctx=None)
+        )
+        assert data["event_risk"]["near_term"] is True
+        assert data["event_risk"]["next_earnings_days"] is None
+        assert any("FOMC interest rate decision" in r for r in data["rationale"])
+
+    async def test_fetch_event_risk_merges_global_rate_events(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """_fetch_event_risk appends curated rate events to per-symbol events."""
+        rate_record = {
+            "symbol": None,
+            "event_type": "rate",
+            "event_date": "2026-01-02",
+            "days_until": 1,
+            "flag": "EVENT_SOON",
+            "central_bank": "FOMC",
+            "region": "US",
+            "currency": "USD",
+            "description": "FOMC interest rate decision",
+        }
+        monkeypatch.setattr(pa, "build_rate_events", lambda *a, **k: [rate_record])
+
+        class _Ticker:
+            def __init__(self, symbol: str) -> None:
+                self.symbol = symbol
+
+            @property
+            def calendar(self) -> dict:
+                return {"Earnings Date": [], "Ex-Dividend Date": None}
+
+        with patch("yfinance.Ticker", _Ticker):
+            events = await pa._fetch_event_risk("AAPL")
+
+        assert rate_record in events
+        assert any(e["event_type"] == "rate" for e in events)
+
+    async def test_fetch_event_risk_keeps_rate_events_on_yfinance_failure(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A yfinance failure still yields the offline rate events."""
+        rate_record = {"symbol": None, "event_type": "rate", "days_until": 1, "flag": "EVENT_SOON"}
+        monkeypatch.setattr(pa, "build_rate_events", lambda *a, **k: [rate_record])
+
+        class _Ticker:
+            def __init__(self, symbol: str) -> None:
+                pass
+
+            @property
+            def calendar(self) -> dict:
+                raise RuntimeError("yfinance down")
+
+        with patch("yfinance.Ticker", _Ticker):
+            events = await pa._fetch_event_risk("AAPL")
+
+        assert events == [rate_record]
+
+
+class TestEventRiskHelpers:
+    """Unit tests for the pure event-risk helpers (PR #153 review fixes)."""
+
+    def test_format_event_note_tolerates_missing_event_type(self) -> None:
+        """A record without event_type does not raise KeyError."""
+        note = pa._format_event_note({"days_until": 2, "event_date": "2026-01-03"})
+        assert "in 2 day(s) on 2026-01-03" in note
+
+    def test_format_event_note_rate_uses_description(self) -> None:
+        note = pa._format_event_note(
+            {
+                "event_type": "rate",
+                "days_until": 1,
+                "event_date": "2026-01-02",
+                "description": "FOMC interest rate decision",
+            }
+        )
+        assert note == "FOMC interest rate decision in 1 day(s) on 2026-01-02"
+
+    def test_summarize_event_risk_sorts_combined_events(self) -> None:
+        """Combined per-symbol + rate events are returned chronologically."""
+        events = [
+            {"symbol": "AAPL", "event_type": "ex_dividend", "days_until": 9, "flag": None},
+            {"symbol": None, "event_type": "rate", "days_until": 2, "flag": "EVENT_SOON"},
+            {"symbol": "AAPL", "event_type": "earnings", "days_until": 5, "flag": None},
+        ]
+        summary = pa._summarize_event_risk(events)
+        assert [e["days_until"] for e in summary["events"]] == [2, 5, 9]
+        # next_earnings_days resolves to the nearest earnings event.
+        assert summary["next_earnings_days"] == 5

@@ -217,6 +217,72 @@ async def test_get_upcoming_events_reports_invalid_symbols(
 
 
 @pytest.mark.asyncio
+async def test_get_upcoming_events_includes_global_rate_events(
+    test_mcp: FastMCP,
+    patch_ticker: Callable[[dict[str, Any]], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Global macro rate events are merged in once with symbol=None."""
+    import ib_sec_mcp.mcp.tools.events_monitor as module
+
+    rate_record = {
+        "symbol": None,
+        "event_type": "rate",
+        "event_date": "2026-01-02",
+        "days_until": 1,
+        "flag": "EVENT_SOON",
+        "central_bank": "FOMC",
+        "region": "US",
+        "currency": "USD",
+        "description": "FOMC interest rate decision",
+    }
+    monkeypatch.setattr(module, "build_rate_events", lambda *a, **k: [rate_record])
+    patch_ticker({"AAPL": {"Earnings Date": [date(2026, 1, 10)], "Ex-Dividend Date": None}})
+
+    result = await call_tool_fn(
+        test_mcp, "get_upcoming_events", days=14, symbols=["AAPL"], ctx=None
+    )
+    data = json.loads(result)
+
+    rate_events = [e for e in data["events"] if e["event_type"] == "rate"]
+    assert len(rate_events) == 1
+    assert rate_events[0]["symbol"] is None
+    assert rate_events[0]["central_bank"] == "FOMC"
+    # Soonest-first ordering puts the imminent rate event ahead of the earnings.
+    assert data["events"][0]["event_type"] == "rate"
+    assert data["event_soon_count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_get_upcoming_events_can_exclude_rate_events(
+    test_mcp: FastMCP,
+    patch_ticker: Callable[[dict[str, Any]], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """include_rate_events=False suppresses the macro rate feed."""
+    import ib_sec_mcp.mcp.tools.events_monitor as module
+
+    monkeypatch.setattr(
+        module,
+        "build_rate_events",
+        lambda *a, **k: [{"symbol": None, "event_type": "rate", "days_until": 1, "flag": None}],
+    )
+    patch_ticker({"AAPL": {"Earnings Date": [date(2026, 1, 10)], "Ex-Dividend Date": None}})
+
+    result = await call_tool_fn(
+        test_mcp,
+        "get_upcoming_events",
+        days=14,
+        symbols=["AAPL"],
+        include_rate_events=False,
+        ctx=None,
+    )
+    data = json.loads(result)
+
+    assert all(e["event_type"] != "rate" for e in data["events"])
+
+
+@pytest.mark.asyncio
 async def test_get_upcoming_events_rejects_negative_days(test_mcp: FastMCP) -> None:
     """A negative horizon is rejected before any yfinance access."""
     result = await call_tool_fn(test_mcp, "get_upcoming_events", days=-1, ctx=None)

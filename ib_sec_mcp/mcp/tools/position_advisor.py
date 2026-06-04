@@ -46,6 +46,7 @@ from ib_sec_mcp.mcp.tools.events_monitor import (
     build_symbol_events,
 )
 from ib_sec_mcp.mcp.tools.ib_portfolio import ETF_ALTERNATIVES
+from ib_sec_mcp.mcp.tools.rate_calendar import build_rate_events
 from ib_sec_mcp.mcp.tools.technical_analysis import (
     _analyze_trends,
     _analyze_volume,
@@ -204,29 +205,40 @@ async def _fetch_sentiment(symbol: str, lookback_days: int) -> SentimentScore | 
 
 
 async def _fetch_event_risk(symbol: str) -> list[dict[str, Any]]:
-    """Fetch near-term earnings / ex-dividend events for the candidate symbol.
+    """Fetch near-term event risk for the candidate symbol.
 
-    Best-effort: returns an empty list on any failure so the decision can still
-    be made from technicals + sentiment. Reuses the same yfinance calendar
-    parsing as ``get_upcoming_events`` for consistency.
+    Combines per-symbol earnings / ex-dividend events (yfinance) with global
+    macro interest-rate decisions (e.g. FOMC), so the decision accounts for an
+    imminent rate event even when the symbol itself has no corporate event.
+
+    Best-effort: the per-symbol fetch returns nothing on any failure so the
+    decision can still be made from technicals + sentiment. Rate events are
+    offline/curated and always included. Reuses the same calendar parsing as
+    ``get_upcoming_events`` for consistency.
     """
     import yfinance as yf
+
+    current_date = datetime.now().date()
+    # Curated, offline — applies to all symbols, so always included.
+    rate_events = build_rate_events(current_date, _EVENT_RISK_DAYS_AHEAD, EVENT_SOON_THRESHOLD_DAYS)
 
     def _load() -> Any:
         return yf.Ticker(symbol).calendar
 
     try:
         calendar = await asyncio.wait_for(asyncio.to_thread(_load), timeout=DEFAULT_TIMEOUT)
-        return build_symbol_events(
+        symbol_events = build_symbol_events(
             symbol,
             calendar,
-            datetime.now().date(),
+            current_date,
             _EVENT_RISK_DAYS_AHEAD,
             EVENT_SOON_THRESHOLD_DAYS,
         )
     except Exception as e:
         logger.warning("Failed to fetch event risk for %s: %s", symbol, e)
-        return []
+        symbol_events = []
+
+    return [*symbol_events, *rate_events]
 
 
 # ---------------------------------------------------------------------------
@@ -245,14 +257,36 @@ def _is_chasing(tech: dict[str, Any]) -> bool:
     return bool(rsi.get("signal") == "overbought")
 
 
+def _format_event_note(event: dict[str, Any]) -> str:
+    """Render a human-readable note for an imminent event.
+
+    Rate (macro) events use their ``description`` / ``central_bank`` label;
+    corporate events fall back to a normalized ``event_type`` label.
+    """
+    days = event.get("days_until")
+    when = event.get("event_date")
+    event_type = event.get("event_type")
+    if event_type == "rate":
+        label = event.get("description") or f"{event.get('central_bank', 'Rate')} rate decision"
+        return f"{label} in {days} day(s) on {when}"
+    label = event_type.replace("_", "-") if event_type else "event"
+    return f"{label} in {days} day(s) on {when}"
+
+
 def _summarize_event_risk(events: list[dict[str, Any]]) -> dict[str, Any]:
     """Summarize near-term event risk from upcoming-event records.
 
     ``near_term`` is true when any imminent event is flagged ``EVENT_SOON``
-    (e.g. earnings within a few days) — a signal to wait rather than commit
-    capital straight into binary event risk.
+    (e.g. earnings or an FOMC decision within a few days) — a signal to wait
+    rather than commit capital straight into binary event risk.
     """
-    upcoming = [event for event in events if "error" not in event]
+    # Sort soonest-first so the combined per-symbol + global rate events are
+    # chronological (matching get_upcoming_events), which also makes
+    # next_earnings_days resolve to the *nearest* earnings.
+    upcoming = sorted(
+        (event for event in events if "error" not in event),
+        key=lambda event: event.get("days_until", 999_999),
+    )
     soon = [event for event in upcoming if event.get("flag") == "EVENT_SOON"]
 
     next_earnings_days: int | None = None
@@ -263,11 +297,7 @@ def _summarize_event_risk(events: list[dict[str, Any]]) -> dict[str, Any]:
                 next_earnings_days = days
             break
 
-    notes: list[str] = [
-        f"{event['event_type'].replace('_', '-')} in {event['days_until']} day(s) "
-        f"on {event['event_date']}"
-        for event in soon
-    ]
+    notes: list[str] = [_format_event_note(event) for event in soon]
 
     return {
         "near_term": bool(soon),
@@ -565,8 +595,9 @@ def register_position_advisor_tools(mcp: FastMCP) -> None:
             - ``staged_entry``: tranche plan with price bands and sizing
             - ``tax_fx``: withholding / Ireland-domicile / FX notes
             - ``portfolio_fit``: target-allocation guidance
-            - ``event_risk``: near-term earnings / ex-dividend events and whether
-              an imminent (``EVENT_SOON``) event argues for waiting
+            - ``event_risk``: near-term earnings / ex-dividend / macro rate
+              (e.g. FOMC) events and whether an imminent (``EVENT_SOON``) event
+              argues for waiting
 
         Raises:
             ValidationError: If input validation fails.
