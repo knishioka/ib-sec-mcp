@@ -161,15 +161,9 @@ Identify unrealized loss positions eligible for tax loss harvesting. Detects was
 >>> result = await calculate_tax_loss_harvesting("2025-01-01", tax_rate="0.20")
 ```
 
-### `get_portfolio_summary`
-
-Get a lightweight portfolio summary from a saved XML or CSV file (no API call). Useful for quick checks without re-fetching from IB.
-
-| Parameter   | Type  | Required | Default | Description                        |
-| ----------- | ----- | -------- | ------- | ---------------------------------- |
-| `file_path` | `str` | Yes      | -       | Path to IB Flex Query XML/CSV file |
-
-**Returns**: JSON with account summary, position list, and basic P&L totals.
+> **Removed**: `get_portfolio_summary` was removed in #121. Use
+> [`analyze_consolidated_portfolio`](#analyze_consolidated_portfolio) instead — it
+> provides a richer summary including holdings, asset allocation, and concentration risk.
 
 ---
 
@@ -792,18 +786,10 @@ Calculate multiple ETF swaps for portfolio restructuring.
 
 **Returns**: JSON with individual swap calculations and portfolio-wide summary (total tax savings, total payback period).
 
-### `validate_etf_price_mcp`
-
-Validate ETF price for potential errors before calculations.
-
-| Parameter          | Type    | Required | Default | Description                       |
-| ------------------ | ------- | -------- | ------- | --------------------------------- |
-| `symbol`           | `str`   | Yes      | -       | ETF symbol to validate            |
-| `price`            | `float` | Yes      | -       | Price to validate                 |
-| `reference_symbol` | `str`   | No       | -       | Reference ETF symbol (same index) |
-| `reference_price`  | `float` | No       | -       | Reference ETF price               |
-
-**Returns**: JSON with `is_valid`, `warnings`, and `price_ratio` (if reference provided).
+> **Removed**: `validate_etf_price_mcp` was removed from the MCP surface in #121.
+> Price validation remains available as an internal Python helper
+> (`ib_sec_mcp.tools.etf_calculator.validate_etf_price`) for programmatic use; the
+> swap calculators do not run it automatically, so supply accurate prices.
 
 ---
 
@@ -825,15 +811,8 @@ Analyze market sentiment from multiple sources.
 >>> sentiment = await analyze_market_sentiment("AAPL", sources="composite")
 ```
 
-### `get_news_sentiment`
-
-Convenience function for news-only sentiment analysis.
-
-| Parameter | Type  | Required | Default | Description         |
-| --------- | ----- | -------- | ------- | ------------------- |
-| `symbol`  | `str` | Yes      | -       | Stock ticker symbol |
-
-**Returns**: JSON with news sentiment score, confidence, key themes, and risk factors.
+> **Removed**: `get_news_sentiment` was removed in #121. For news-only sentiment,
+> call `analyze_market_sentiment(symbol)` with the default `sources="news"`.
 
 ---
 

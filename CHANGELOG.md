@@ -6,6 +6,11 @@ All notable changes to this project will be documented in this file.
 
 ### Removed
 
+- **MCP tool consolidation** (#121): reduced redundant MCP tools (62 → 59 tools)
+  - `get_portfolio_summary` — removed (deprecated); use `analyze_consolidated_portfolio`
+  - `get_news_sentiment` — removed; use `analyze_market_sentiment` (default `sources="news"`)
+  - `validate_etf_price_mcp` — removed from MCP surface; demoted to the internal
+    `ib_sec_mcp.tools.etf_calculator.validate_etf_price` helper
 - **Dead code cleanup** (#120):
   - `ib-sec-report` CLI command and its `cli/report.py` stub (was a "not yet implemented" placeholder; use `ib-sec-analyze --output` instead)
   - Unreachable IV Rank and Max Pain branches in `OptionsSentimentAnalyzer` (behavior unchanged; sentiment is derived solely from the Put/Call ratio)
@@ -39,8 +44,7 @@ All notable changes to this project will be documented in this file.
     - Automatic weight normalization
     - Disagreement penalty for confidence
   - **MCP Tools**:
-    - `analyze_market_sentiment` - Multi-source sentiment
-    - `get_news_sentiment` - News-only convenience function
+    - `analyze_market_sentiment` - Multi-source sentiment (news-only via default `sources="news"`)
     - Support for news, options, technical, and composite sources
   - **Quality Assurance**:
     - 67 comprehensive test cases (100% pass rate for Phase 1)

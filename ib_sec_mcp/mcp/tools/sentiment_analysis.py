@@ -38,6 +38,10 @@ def register_sentiment_analysis_tools(mcp: FastMCP) -> None:
         Provides sentiment analysis combining news articles, options market data,
         and technical indicators to assess market psychology and investor sentiment.
 
+        For news-only sentiment, call with the default ``sources="news"`` (e.g.
+        ``analyze_market_sentiment(symbol)``); for all sources use
+        ``sources="composite"``.
+
         Args:
             symbol: Stock ticker symbol (e.g., "AAPL", "TSLA", "VOO")
             lookback_days: Historical period for analysis (default: 7 days)
@@ -175,74 +179,6 @@ def register_sentiment_analysis_tools(mcp: FastMCP) -> None:
                 await ctx.error(f"Unexpected error in analyze_market_sentiment: {e!s}")
             # Don't expose internal errors to users
             raise ValidationError(f"Sentiment analysis failed for {symbol}") from e
-
-    @mcp.tool
-    async def get_news_sentiment(
-        symbol: str,
-        ctx: Context | None = None,
-    ) -> str:
-        """
-        Get sentiment analysis from news articles only
-
-        Convenience function for news-only sentiment analysis.
-        Analyzes recent news headlines to determine market sentiment.
-
-        Args:
-            symbol: Stock ticker symbol (e.g., "AAPL", "TSLA", "VOO")
-            ctx: MCP context for logging
-
-        Returns:
-            JSON string with news sentiment analysis including:
-            - sentiment_score: -1.0 (bearish) to +1.0 (bullish)
-            - confidence: 0.0 to 1.0 confidence level
-            - key_themes: List of identified themes
-            - risk_factors: List of identified risks
-
-        Raises:
-            ValidationError: If symbol is invalid
-            IBTimeoutError: If operation times out
-
-        Example:
-            >>> result = await get_news_sentiment("AAPL")
-            >>> # Returns news sentiment for Apple Inc.
-        """
-        try:
-            symbol = validate_symbol(symbol)
-
-            if ctx:
-                await ctx.info(f"Fetching news sentiment for {symbol}")
-
-            analyzer = NewsSentimentAnalyzer()
-
-            async def run_analysis() -> SentimentScore:
-                return await analyzer.analyze_sentiment(symbol)
-
-            sentiment_score = await asyncio.wait_for(run_analysis(), timeout=DEFAULT_TIMEOUT)
-
-            result = {
-                "symbol": symbol,
-                "sentiment_score": float(sentiment_score.score),
-                "confidence": float(sentiment_score.confidence),
-                "key_themes": sentiment_score.key_themes,
-                "risk_factors": sentiment_score.risk_factors,
-                "reasoning": sentiment_score.reasoning,
-                "timestamp": sentiment_score.timestamp.isoformat(),
-            }
-
-            return json.dumps(result, indent=2)
-
-        except (ValidationError, IBTimeoutError):
-            raise
-        except TimeoutError as e:
-            if ctx:
-                await ctx.error(f"Timeout fetching news sentiment for {symbol}")
-            raise IBTimeoutError(
-                f"News sentiment analysis timed out after {DEFAULT_TIMEOUT} seconds"
-            ) from e
-        except Exception as e:
-            if ctx:
-                await ctx.error(f"Unexpected error in get_news_sentiment: {e!s}")
-            raise ValidationError(f"News sentiment analysis failed for {symbol}") from e
 
 
 __all__ = ["register_sentiment_analysis_tools"]

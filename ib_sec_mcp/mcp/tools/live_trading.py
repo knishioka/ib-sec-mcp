@@ -193,9 +193,13 @@ def register_live_trading_tools(mcp: FastMCP) -> None:
         ctx: Context | None = None,
     ) -> str:
         """
-        Get real-time positions from IB Client Portal Gateway
+        Get real-time positions from IB Client Portal Gateway (source: live/CP)
 
-        Returns symbol, quantity, market value, average cost, and unrealized P&L.
+        Returns symbol, quantity, market value, average cost, and unrealized P&L
+        as reported live by the broker via the Client Portal Gateway.
+
+        For historical positions parsed from Flex Query data, use ``get_positions``
+        (source: historical/Flex) instead.
 
         Args:
             account_id: IB account ID (optional, uses first account if not specified)

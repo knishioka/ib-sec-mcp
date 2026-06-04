@@ -185,9 +185,14 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
         ctx: Context | None = None,
     ) -> str:
         """
-        Get current positions
+        Get historical positions from IB Flex Query data (source: historical/Flex)
 
-        Provides granular access to position records for custom analysis.
+        Provides granular access to position records parsed from Flex Query XML
+        for custom analysis. Positions reflect the holdings recorded in the Flex
+        statement for the requested date range, not real-time broker state.
+
+        For real-time positions from the IB Client Portal Gateway, use
+        ``get_live_positions`` (source: live/CP) instead.
 
         Args:
             start_date: Start date in YYYY-MM-DD format
@@ -361,9 +366,11 @@ def register_composable_data_tools(mcp: FastMCP) -> None:
         ctx: Context | None = None,
     ) -> str:
         """
-        Calculate individual performance metric
+        Calculate individual performance metric (fine-grained, single metric)
 
-        Provides specific metric calculations for custom analysis strategies.
+        Provides specific metric calculations for custom analysis strategies, with
+        optional symbol filtering. For a complete one-shot performance report, use
+        the coarse-grained ``analyze_performance`` tool instead.
 
         Args:
             metric_name: Name of metric to calculate (see list above)
