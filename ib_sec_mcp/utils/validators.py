@@ -2,6 +2,7 @@
 
 import re
 from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 
 
 def validate_date(
@@ -141,28 +142,65 @@ def validate_account_id(account_id: str) -> bool:
     return bool(re.match(pattern, account_id))
 
 
-def parse_decimal_safe(value: str | int | float, default: float = 0.0) -> float:
+def parse_decimal_safe(
+    value: str | int | float | None,
+    default: Decimal = Decimal("0"),
+) -> Decimal:
     """
-    Safely parse decimal value
+    Safely parse a value into a ``Decimal`` without float precision loss.
+
+    Financial values must be created from a string (``Decimal(str(value))``)
+    rather than from a ``float``, otherwise binary floating-point artifacts are
+    baked in at the parse boundary. For example ``Decimal(0.1)`` yields
+    ``Decimal('0.1000000000000000055511151231257827021181583404541015625')``
+    whereas ``Decimal("0.1")`` is exact. This helper guarantees the latter for
+    every code path so callers never need to wrap the result in ``Decimal``.
 
     Args:
-        value: Value to parse
-        default: Default value if parsing fails
+        value: Value to parse (string, int, float, or None)
+        default: Default ``Decimal`` returned when the input is empty or invalid
 
     Returns:
-        Parsed float value or default
+        Parsed ``Decimal`` value, or ``default`` on empty/invalid input
     """
     if value is None or value == "":
         return default
 
     try:
         if isinstance(value, str):
-            # Remove commas and whitespace
+            # Remove thousands separators and surrounding whitespace
             cleaned = value.replace(",", "").strip()
-            return float(cleaned)
-        return float(value)
-    except (ValueError, TypeError):
+            if not cleaned:
+                return default
+            return Decimal(cleaned)
+        # int/float: route through str() so float binary artifacts are not
+        # propagated into the resulting Decimal.
+        return Decimal(str(value))
+    except (InvalidOperation, ValueError, TypeError):
         return default
+
+
+def validate_xml_format(data: str) -> None:
+    """
+    Validate that ``data`` is XML.
+
+    IB Flex Query API returns data in XML format only (CSV support has been
+    removed), so this is a guard rather than a multi-format detector.
+
+    Args:
+        data: Raw data string
+
+    Raises:
+        ValueError: If ``data`` is not valid XML (does not start with ``<``)
+    """
+    first_line = data.strip().split("\n")[0] if data.strip() else ""
+
+    if not first_line.startswith("<"):
+        raise ValueError(
+            "Invalid data format. Only XML format is supported. "
+            "CSV support has been removed. "
+            "IB Flex Query API returns XML data."
+        )
 
 
 def validate_symbol(symbol: str) -> bool:

@@ -53,6 +53,10 @@ class PerformanceCalculator:
         if initial_value == 0 or years == 0:
             return Decimal("0")
 
+        # float() is required here: math.pow supports a fractional exponent
+        # (1/years) that Decimal ** Decimal cannot express directly. The inputs
+        # form an exact Decimal ratio first, and the float result is re-quantized
+        # via Decimal(str(...)) so no float artifact leaks into callers.
         ratio = float(final_value / initial_value)
         power = 1.0 / float(years)
         cagr = (math.pow(ratio, power) - 1) * 100
@@ -131,7 +135,9 @@ class PerformanceCalculator:
         # Calculate mean return
         mean_return: Decimal = sum(returns, Decimal("0")) / len(returns)
 
-        # Calculate standard deviation
+        # Calculate standard deviation. Variance stays in exact Decimal; only the
+        # final square root needs float (math.sqrt has no Decimal equivalent in
+        # the stdlib) and is re-quantized via Decimal(str(...)).
         variance: Decimal = sum(((r - mean_return) ** 2 for r in returns), Decimal("0")) / (
             len(returns) - 1
         )
@@ -198,6 +204,10 @@ class PerformanceCalculator:
         if current_price == 0 or years_to_maturity == 0:
             return Decimal("0")
 
+        # float() is required for the fractional exponent (1/years_to_maturity)
+        # via math.pow. The ratio is formed as an exact Decimal first and the
+        # result is re-quantized via Decimal(str(...)) so callers see no float
+        # artifact.
         ratio = float(face_value / current_price)
         power = 1.0 / float(years_to_maturity)
         ytm = (math.pow(ratio, power) - 1) * 100

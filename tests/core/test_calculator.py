@@ -356,3 +356,68 @@ class TestCalculateRiskRewardRatio:
         # abs() is applied in the method
         ratio = PerformanceCalculator.calculate_risk_reward_ratio(Decimal("200"), Decimal("-100"))
         assert ratio == Decimal("2")
+
+
+class TestCalculatorPrecision:
+    """Regression tests for Issue #119: Decimal precision in the calculator.
+
+    Pure-Decimal methods must be exact even with operands that are inexact as
+    binary floats. Methods that necessarily use float (math.pow / math.sqrt for
+    fractional exponents and square roots) must still return a Decimal with no
+    leaked binary artifact.
+    """
+
+    def test_roi_is_exact_with_inexact_float_operands(self) -> None:
+        # 0.1 and 0.3 are inexact as float; ROI must be an exact Decimal.
+        roi = PerformanceCalculator.calculate_roi(Decimal("0.3"), Decimal("0.6"))
+        assert roi == Decimal("100")
+        assert isinstance(roi, Decimal)
+
+    def test_commission_rate_is_exact(self) -> None:
+        rate = PerformanceCalculator.calculate_commission_rate(Decimal("0.1"), Decimal("100"))
+        # Exact value (0.1 / 100 * 100); Decimal preserves scale ("0.100").
+        assert rate == Decimal("0.1")
+        assert isinstance(rate, Decimal)
+
+    def test_profit_factor_is_exact(self) -> None:
+        trades = [
+            _make_trade(Decimal("0.1")),
+            _make_trade(Decimal("0.2")),
+            _make_trade(Decimal("-0.1")),
+        ]
+        # gross_profit = 0.3, gross_loss = 0.1 -> exactly 3.
+        assert PerformanceCalculator.calculate_profit_factor(trades) == Decimal("3")
+
+    def test_cagr_returns_decimal_without_artifact(self) -> None:
+        # Doubling over 1 year => 100% CAGR, exactly representable after re-quantize.
+        cagr = PerformanceCalculator.calculate_cagr(Decimal("100"), Decimal("200"), Decimal("1"))
+        assert isinstance(cagr, Decimal)
+        assert cagr == Decimal("100")
+
+    def test_cagr_fractional_is_decimal(self) -> None:
+        cagr = PerformanceCalculator.calculate_cagr(Decimal("1000"), Decimal("1331"), Decimal("3"))
+        assert isinstance(cagr, Decimal)
+        # 1331/1000 = 1.331 = 1.1^3 -> ~10% CAGR
+        assert abs(cagr - Decimal("10")) < Decimal("0.0001")
+
+    def test_ytm_returns_decimal_without_artifact(self) -> None:
+        # Price 100 -> face 121 over 2 years => 10% YTM.
+        ytm = PerformanceCalculator.calculate_ytm(Decimal("121"), Decimal("100"), Decimal("2"))
+        assert isinstance(ytm, Decimal)
+        assert abs(ytm - Decimal("10")) < Decimal("0.0001")
+
+    def test_sharpe_returns_decimal(self) -> None:
+        returns = [Decimal("0.1"), Decimal("0.2"), Decimal("0.15"), Decimal("0.05")]
+        sharpe = PerformanceCalculator.calculate_sharpe_ratio(returns)
+        assert isinstance(sharpe, Decimal)
+
+    def test_phantom_income_is_decimal(self) -> None:
+        # Decimal ** Decimal path (constant yield) must stay Decimal.
+        income = PerformanceCalculator.calculate_phantom_income(
+            purchase_price=Decimal("800"),
+            face_value=Decimal("1000"),
+            years_to_maturity=Decimal("5"),
+            days_held=365,
+        )
+        assert isinstance(income, Decimal)
+        assert income > Decimal("0")

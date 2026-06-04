@@ -8,7 +8,7 @@ from typing import Any
 from ib_sec_mcp.models.account import Account, CashBalance
 from ib_sec_mcp.models.position import Position
 from ib_sec_mcp.models.trade import AssetClass, BuySell, Trade
-from ib_sec_mcp.utils.validators import parse_decimal_safe
+from ib_sec_mcp.utils.validators import parse_decimal_safe, validate_xml_format
 
 
 class XMLParser:
@@ -100,30 +100,20 @@ class XMLParser:
             # Use BASE_SUMMARY (already converted to USD)
             balance = CashBalance(
                 currency="USD",
-                starting_cash=Decimal(
-                    parse_decimal_safe(base_summary_report.get("startingCash", "0"))
+                starting_cash=parse_decimal_safe(base_summary_report.get("startingCash", "0")),
+                ending_cash=parse_decimal_safe(base_summary_report.get("endingCash", "0")),
+                ending_settled_cash=parse_decimal_safe(
+                    base_summary_report.get("endingSettledCash", "0")
                 ),
-                ending_cash=Decimal(parse_decimal_safe(base_summary_report.get("endingCash", "0"))),
-                ending_settled_cash=Decimal(
-                    parse_decimal_safe(base_summary_report.get("endingSettledCash", "0"))
-                ),
-                deposits=Decimal(parse_decimal_safe(base_summary_report.get("deposits", "0"))),
-                withdrawals=Decimal(
-                    parse_decimal_safe(base_summary_report.get("withdrawals", "0"))
-                ),
-                dividends=Decimal(parse_decimal_safe(base_summary_report.get("dividends", "0"))),
-                interest=Decimal(
-                    parse_decimal_safe(base_summary_report.get("brokerInterest", "0"))
-                ),
-                commissions=Decimal(
-                    parse_decimal_safe(base_summary_report.get("commissions", "0"))
-                ),
-                fees=Decimal(parse_decimal_safe(base_summary_report.get("otherFees", "0"))),
-                net_trades_sales=Decimal(
-                    parse_decimal_safe(base_summary_report.get("netTradesSales", "0"))
-                ),
-                net_trades_purchases=Decimal(
-                    parse_decimal_safe(base_summary_report.get("netTradesPurchases", "0"))
+                deposits=parse_decimal_safe(base_summary_report.get("deposits", "0")),
+                withdrawals=parse_decimal_safe(base_summary_report.get("withdrawals", "0")),
+                dividends=parse_decimal_safe(base_summary_report.get("dividends", "0")),
+                interest=parse_decimal_safe(base_summary_report.get("brokerInterest", "0")),
+                commissions=parse_decimal_safe(base_summary_report.get("commissions", "0")),
+                fees=parse_decimal_safe(base_summary_report.get("otherFees", "0")),
+                net_trades_sales=parse_decimal_safe(base_summary_report.get("netTradesSales", "0")),
+                net_trades_purchases=parse_decimal_safe(
+                    base_summary_report.get("netTradesPurchases", "0")
                 ),
             )
             balances.append(balance)
@@ -134,21 +124,17 @@ class XMLParser:
 
                 balance = CashBalance(
                     currency=currency,
-                    starting_cash=Decimal(parse_decimal_safe(report.get("startingCash", "0"))),
-                    ending_cash=Decimal(parse_decimal_safe(report.get("endingCash", "0"))),
-                    ending_settled_cash=Decimal(
-                        parse_decimal_safe(report.get("endingSettledCash", "0"))
-                    ),
-                    deposits=Decimal(parse_decimal_safe(report.get("deposits", "0"))),
-                    withdrawals=Decimal(parse_decimal_safe(report.get("withdrawals", "0"))),
-                    dividends=Decimal(parse_decimal_safe(report.get("dividends", "0"))),
-                    interest=Decimal(parse_decimal_safe(report.get("brokerInterest", "0"))),
-                    commissions=Decimal(parse_decimal_safe(report.get("commissions", "0"))),
-                    fees=Decimal(parse_decimal_safe(report.get("otherFees", "0"))),
-                    net_trades_sales=Decimal(parse_decimal_safe(report.get("netTradesSales", "0"))),
-                    net_trades_purchases=Decimal(
-                        parse_decimal_safe(report.get("netTradesPurchases", "0"))
-                    ),
+                    starting_cash=parse_decimal_safe(report.get("startingCash", "0")),
+                    ending_cash=parse_decimal_safe(report.get("endingCash", "0")),
+                    ending_settled_cash=parse_decimal_safe(report.get("endingSettledCash", "0")),
+                    deposits=parse_decimal_safe(report.get("deposits", "0")),
+                    withdrawals=parse_decimal_safe(report.get("withdrawals", "0")),
+                    dividends=parse_decimal_safe(report.get("dividends", "0")),
+                    interest=parse_decimal_safe(report.get("brokerInterest", "0")),
+                    commissions=parse_decimal_safe(report.get("commissions", "0")),
+                    fees=parse_decimal_safe(report.get("otherFees", "0")),
+                    net_trades_sales=parse_decimal_safe(report.get("netTradesSales", "0")),
+                    net_trades_purchases=parse_decimal_safe(report.get("netTradesPurchases", "0")),
                 )
                 balances.append(balance)
 
@@ -177,8 +163,8 @@ class XMLParser:
                 maturity_date = XMLParser._parse_date_yyyymmdd(pos_elem.get("maturity"))
 
             # Parse quantity and calculate average cost
-            quantity = Decimal(parse_decimal_safe(pos_elem.get("position", "0")))
-            cost_basis = Decimal(parse_decimal_safe(pos_elem.get("costBasisMoney", "0")))
+            quantity = parse_decimal_safe(pos_elem.get("position", "0"))
+            cost_basis = parse_decimal_safe(pos_elem.get("costBasisMoney", "0"))
 
             # Get FX rate to convert to base currency (USD)
             # Create Decimal from string directly to avoid float precision artifacts
@@ -189,12 +175,10 @@ class XMLParser:
                 fx_rate = Decimal("1")
 
             # Apply FX rate to convert values to USD
-            position_value_local = Decimal(parse_decimal_safe(pos_elem.get("positionValue", "0")))
+            position_value_local = parse_decimal_safe(pos_elem.get("positionValue", "0"))
             position_value_usd = position_value_local * fx_rate
 
-            unrealized_pnl_local = Decimal(
-                parse_decimal_safe(pos_elem.get("fifoPnlUnrealized", "0"))
-            )
+            unrealized_pnl_local = parse_decimal_safe(pos_elem.get("fifoPnlUnrealized", "0"))
             unrealized_pnl_usd = unrealized_pnl_local * fx_rate
 
             cost_basis_usd = cost_basis * fx_rate
@@ -210,8 +194,8 @@ class XMLParser:
                 cusip=pos_elem.get("cusip"),
                 isin=pos_elem.get("isin"),
                 quantity=quantity,
-                multiplier=Decimal(parse_decimal_safe(pos_elem.get("multiplier", "1"))),
-                mark_price=Decimal(parse_decimal_safe(pos_elem.get("markPrice", "0"))),
+                multiplier=parse_decimal_safe(pos_elem.get("multiplier", "1")),
+                mark_price=parse_decimal_safe(pos_elem.get("markPrice", "0")),
                 position_value=position_value_usd,
                 average_cost=average_cost,
                 cost_basis=cost_basis_usd,
@@ -221,7 +205,7 @@ class XMLParser:
                 fx_rate_to_base=fx_rate,
                 position_date=position_date,
                 coupon_rate=(
-                    Decimal(parse_decimal_safe(pos_elem.get("coupon", "0")))
+                    parse_decimal_safe(pos_elem.get("coupon", "0"))
                     if pos_elem.get("coupon")
                     else None
                 ),
@@ -285,17 +269,15 @@ class XMLParser:
                 cusip=trade_elem.get("cusip"),
                 isin=trade_elem.get("isin"),
                 buy_sell=buy_sell,
-                quantity=Decimal(parse_decimal_safe(trade_elem.get("quantity", "0"))),
-                trade_price=Decimal(parse_decimal_safe(trade_elem.get("tradePrice", "0"))),
-                trade_money=Decimal(parse_decimal_safe(trade_elem.get("tradeMoney", "0"))),
+                quantity=parse_decimal_safe(trade_elem.get("quantity", "0")),
+                trade_price=parse_decimal_safe(trade_elem.get("tradePrice", "0")),
+                trade_money=parse_decimal_safe(trade_elem.get("tradeMoney", "0")),
                 currency=trade_elem.get("currency", "USD"),
-                fx_rate_to_base=Decimal(parse_decimal_safe(trade_elem.get("fxRateToBase", "1.0"))),
-                ib_commission=Decimal(parse_decimal_safe(trade_elem.get("ibCommission", "0"))),
+                fx_rate_to_base=parse_decimal_safe(trade_elem.get("fxRateToBase", "1.0")),
+                ib_commission=parse_decimal_safe(trade_elem.get("ibCommission", "0")),
                 ib_commission_currency=trade_elem.get("ibCommissionCurrency", "USD"),
-                fifo_pnl_realized=Decimal(
-                    parse_decimal_safe(trade_elem.get("fifoPnlRealized", "0"))
-                ),
-                mtm_pnl=Decimal(parse_decimal_safe(trade_elem.get("mtmPnl", "0"))),
+                fifo_pnl_realized=parse_decimal_safe(trade_elem.get("fifoPnlRealized", "0")),
+                mtm_pnl=parse_decimal_safe(trade_elem.get("mtmPnl", "0")),
                 order_id=trade_elem.get("orderID"),
                 execution_id=trade_elem.get("executionID"),
                 order_time=order_time,
@@ -422,10 +404,13 @@ class XMLParser:
 
 def detect_format(data: str) -> str:
     """
-    Validate XML format
+    Validate XML format (deprecated alias for :func:`validate_xml_format`).
 
-    IB Flex Query API returns data in XML format only.
-    CSV support has been removed.
+    .. deprecated::
+        IB Flex Query API returns XML only, so there is no format to "detect".
+        Prefer :func:`ib_sec_mcp.utils.validators.validate_xml_format`, which
+        expresses the intent (validation, not detection). This wrapper remains
+        for backward compatibility and always returns ``"xml"``.
 
     Args:
         data: Raw data string
@@ -436,13 +421,5 @@ def detect_format(data: str) -> str:
     Raises:
         ValueError: If data is not valid XML
     """
-    first_line = data.strip().split("\n")[0] if data.strip() else ""
-
-    if not first_line.startswith("<"):
-        raise ValueError(
-            "Invalid data format. Only XML format is supported. "
-            "CSV support has been removed. "
-            "IB Flex Query API returns XML data."
-        )
-
+    validate_xml_format(data)
     return "xml"
