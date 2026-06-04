@@ -150,6 +150,33 @@ class TestIdentifierValidators:
     def test_cusip_wrong_length(self) -> None:
         assert validate_cusip("0378331") is False
 
+    @pytest.mark.parametrize(
+        "isin",
+        [
+            "US0378331005",  # Apple Inc.
+            "US5949181045",  # Microsoft Corp.
+            "US38259P5089",  # Google (contains a letter in the identifier)
+            "GB0002634946",  # BAE Systems
+            "DE000BAY0017",  # Bayer AG
+            "FR0000131104",  # BNP Paribas
+            "NL0000235190",  # Airbus
+        ],
+    )
+    def test_valid_isin_check_digit(self, isin: str) -> None:
+        """Genuinely valid ISINs must pass the Luhn check (regression for #137)."""
+        assert validate_isin(isin) is True
+
+    @pytest.mark.parametrize(
+        "isin",
+        [
+            "US0378331004",  # Apple ISIN with wrong check digit
+            "US0378331006",
+            "GB0002634940",  # BAE Systems with wrong check digit
+        ],
+    )
+    def test_invalid_isin_check_digit(self, isin: str) -> None:
+        assert validate_isin(isin) is False
+
     def test_isin_wrong_length(self) -> None:
         assert validate_isin("US037833100") is False
 
