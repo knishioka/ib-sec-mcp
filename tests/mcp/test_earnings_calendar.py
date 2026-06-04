@@ -7,6 +7,7 @@ suite is network-independent.
 """
 
 import json
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -71,6 +72,22 @@ def test_mcp() -> FastMCP:
     return mcp
 
 
+@pytest.fixture()
+def patch_ticker(monkeypatch: pytest.MonkeyPatch) -> Callable[[dict[str, Any]], None]:
+    """Return a helper that installs FakeTicker with the given calendar data.
+
+    Uses ``monkeypatch.setattr`` so both the patched ``yf.Ticker`` and the
+    per-symbol calendar payload are restored automatically after each test,
+    preventing cross-test state pollution.
+    """
+
+    def _apply(calendars: dict[str, Any]) -> None:
+        monkeypatch.setattr(FakeTicker, "calendars", calendars)
+        monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+
+    return _apply
+
+
 @pytest.fixture(autouse=True)
 def fixed_today(monkeypatch: pytest.MonkeyPatch) -> None:
     """Make days-until calculations deterministic and ignore env account IDs."""
@@ -83,20 +100,21 @@ def fixed_today(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_get_earnings_calendar_returns_sorted_events(
-    test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    test_mcp: FastMCP, patch_ticker: Callable[[dict[str, Any]], None]
 ) -> None:
     """Multiple symbol results are returned in upcoming event order."""
-    FakeTicker.calendars = {
-        "AAPL": {
-            "Earnings Date": [date(2026, 1, 20)],
-            "Ex-Dividend Date": date(2026, 1, 10),
-        },
-        "MSFT": {
-            "Earnings Date": [date(2026, 1, 5)],
-            "Ex-Dividend Date": date(2026, 3, 1),
-        },
-    }
-    monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+    patch_ticker(
+        {
+            "AAPL": {
+                "Earnings Date": [date(2026, 1, 20)],
+                "Ex-Dividend Date": date(2026, 1, 10),
+            },
+            "MSFT": {
+                "Earnings Date": [date(2026, 1, 5)],
+                "Ex-Dividend Date": date(2026, 3, 1),
+            },
+        }
+    )
 
     result = await call_tool_fn(
         test_mcp,
@@ -116,17 +134,18 @@ async def test_get_earnings_calendar_returns_sorted_events(
 
 @pytest.mark.asyncio
 async def test_get_earnings_calendar_includes_per_symbol_errors(
-    test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    test_mcp: FastMCP, patch_ticker: Callable[[dict[str, Any]], None]
 ) -> None:
     """A yfinance failure for one symbol is included without stopping processing."""
-    FakeTicker.calendars = {
-        "AAPL": {
-            "Earnings Date": [date(2026, 1, 20)],
-            "Ex-Dividend Date": None,
-        },
-        "BROKEN": RuntimeError("symbol not supported"),
-    }
-    monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+    patch_ticker(
+        {
+            "AAPL": {
+                "Earnings Date": [date(2026, 1, 20)],
+                "Ex-Dividend Date": None,
+            },
+            "BROKEN": RuntimeError("symbol not supported"),
+        }
+    )
 
     result = await call_tool_fn(
         test_mcp,
@@ -143,16 +162,17 @@ async def test_get_earnings_calendar_includes_per_symbol_errors(
 
 @pytest.mark.asyncio
 async def test_get_earnings_calendar_filters_events_outside_days_ahead(
-    test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    test_mcp: FastMCP, patch_ticker: Callable[[dict[str, Any]], None]
 ) -> None:
     """Events beyond the requested horizon are omitted."""
-    FakeTicker.calendars = {
-        "AAPL": {
-            "Earnings Date": [date(2026, 6, 1)],
-            "Ex-Dividend Date": date(2026, 7, 1),
-        },
-    }
-    monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+    patch_ticker(
+        {
+            "AAPL": {
+                "Earnings Date": [date(2026, 6, 1)],
+                "Ex-Dividend Date": date(2026, 7, 1),
+            },
+        }
+    )
 
     result = await call_tool_fn(
         test_mcp,
@@ -167,13 +187,10 @@ async def test_get_earnings_calendar_filters_events_outside_days_ahead(
 
 @pytest.mark.asyncio
 async def test_get_earnings_calendar_reports_missing_dates(
-    test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    test_mcp: FastMCP, patch_ticker: Callable[[dict[str, Any]], None]
 ) -> None:
     """A calendar with no upcoming dates yields a per-symbol error entry."""
-    FakeTicker.calendars = {
-        "AAPL": {"Earnings Date": None, "Ex-Dividend Date": None},
-    }
-    monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+    patch_ticker({"AAPL": {"Earnings Date": None, "Ex-Dividend Date": None}})
 
     result = await call_tool_fn(
         test_mcp,
@@ -203,13 +220,10 @@ async def test_get_earnings_calendar_rejects_negative_days_ahead(test_mcp: FastM
 
 @pytest.mark.asyncio
 async def test_get_earnings_calendar_reports_invalid_symbols(
-    test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    test_mcp: FastMCP, patch_ticker: Callable[[dict[str, Any]], None]
 ) -> None:
     """Invalid symbols become error entries while valid ones are still processed."""
-    FakeTicker.calendars = {
-        "AAPL": {"Earnings Date": [date(2026, 1, 20)], "Ex-Dividend Date": None},
-    }
-    monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+    patch_ticker({"AAPL": {"Earnings Date": [date(2026, 1, 20)], "Ex-Dividend Date": None}})
 
     result = await call_tool_fn(
         test_mcp,
@@ -227,18 +241,19 @@ async def test_get_earnings_calendar_reports_invalid_symbols(
 
 @pytest.mark.asyncio
 async def test_get_earnings_calendar_handles_dataframe_calendar(
-    test_mcp: FastMCP, monkeypatch: pytest.MonkeyPatch
+    test_mcp: FastMCP, patch_ticker: Callable[[dict[str, Any]], None]
 ) -> None:
     """DataFrame-like calendars (``.loc`` accessor) and string dates are parsed."""
-    FakeTicker.calendars = {
-        "AAPL": FakeDataFrameCalendar(
-            {
-                "Earnings Date": "2026-01-15",
-                "Ex-Dividend Date": "2026-01-08",
-            }
-        ),
-    }
-    monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+    patch_ticker(
+        {
+            "AAPL": FakeDataFrameCalendar(
+                {
+                    "Earnings Date": "2026-01-15",
+                    "Ex-Dividend Date": "2026-01-08",
+                }
+            ),
+        }
+    )
 
     result = await call_tool_fn(
         test_mcp,
@@ -256,6 +271,7 @@ async def test_get_earnings_calendar_handles_dataframe_calendar(
 @pytest.mark.asyncio
 async def test_get_earnings_calendar_loads_symbols_from_latest_snapshot(
     test_mcp: FastMCP,
+    patch_ticker: Callable[[dict[str, Any]], None],
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -263,37 +279,34 @@ async def test_get_earnings_calendar_loads_symbols_from_latest_snapshot(
     import ib_sec_mcp.mcp.tools.earnings_calendar as module
 
     db_path = tmp_path / "positions.db"
-    store = PositionStore(db_path)
-    try:
-        with store.db.transaction() as conn:
-            conn.execute(
-                """
+    with PositionStore(db_path) as store, store.db.transaction() as conn:
+        conn.execute(
+            """
                 INSERT INTO snapshot_metadata
                 (account_id, snapshot_date, xml_file_path, date_range_from, date_range_to,
                  total_positions, total_value, total_cash)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                ("U1234567", "2025-12-31", "test.xml", "2025-12-01", "2025-12-31", 2, "2", "0"),
-            )
-            for symbol in ("AAPL", "MSFT"):
-                conn.execute(
-                    """
+            ("U1234567", "2025-12-31", "test.xml", "2025-12-01", "2025-12-31", 2, "2", "0"),
+        )
+        for symbol in ("AAPL", "MSFT"):
+            conn.execute(
+                """
                     INSERT INTO position_snapshots
                     (account_id, snapshot_date, symbol, description, asset_class,
                      quantity, mark_price, position_value, average_cost, cost_basis)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    ("U1234567", "2025-12-31", symbol, symbol, "STK", "1", "1", "1", "1", "1"),
-                )
-    finally:
-        store.close()
+                ("U1234567", "2025-12-31", symbol, symbol, "STK", "1", "1", "1", "1", "1"),
+            )
 
     monkeypatch.setattr(module, "DEFAULT_DB_PATH", str(db_path))
-    FakeTicker.calendars = {
-        "AAPL": {"Earnings Date": [date(2026, 1, 20)], "Ex-Dividend Date": None},
-        "MSFT": {"Earnings Date": [date(2026, 1, 5)], "Ex-Dividend Date": None},
-    }
-    monkeypatch.setattr(PATCH_TARGET, FakeTicker)
+    patch_ticker(
+        {
+            "AAPL": {"Earnings Date": [date(2026, 1, 20)], "Ex-Dividend Date": None},
+            "MSFT": {"Earnings Date": [date(2026, 1, 5)], "Ex-Dividend Date": None},
+        }
+    )
 
     result = await call_tool_fn(
         test_mcp,
