@@ -173,11 +173,3 @@ class Portfolio(BaseModel):
             from_date=from_date,
             to_date=to_date,
         )
-
-    class Config:
-        """Pydantic config"""
-
-        json_encoders = {
-            date: lambda v: v.isoformat(),
-            Decimal: lambda v: str(v),
-        }

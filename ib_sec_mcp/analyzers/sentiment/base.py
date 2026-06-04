@@ -90,13 +90,6 @@ class SentimentScore(BaseModel):
             raise ValueError(f"Confidence must be between 0.0 and 1.0, got {v}")
         return v
 
-    model_config = {
-        "json_encoders": {
-            Decimal: str,
-            datetime: lambda v: v.isoformat(),
-        }
-    }
-
 
 class BaseSentimentAnalyzer(ABC):
     """
