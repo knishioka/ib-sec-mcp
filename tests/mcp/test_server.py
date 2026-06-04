@@ -6,7 +6,7 @@ Verifies that the server starts correctly and all expected tools and resources a
 import asyncio
 import os
 from collections.abc import Iterator
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastmcp import FastMCP
@@ -251,3 +251,26 @@ class TestLiveTradingGate:
         on_tools = asyncio.run(list_tool_names(create_server()))
         assert local_tools <= off_tools
         assert local_tools <= on_tools
+
+    def test_main_loads_dotenv_before_creating_server(self) -> None:
+        """main() must load .env before create_server() so the startup-time gate sees it.
+
+        The IB_ENABLE_LIVE_TRADING gate is evaluated during register_all_tools() at
+        startup. If .env is not loaded first, a flag set only in .env would be invisible
+        and the gated tools would never register.
+        """
+        from ib_sec_mcp.mcp import server as server_module
+
+        manager = MagicMock()
+        with (
+            patch("dotenv.load_dotenv", manager.load_dotenv),
+            patch.object(server_module, "create_server", manager.create_server),
+        ):
+            server_module.main()
+
+        names = [call[0] for call in manager.mock_calls]
+        assert "load_dotenv" in names, "main() must call load_dotenv()"
+        assert "create_server" in names
+        assert names.index("load_dotenv") < names.index("create_server"), (
+            "load_dotenv() must run before create_server()"
+        )
