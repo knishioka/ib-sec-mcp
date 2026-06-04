@@ -350,6 +350,54 @@ class PositionStore:
             },
         }
 
+    def get_value_series(
+        self,
+        account_id: str,
+        start_date: date,
+        end_date: date,
+    ) -> list[dict[str, Any]]:
+        """
+        Get the portfolio Net Asset Value (NAV) series over a date range.
+
+        Reads snapshot-level totals from ``snapshot_metadata``. ``total_value``
+        already includes cash (cash + position value), so it is used directly
+        as NAV.
+
+        Args:
+            account_id: Account ID
+            start_date: Start date (inclusive)
+            end_date: End date (inclusive)
+
+        Returns:
+            List of ``{"snapshot_date", "nav", "total_cash"}`` rows ordered by
+            date ascending, with monetary fields as ``Decimal``.
+        """
+        query = """
+            SELECT
+                snapshot_date,
+                total_value,
+                total_cash
+            FROM snapshot_metadata
+            WHERE account_id = ?
+                AND snapshot_date >= ?
+                AND snapshot_date <= ?
+            ORDER BY snapshot_date ASC
+        """
+
+        results = self.db.fetchall(
+            query,
+            (account_id, start_date.isoformat(), end_date.isoformat()),
+        )
+
+        return [
+            {
+                "snapshot_date": row["snapshot_date"],
+                "nav": Decimal(row["total_value"]),
+                "total_cash": Decimal(row["total_cash"]),
+            }
+            for row in results
+        ]
+
     def get_available_dates(self, account_id: str) -> list[str]:
         """
         Get list of available snapshot dates for an account

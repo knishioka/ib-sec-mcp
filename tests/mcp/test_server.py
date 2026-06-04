@@ -76,6 +76,8 @@ EXPECTED_TOOLS = {
     "compare_portfolio_snapshots",
     "get_position_statistics",
     "get_available_snapshot_dates",
+    # portfolio_timeseries
+    "get_portfolio_timeseries",
     # etf_calculator_tools
     "calculate_etf_swap",
     "calculate_portfolio_swap",
