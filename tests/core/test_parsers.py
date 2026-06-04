@@ -545,3 +545,101 @@ class TestDetectFormat:
     def test_json_raises(self) -> None:
         with pytest.raises(ValueError, match="Only XML format is supported"):
             detect_format('{"key": "value"}')
+
+
+# XML containing amounts that are NOT exactly representable as binary floats.
+# Under the old float-based parse boundary these produced artifacts such as
+# Decimal('150.5000000000000113686...'); they must now be exact.
+PRECISION_XML = """\
+<FlexQueryResponse>
+  <FlexStatements>
+    <FlexStatement accountId="U1234567" fromDate="20250101" toDate="20250131">
+      <AccountInformation accountId="U1234567" acctAlias="Precision"/>
+      <CashReport>
+        <CashReportCurrency currency="BASE_SUMMARY"
+          startingCash="0.1" endingCash="0.3" endingSettledCash="1.005"
+          deposits="19.99" withdrawals="0.07" dividends="12.34"
+          brokerInterest="0.2" commissions="-1.005" otherFees="-0.1"
+          netTradesSales="1234567.89" netTradesPurchases="-0.3"/>
+      </CashReport>
+      <OpenPositions>
+        <OpenPosition symbol="AAPL" description="APPLE INC" assetCategory="STK"
+          position="3" markPrice="0.1" positionValue="0.3"
+          costBasisMoney="0.3" fifoPnlUnrealized="0.1"
+          reportDate="20250131" multiplier="1" currency="USD"
+          fxRateToBase="1"/>
+      </OpenPositions>
+      <Trades>
+        <Trade tradeID="T001" symbol="AAPL" description="APPLE INC"
+          assetCategory="STK" buySell="BUY" quantity="3"
+          tradePrice="0.1" tradeMoney="0.3" tradeDate="20250115"
+          settleDateTarget="20250117" currency="USD" fxRateToBase="1.0"
+          ibCommission="-1.005" ibCommissionCurrency="USD"
+          fifoPnlRealized="0.07" mtmPnl="0.2"/>
+      </Trades>
+    </FlexStatement>
+  </FlexStatements>
+</FlexQueryResponse>"""
+
+
+class TestParsePrecision:
+    """Regression tests for Issue #119: no float artifacts at the parse boundary."""
+
+    def test_cash_balance_amounts_are_exact(self) -> None:
+        account = XMLParser.to_account(
+            PRECISION_XML,
+            from_date=date(2025, 1, 1),
+            to_date=date(2025, 1, 31),
+        )
+        cash = account.cash_balances[0]
+        assert cash.starting_cash == Decimal("0.1")
+        assert cash.ending_cash == Decimal("0.3")
+        assert cash.ending_settled_cash == Decimal("1.005")
+        assert cash.deposits == Decimal("19.99")
+        assert cash.withdrawals == Decimal("0.07")
+        assert cash.dividends == Decimal("12.34")
+        assert cash.interest == Decimal("0.2")
+        assert cash.commissions == Decimal("-1.005")
+        assert cash.fees == Decimal("-0.1")
+        assert cash.net_trades_sales == Decimal("1234567.89")
+        assert cash.net_trades_purchases == Decimal("-0.3")
+        # Exact string round-trip proves no trailing float artifact.
+        assert str(cash.ending_settled_cash) == "1.005"
+
+    def test_position_amounts_are_exact(self) -> None:
+        account = XMLParser.to_account(
+            PRECISION_XML,
+            from_date=date(2025, 1, 1),
+            to_date=date(2025, 1, 31),
+        )
+        position = account.positions[0]
+        assert position.mark_price == Decimal("0.1")
+        assert position.position_value == Decimal("0.3")
+        assert position.cost_basis == Decimal("0.3")
+        assert position.unrealized_pnl == Decimal("0.1")
+        assert str(position.mark_price) == "0.1"
+
+    def test_trade_amounts_are_exact(self) -> None:
+        account = XMLParser.to_account(
+            PRECISION_XML,
+            from_date=date(2025, 1, 1),
+            to_date=date(2025, 1, 31),
+        )
+        trade = account.trades[0]
+        assert trade.trade_price == Decimal("0.1")
+        assert trade.trade_money == Decimal("0.3")
+        assert trade.ib_commission == Decimal("-1.005")
+        assert trade.fifo_pnl_realized == Decimal("0.07")
+        assert trade.mtm_pnl == Decimal("0.2")
+        assert str(trade.ib_commission) == "-1.005"
+
+    def test_classic_float_sum_holds(self) -> None:
+        """0.1 + 0.2 == 0.3 after parsing (would fail under float parsing)."""
+        account = XMLParser.to_account(
+            PRECISION_XML,
+            from_date=date(2025, 1, 1),
+            to_date=date(2025, 1, 31),
+        )
+        cash = account.cash_balances[0]
+        assert cash.starting_cash + cash.interest == cash.ending_cash
+        assert cash.starting_cash + cash.interest == Decimal("0.3")
